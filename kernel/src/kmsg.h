@@ -3,23 +3,10 @@
 
 #include <utils.h>
 
-inline static void kmsg_init_done(const char *mod) {
-	printf("[%s] Module initialized successfully!\n", mod);
-}
-
-inline static void kmsg_warn(const char *mod, const char *text) {
-	printf("[%s] Warning: \"%s\"\n", mod, text);
-}
-
-inline static void kmsg_err(const char *mod, const char *text) {
-	printf("[%s] Error: \"%s\"\n", mod, text);
-	while (true) {
-		asm volatile("hlt");
-	}
-}
-
-inline static void kmsg_log(const char *mod, const char *text) {
-	printf("[%s] %s", mod, text);
-}
+void kmsg_init_done(const char *mod);
+void kmsg_ok(const char *mode, const char *text);
+void kmsg_warn(const char *mod, const char *text);
+void kmsg_err(const char *mod, const char *text);
+void kmsg_log(const char *mod, const char *text);
 
 #endif

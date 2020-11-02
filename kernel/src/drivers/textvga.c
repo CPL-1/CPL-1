@@ -2,14 +2,14 @@
 #include <drivers/textvga.h>
 
 const static uintptr_t TEXT_VGA_MEMORY = 0xc00b8000;
-const static uint8_t VGA_COLOR = 0x0f;
 const static uint16_t VGA_HEIGHT = 25;
 const static uint16_t VGA_WIDTH = 80;
 const static uint16_t TAB_SIZE = 4;
+static uint8_t vga_color = 0x07;
 
 static uint16_t vga_add_color(char character) {
 	uint16_t word_char = (uint16_t)character;
-	uint16_t word_color = (uint16_t)VGA_COLOR;
+	uint16_t word_color = (uint16_t)vga_color;
 	return (word_color << 8) + word_char;
 }
 
@@ -62,12 +62,15 @@ static void vga_tab() {
 	}
 }
 
-static void vga_clear_screen() {
+void vga_clear_screen() {
 	for (size_t y = 0; y < VGA_HEIGHT; ++y) {
 		for (size_t x = 0; x < VGA_WIDTH; ++x) {
 			vga_putc_raw_at(x, y, ' ');
 		}
 	}
+	vga_x = 0;
+	vga_y = 0;
+	vga_update_cursor();
 }
 
 static void vga_enable_cursor() {
@@ -79,10 +82,8 @@ static void vga_enable_cursor() {
 }
 
 void vga_init() {
-	vga_x = 0;
-	vga_y = 0;
-	vga_clear_screen();
 	vga_enable_cursor();
+	vga_clear_screen();
 }
 
 void vga_update_cursor() {
@@ -112,3 +113,5 @@ void vga_puts(const char *str) {
 	}
 	vga_update_cursor();
 }
+
+void vga_set_color(uint8_t color) { vga_color = color; }
