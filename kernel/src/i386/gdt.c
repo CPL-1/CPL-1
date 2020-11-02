@@ -37,7 +37,7 @@ uint16_t gdt_get_tss_segment() { return 7 * 8; }
 void gdt_install_tss() {
 	uint32_t base = tss_get_base();
 	uint32_t limit = tss_get_limit();
-	gdt_install_entry(7, base, limit, 0xE9, 0x00);
+	gdt_install_entry(7, base, limit, 0x89, 0x00);
 }
 
 void gdt_init() {
