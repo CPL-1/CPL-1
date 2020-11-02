@@ -1,6 +1,7 @@
 bits 32
 
 global ring1_switch
+global proc_test
 
 ring1_switch:
     push eax
@@ -27,3 +28,7 @@ ring1_switch:
 end:
     pop eax
     ret
+
+proc_test:
+    mov eax, 0xabacaba
+    jmp $

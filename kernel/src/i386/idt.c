@@ -26,7 +26,7 @@ void idt_install_handler(uint8_t index, uint32_t entry, uint8_t flags) {
 
 void idt_init() {
 	memset(&idt_entries, 0, sizeof(idt_entries));
-	idt_pointer.limit = sizeof(idt_entries);
+	idt_pointer.limit = sizeof(idt_entries) - 1;
 	idt_pointer.base = (uint32_t)&idt_entries;
 	asm volatile("lidt %0" : : "m"(idt_pointer));
 }
