@@ -3,6 +3,14 @@ bits 32
 global ring1_switch
 
 ring1_switch:
+    push eax
+    ; Enable IO operations for ring 1
+    pushfd
+    pop eax
+    or eax, 1 << 12
+    push eax
+    popfd
+
     mov ax, 0x21
     mov ds, ax
     mov es, ax
@@ -15,6 +23,7 @@ ring1_switch:
     pushf
     push 0x19
     push end
-    iret 
+    iret
 end:
+    pop eax
     ret
