@@ -12,4 +12,6 @@ struct proc_thread *proc_get_thread_by_id(size_t id);
 
 void proc_wake_process(struct proc_process *proc);
 void proc_thread_attach(struct proc_process *proc, struct proc_thread *thread);
+
+bool proc_start_new_kernel_thread(uint32_t entrypoint);
 #endif

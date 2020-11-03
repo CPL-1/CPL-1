@@ -12,7 +12,14 @@
 #include <proc/proc.h>
 #include <proc/ring1.h>
 
-void test() { printf("Lol, hello from int handler\n\n\n\n\n"); }
+void test() {
+	while (true) {
+		for (size_t i = 0; i < 500000000; ++i) {
+			asm volatile("nop");
+		}
+		printf("ok\n");
+	}
+}
 
 void kernel_main(uint32_t mb_offset) {
 	vga_init();
@@ -38,6 +45,8 @@ void kernel_main(uint32_t mb_offset) {
 	ring1_switch();
 	kmsg_ok("Ring 1 Initializer", "Executing in Ring 1!");
 	proc_init();
+	kmsg_init_done("Process manager & Scheduler");
+	proc_start_new_kernel_thread((uint32_t)test);
 	while (true) {
 		for (size_t i = 0; i < 500000000; ++i) {
 			asm volatile("nop");

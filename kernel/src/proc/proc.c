@@ -18,6 +18,7 @@ static struct proc_process *proc_current_process;
 static char proc_stack[SCHEDULER_STACK_SIZE];
 
 #define KERNEL_STACK_SIZE 4096
+#define KERNEL_DEFAULT_FLAGS (1 << 9) | (1 << 12)
 
 static size_t proc_allocate_pid() {
 	for (size_t i = 0; i < MAX_PROCESS_ID; ++i) {
@@ -144,7 +145,7 @@ void proc_thread_attach(struct proc_process *proc, struct proc_thread *thread) {
 }
 
 static void proc_schedule_handler(struct proc_trap_frame *frame) {
-	// TODO: what if the only thread in current process died
+	// TODO: what if the only thread in the current process died
 	// TODO: what if the thread went to sleep
 	// TODO: update kernel stacks
 	// TODO: update floating point context
@@ -160,6 +161,29 @@ static void proc_schedule_handler(struct proc_trap_frame *frame) {
 	// copy its values
 	memcpy(frame, &(current_thread->frame), sizeof(*frame));
 	// we are good to go
+}
+
+bool proc_start_new_kernel_thread(uint32_t entrypoint) {
+	uint32_t stack = (uint32_t)heap_alloc(KERNEL_STACK_SIZE);
+	if (stack == 0) {
+		return false;
+	}
+	struct proc_thread *thread = proc_new_thread();
+	if (thread == NULL) {
+		heap_free((void *)stack, KERNEL_STACK_SIZE);
+		return false;
+	}
+	thread->kernel_stack.bottom = stack;
+	thread->kernel_stack.top = stack + KERNEL_STACK_SIZE;
+	thread->frame.eip = entrypoint;
+	thread->frame.esp = thread->kernel_stack.top;
+	thread->frame.eflags = KERNEL_DEFAULT_FLAGS;
+	thread->frame.cs = 0x19;
+	thread->frame.ds = thread->frame.gs = thread->frame.fs = thread->frame.es =
+	    thread->frame.ss = 0x21;
+	struct proc_process *process = proc_get_process_by_id(0);
+	proc_thread_attach(process, thread);
+	return true;
 }
 
 void proc_init() {
