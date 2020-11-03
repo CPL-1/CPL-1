@@ -63,7 +63,7 @@ void va_printf(const char *fmt, va_list args) {
 					putui(va_arg(args, uint32_t), 10, false);
 					break;
 				case 'p':
-					putp(va_arg(args, uintptr_t), 16);
+					putp(va_arg(args, uintptr_t), 8);
 					break;
 				case 's':
 					puts(va_arg(args, char *));

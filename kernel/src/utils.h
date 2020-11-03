@@ -26,7 +26,7 @@ inline static void *memcpy(void *dst, const void *src, size_t size) {
 	return dst;
 }
 
-inline static size_t strlen(char *str) {
+inline static size_t strlen(const char *str) {
 	size_t result = 0;
 	while (*str++ != 0) {
 		result++;

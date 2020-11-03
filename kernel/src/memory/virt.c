@@ -2,7 +2,7 @@
 #include <memory/phys.h>
 #include <memory/virt.h>
 
-#define VIRT_MOD_NAME "virt"
+#define VIRT_MOD_NAME "Kernel virtual memory mapper"
 
 static void virt_init_map_at(uint32_t cr3, uint32_t vaddr, uint32_t paddr) {
 	uint16_t pd_index = virt_pd_index(vaddr);
@@ -40,4 +40,20 @@ void virt_kernel_mapping_init() {
 	     paddr += PAGE_SIZE) {
 		virt_init_map_at(cr3, paddr + KERNEL_MAPPING_BASE, paddr);
 	}
+	struct virt_page_table *page_dir =
+	    (struct virt_page_table *)(cr3 + KERNEL_MAPPING_BASE);
+	page_dir->entries[0].addr = 0;
+	cpu_invlpg(0);
+}
+
+uint32_t virt_new_cr3() {
+	uint32_t frame = phys_lo_alloc_frame();
+	if (frame == 0) {
+		return 0;
+	}
+	uint32_t *writable_frame = (uint32_t *)(frame + KERNEL_MAPPING_BASE);
+	uint32_t *page_dir = (uint32_t *)(cpu_get_cr3() + KERNEL_MAPPING_BASE);
+	memset(writable_frame, 0, PAGE_SIZE);
+	memcpy(writable_frame + 768, page_dir + 768, (1024 - 768) * 4);
+	return frame;
 }

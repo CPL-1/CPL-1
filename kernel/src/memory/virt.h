@@ -43,5 +43,6 @@ inline static uint32_t virt_walk_to_next(uint32_t current, uint16_t index) {
 }
 
 void virt_kernel_mapping_init();
+uint32_t virt_new_cr3();
 
 #endif

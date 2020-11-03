@@ -3,7 +3,8 @@
 
 #define BLOCK_SIZE 16 * PAGE_SIZE
 
-static uint32_t heap_size_classes[] = {16, 32, 64, 128, 256, 512, 1024, 2048};
+static uint32_t heap_size_classes[] = {
+    16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
 static const size_t heap_size_classes_count = ARR_SIZE(heap_size_classes);
 
 struct heap_slub_obj_hdr {

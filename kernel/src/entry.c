@@ -38,6 +38,10 @@ void kernel_main(uint32_t mb_offset) {
 	ring1_switch();
 	kmsg_ok("Ring 1 Initializer", "Executing in Ring 1!");
 	proc_init();
-	while (true)
-		;
+	while (true) {
+		for (size_t i = 0; i < 500000000; ++i) {
+			asm volatile("nop");
+		}
+		printf("ok\n");
+	}
 }
