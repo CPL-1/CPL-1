@@ -26,7 +26,8 @@ void test_process() {
 
 void kernel_main(uint32_t mb_offset) {
 	vga_init();
-	kmsg_log("Kernel Init", "Unleash the real power of your CPU...");
+	kmsg_log("Kernel Init",
+	         "Preparing to unleash the real power of your CPU...");
 	kmsg_init_done("VGA text display driver");
 	cr3_init();
 	kmsg_init_done("Root page table manager");
