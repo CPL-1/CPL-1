@@ -1,8 +1,10 @@
 #include <memory/heap.h>
 #include <memory/phys.h>
+#include <proc/mutex.h>
 
 #define BLOCK_SIZE 16 * PAGE_SIZE
 
+static struct mutex heap_mutex;
 static uint32_t heap_size_classes[] = {
     16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
 static const size_t heap_size_classes_count = ARR_SIZE(heap_size_classes);
@@ -40,6 +42,7 @@ static bool heap_add_objects_to_slubs(uint32_t index) {
 }
 
 void heap_init() {
+	mutex_init(&heap_mutex);
 	for (size_t i = 0; i < heap_size_classes_count; ++i) {
 		slubs[i] = NULL;
 	}
@@ -49,22 +52,27 @@ void *heap_alloc(uint32_t size) {
 	if (size == 0) {
 		return NULL;
 	}
+	mutex_lock(&heap_mutex);
 	uint32_t size_class = heap_get_size_class(size);
 	if (size_class == heap_size_classes_count) {
 		uint32_t result = phys_lo_alloc_area(ALIGN_UP(size, PAGE_SIZE));
 		if (result == 0) {
+			mutex_unlock(&heap_mutex);
 			return NULL;
 		} else {
+			mutex_unlock(&heap_mutex);
 			return (void *)(result + KERNEL_MAPPING_BASE);
 		}
 	}
 	if (slubs[size_class] == NULL) {
 		if (!heap_add_objects_to_slubs(size_class)) {
+			mutex_unlock(&heap_mutex);
 			return NULL;
 		}
 	}
 	struct heap_slub_obj_hdr *result = slubs[size_class];
 	slubs[size_class] = result->next;
+	mutex_unlock(&heap_mutex);
 	return result;
 }
 
@@ -72,11 +80,16 @@ void heap_free(void *area, uint32_t size) {
 	if (area == NULL) {
 		return;
 	}
+	mutex_lock(&heap_mutex);
 	uint32_t size_class = heap_get_size_class(size);
 	if (size_class == heap_size_classes_count) {
 		phys_lo_free_area((uint32_t)area, ALIGN_UP(size, PAGE_SIZE));
+		mutex_unlock(&heap_mutex);
+		return;
 	}
 	struct heap_slub_obj_hdr *hdr = (struct heap_slub_obj_hdr *)area;
 	hdr->next = slubs[size_class];
 	slubs[size_class] = hdr;
+	mutex_unlock(&heap_mutex);
+	return;
 }

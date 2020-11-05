@@ -18,10 +18,11 @@
 struct mutex m;
 
 void test_process() {
-	for (size_t i = 0; i < 1000; ++i) {
-		mutex_lock(&m);
+	for (size_t i = 0; i < 5; ++i) {
 		kmsg_log("Test Process No 1", "Loud and Clear!");
-		mutex_unlock(&m);
+		for (size_t i = 0; i < 100000000; ++i) {
+			asm volatile("nop");
+		}
 	}
 	proc_exit(69);
 }
@@ -69,11 +70,6 @@ void kernel_main(uint32_t mb_offset) {
 	process_data->frame.eflags = (1 << 9) | (1 << 12);
 	proc_continue(new_process);
 	kmsg_log("Kernel Init", "Waiting for Test Process 1");
-	for (size_t i = 0; i < 1000; ++i) {
-		mutex_lock(&m);
-		kmsg_log("Init Process", "Loud and Clear!");
-		mutex_unlock(&m);
-	}
 	struct proc_process *process = proc_wait_for_child_term();
 	printf("Process 1 Terminated. Exit code: %d\n", process->return_code);
 	kmsg_log("Kernel Init", "Disposing process");

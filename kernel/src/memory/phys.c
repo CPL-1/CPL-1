@@ -1,6 +1,7 @@
 #include <boot/multiboot.h>
 #include <kmsg.h>
 #include <memory/phys.h>
+#include <proc/mutex.h>
 
 #define PHYS_MOD_NAME "phys"
 
@@ -12,6 +13,7 @@ static uint32_t phys_low_arena_lo = KERNEL_IGNORED_AREA_SIZE / PAGE_SIZE;
 static const uint32_t phys_low_arena_hi = PHYS_LOW_LIMIT / PAGE_SIZE;
 static uint32_t phys_high_arena_lo = phys_low_arena_hi;
 static const uint32_t phys_high_arena_hi = 0x5000;
+static struct mutex phys_mutex;
 
 static void phys_bit_set(uint32_t index) {
 	phys_bitmap[index / 32] |= (1 << (index % 32));
@@ -40,26 +42,33 @@ static bool phys_bit_get(uint32_t index) {
 }
 
 uint32_t phys_lo_alloc_frame() {
+	mutex_lock(&phys_mutex);
 	for (; phys_low_arena_lo < phys_low_arena_hi; ++phys_low_arena_lo) {
 		if (!phys_bit_get(phys_low_arena_lo)) {
 			phys_bit_set(phys_low_arena_lo);
+			mutex_unlock(&phys_mutex);
 			return phys_low_arena_lo * PAGE_SIZE;
 		}
 	}
+	mutex_unlock(&phys_mutex);
 	return 0;
 }
 
 uint32_t phys_hi_alloc_frame() {
+	mutex_lock(&phys_mutex);
 	for (; phys_high_arena_lo < phys_high_arena_hi; ++phys_high_arena_lo) {
 		if (!phys_bit_get(phys_high_arena_lo)) {
 			phys_bit_set(phys_high_arena_lo);
+			mutex_unlock(&phys_mutex);
 			return phys_high_arena_lo * PAGE_SIZE;
 		}
 	}
+	mutex_unlock(&phys_mutex);
 	return 0;
 }
 
 uint32_t phys_lo_alloc_area(uint32_t size) {
+	mutex_lock(&phys_mutex);
 	const uint32_t frames_needed = size / PAGE_SIZE;
 	uint32_t free_frames = 0;
 	uint32_t result_ind = phys_low_arena_lo;
@@ -76,14 +85,17 @@ uint32_t phys_lo_alloc_area(uint32_t size) {
 			if (result_ind == phys_low_arena_lo) {
 				phys_low_arena_lo += frames_needed;
 			}
+			mutex_unlock(&phys_mutex);
 			return result_ind * PAGE_SIZE;
 		}
 		++current_ind;
 	}
+	mutex_unlock(&phys_mutex);
 	return 0;
 }
 
 void phys_free_frame(uint32_t frame) {
+	mutex_lock(&phys_mutex);
 	uint32_t index = frame / PAGE_SIZE;
 	if (index < phys_low_arena_hi) {
 		if (index < phys_low_arena_lo) {
@@ -95,15 +107,19 @@ void phys_free_frame(uint32_t frame) {
 		}
 	}
 	phys_bit_clear(frame / PAGE_SIZE);
+	mutex_unlock(&phys_mutex);
 }
 
 void phys_lo_free_area(uint32_t start, uint32_t size) {
+	mutex_lock(&phys_mutex);
 	for (uint32_t offset = 0; offset < size; offset += PAGE_SIZE) {
 		phys_free_frame(start + offset);
 	}
+	mutex_unlock(&phys_mutex);
 }
 
 void phys_init() {
+	mutex_init(&phys_mutex);
 	memset(&phys_bitmap, 0xff, sizeof(phys_bitmap));
 	struct multiboot_mmap mmap_buf;
 	if (!multiboot_get_mmap(&mmap_buf)) {
