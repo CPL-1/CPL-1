@@ -20,6 +20,8 @@ void mutex_lock(struct mutex *mutex) {
 	}
 	if (!(mutex->locked)) {
 		mutex->locked = true;
+		intlock_unlock();
+		return;
 	}
 	if (mutex->queue_head == NULL) {
 		mutex->queue_head = mutex->queue_tail = process;
