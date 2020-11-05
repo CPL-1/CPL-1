@@ -1,7 +1,7 @@
 #include <drivers/pic.h>
 #include <drivers/pit.h>
-#include <drivers/ports.h>
 #include <i386/idt.h>
+#include <i386/ports.h>
 
 extern void pit_interrupt_handler();
 

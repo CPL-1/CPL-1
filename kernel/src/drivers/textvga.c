@@ -1,5 +1,5 @@
-#include <drivers/ports.h>
 #include <drivers/textvga.h>
+#include <i386/ports.h>
 
 const static uintptr_t TEXT_VGA_MEMORY = 0xc00b8000;
 const static uint16_t VGA_HEIGHT = 25;
