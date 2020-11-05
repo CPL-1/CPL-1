@@ -1,6 +1,8 @@
 #ifndef __PROCLAYOUT_H_INCLUDED__
 #define __PROCLAYOUT_H_INCLUDED__
 
+#include <proc/proc.h>
+
 struct proc_trap_frame {
 	uint32_t ds, gs, fs, es;
 	uint32_t edi, esi, ebp;
@@ -9,30 +11,17 @@ struct proc_trap_frame {
 	uint32_t eip, cs, eflags, esp, ss;
 } packed;
 
-#define PROC_MAX_NAME_LENGTH 16
-
-struct proc_thread {
-	struct proc_thread *next, *prev;
-	struct proc_process *process;
-	struct proc_trap_frame frame;
-	size_t thread_id;
-	struct {
-		uint32_t bottom;
-		uint32_t top;
-	} kernel_stack;
-	bool is_sleeping;
-} packed;
-
 struct proc_process {
-	struct proc_thread *head;
+	struct proc_trap_frame frame;
+	struct proc_id pid, ppid;
 	struct proc_process *next, *prev;
-	size_t sleeping_threads_count;
-	size_t awake_threads_count;
-	size_t process_id;
-	bool preempt_threads;
-
+	struct proc_process *wait_queue_head;
+	struct proc_process *wait_queue_tail;
+	struct proc_process *next_in_queue;
 	uint32_t cr3;
-	char name[PROC_MAX_NAME_LENGTH];
-} packed;
+	uint32_t kernel_stack;
+	int return_code;
+	enum { SLEEPING, RUNNING, WAITING_FOR_CHILD_TERM, ZOMBIE } state;
+};
 
 #endif

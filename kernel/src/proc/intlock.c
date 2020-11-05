@@ -13,3 +13,8 @@ void intlock_unlock() {
 		asm volatile("sti");
 	}
 }
+
+void intlock_flush() {
+	ints_count = 0;
+	asm volatile("sti");
+}

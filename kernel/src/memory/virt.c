@@ -1,3 +1,4 @@
+#include <i386/cr3.h>
 #include <kmsg.h>
 #include <memory/phys.h>
 #include <memory/virt.h>
@@ -35,7 +36,7 @@ static void virt_init_map_at(uint32_t cr3, uint32_t vaddr, uint32_t paddr) {
 }
 
 void virt_kernel_mapping_init() {
-	uint32_t cr3 = cpu_get_cr3();
+	uint32_t cr3 = cr3_get();
 	for (uint32_t paddr = KERNEL_INIT_MAPPING_SIZE; paddr < PHYS_LOW_LIMIT;
 	     paddr += PAGE_SIZE) {
 		virt_init_map_at(cr3, paddr + KERNEL_MAPPING_BASE, paddr);
@@ -52,7 +53,7 @@ uint32_t virt_new_cr3() {
 		return 0;
 	}
 	uint32_t *writable_frame = (uint32_t *)(frame + KERNEL_MAPPING_BASE);
-	uint32_t *page_dir = (uint32_t *)(cpu_get_cr3() + KERNEL_MAPPING_BASE);
+	uint32_t *page_dir = (uint32_t *)(cr3_get() + KERNEL_MAPPING_BASE);
 	memset(writable_frame, 0, PAGE_SIZE);
 	memcpy(writable_frame + 768, page_dir + 768, (1024 - 768) * 4);
 	return frame;

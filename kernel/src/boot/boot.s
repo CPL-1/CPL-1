@@ -68,4 +68,3 @@ higher_half_start:
 .halted:
     hlt
     jmp .halted
-    

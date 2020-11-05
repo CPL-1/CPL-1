@@ -29,4 +29,3 @@ pit_interrupt_handler:
 
     popa
     iretd
-

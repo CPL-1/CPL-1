@@ -116,10 +116,9 @@ void phys_init() {
 			        0x100000000ULL ||
 			    mmap_buf.entries[i].len > 0xffffffffULL ||
 			    mmap_buf.entries[i].addr > 0xffffffffULL) {
-				kmsg_warn(
-				    PHYS_MOD_NAME,
-				    "area not visible from 4 GB protected mode range was found."
-				    "This area will be ignored\n");
+				kmsg_warn(PHYS_MOD_NAME,
+				          "area that is not visible in protected mode was "
+				          "found. This area will be ignored\n");
 				continue;
 			}
 			uint32_t len = (uint32_t)(mmap_buf.entries[i].len);

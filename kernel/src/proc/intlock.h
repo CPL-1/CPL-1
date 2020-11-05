@@ -5,5 +5,6 @@
 
 void intlock_lock();
 void intlock_unlock();
+void intlock_flush();
 
 #endif

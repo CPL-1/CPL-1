@@ -3,7 +3,8 @@
 
 #include <utils.h>
 
-#define ISR_FLAGS 0x8E
+// We use 0xAE (DPL = 1) so that kernel can emulate hardware interrupts
+#define ISR_FLAGS 0xAE
 
 void idt_init();
 void idt_install_handler(uint8_t index, uint32_t entry, uint8_t flags);

@@ -31,3 +31,5 @@ void pit_set_callback(uint32_t entry) {
 	pit_handler = entry;
 	pic_irq_enable(0);
 }
+
+void pit_trigger_interrupt() { asm volatile("int $0x20"); }

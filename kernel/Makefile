@@ -6,10 +6,10 @@ CC := clang
 AS := nasm
 LD := clang
 TARGET := i386-elf
-CFLAGS := -nostdlib -fno-builtin -fno-stack-protector -Wall -Wextra -g -Og -Werror -c \
+CFLAGS := -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -g -Og -Werror -c -mno-sse -mno-sse2 -mno-sse3 \
 			--target=$(TARGET) -Wno-unused-command-line-argument -Isrc/
 ASFLAGS := -f elf -g
-LDFLAGS := --target=$(TARGET) -Wno-unused-command-line-argument -ffreestanding -O2 -nostdlib -lgcc -fuse-ld=lld -g
+LDFLAGS := --target=$(TARGET) -mno-red-zone -Wno-unused-command-line-argument -ffreestanding -O2 -nostdlib -lgcc -fuse-ld=lld -g
 
 all: kernel object_clean run
 

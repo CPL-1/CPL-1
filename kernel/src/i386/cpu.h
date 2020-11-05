@@ -9,6 +9,11 @@ inline static uint32_t cpu_get_cr3() {
 	return val;
 }
 
+inline static uint32_t cpu_set_cr3(uint32_t val) {
+	asm volatile("mov %0, %%cr3" : : "r"(val));
+	return val;
+}
+
 static inline void cpu_invlpg(uint32_t vaddr) {
 	asm volatile("invlpg (%0)" : : "b"(vaddr) : "memory");
 }
