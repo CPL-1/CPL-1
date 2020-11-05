@@ -15,9 +15,12 @@ static uint64_t proc_instance_count_by_id[MAX_PROC_COUNT];
 static struct proc_process *proc_processes_by_id[MAX_PROC_COUNT];
 static struct proc_process *proc_current_process;
 static struct proc_process *proc_dealloc_queue_head;
+static bool proc_initialized = false;
 
 #define PROC_SCHEDULER_STACK_SIZE 4096
 static char proc_scheduler_stack[PROC_SCHEDULER_STACK_SIZE];
+
+bool proc_is_initialized() { return proc_initialized; }
 
 struct proc_process *proc_get_data(struct proc_id id) {
 	size_t array_index = id.id;
@@ -247,6 +250,7 @@ void proc_init() {
 	tss_set_dpl0_stack(
 	    (uint32_t)proc_scheduler_stack + PROC_SCHEDULER_STACK_SIZE, 0x10);
 	pit_set_callback((uint32_t)proc_preempt);
+	proc_initialized = true;
 }
 
 void proc_dispose_queue_poll() {

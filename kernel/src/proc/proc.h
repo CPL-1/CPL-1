@@ -16,6 +16,7 @@ inline static bool proc_is_valid_proc_id(struct proc_id id) {
 }
 
 void proc_init();
+bool proc_is_initialized();
 
 struct proc_id proc_new_process(struct proc_id parent);
 
