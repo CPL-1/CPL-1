@@ -2,6 +2,7 @@
 #include <drivers/pci.h>
 #include <drivers/pic.h>
 #include <drivers/pit.h>
+#include <drivers/storage/storage.h>
 #include <drivers/textvga.h>
 #include <i386/cr3.h>
 #include <i386/gdt.h>
@@ -53,6 +54,8 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_ok("Ring 1 Initializer", "Executing in Ring 1!");
 	kmsg_log("Entry Process", "Enumerating PCI Bus...");
 	pci_enumerate(print_pci, NULL);
+	storage_init();
+	kmsg_init_done("Storage Manager");
 	proc_init();
 	kmsg_init_done("Process Manager & Scheduler");
 	kmsg_log("Process Manager & Scheduler", "Starting User Request Monitor...");
