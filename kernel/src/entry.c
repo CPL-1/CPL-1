@@ -1,4 +1,5 @@
 #include <boot/multiboot.h>
+#include <detect.h>
 #include <drivers/pci.h>
 #include <drivers/pic.h>
 #include <drivers/pit.h>
@@ -58,6 +59,8 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("Storage Manager");
 	proc_init();
 	kmsg_init_done("Process Manager & Scheduler");
+	detect_hardware();
+	kmsg_init_done("Hardware Autodetection Routine");
 	kmsg_log("Process Manager & Scheduler", "Starting User Request Monitor...");
 	while (true) {
 		proc_dispose_queue_poll();
