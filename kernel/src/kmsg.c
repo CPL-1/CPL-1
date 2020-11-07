@@ -48,9 +48,8 @@ void kmsg_err(const char *mod, const char *text) {
 	printf("%s: ", mod);
 	vga_set_color(0x07);
 	printf("%s\n", text);
-	asm volatile("cli");
 	while (true) {
-		asm volatile("hlt");
+		asm volatile("pause");
 	}
 }
 

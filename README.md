@@ -13,7 +13,9 @@ CPL-1 is written to run in protected mode. Why? The answer is simple: I have nev
 
 ### What I need to build CPL-1?
 
-CPL-1 uses clang, lld, nasm and GNU Make to build. In the future I am planning to switch to gcc, as it is significantly easier to port gcc than to port clang.
+CPL-1 uses gcc, libgcc, ld, nasm and GNU Make to build. In the future I am planning to switch to gcc, as it is significantly easier to port gcc than to port clang.
+
+For NixOS, I simply type ```nix-shell -p pkgsi686Linux.gcc pkgsi686Linux.libgcc nasm``` before doing any development
 
 ### How I build CPL-1?
 

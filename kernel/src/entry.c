@@ -13,6 +13,7 @@
 #include <memory/heap.h>
 #include <memory/phys.h>
 #include <memory/virt.h>
+#include <proc/priv.h>
 #include <proc/proc.h>
 #include <proc/proclayout.h>
 #include <proc/ring1.h>
@@ -51,6 +52,8 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("8259 Programmable Interrupt Controller driver");
 	pit_init(25);
 	kmsg_init_done("8253/8254 Programmable Interval Timer driver");
+	priv_init();
+	kmsg_init_done("Privilege Manager");
 	ring1_switch();
 	kmsg_ok("Ring 1 Initializer", "Executing in Ring 1!");
 	kmsg_log("Entry Process", "Enumerating PCI Bus...");

@@ -5,5 +5,7 @@
 #define inline __inline__
 #define typeof __typeof__
 #define packed __attribute__((packed))
+#define unused __attribute__((unused))
+#define packed_align(align) __attribute__((aligned(align))) packed
 
 #endif

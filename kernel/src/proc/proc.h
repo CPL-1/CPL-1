@@ -11,7 +11,7 @@ struct proc_id {
 	uint64_t instance_number;
 };
 
-inline static bool proc_is_valid_proc_id(struct proc_id id) {
+static inline bool proc_is_valid_proc_id(struct proc_id id) {
 	return id.id != MAX_PROC_COUNT;
 }
 

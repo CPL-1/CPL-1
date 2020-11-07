@@ -3,8 +3,8 @@
 
 #include <drivers/pci.h>
 
-#define IDE_PCI_TYPE 0x0101
+#define NVME_PCI_TYPE 0x0108
 
-void ide_init(struct pci_address addr);
+void nvme_init(struct pci_address addr);
 
 #endif

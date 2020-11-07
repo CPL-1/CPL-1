@@ -13,6 +13,12 @@ enum {
 	PCI_SUBCLASS = 0x0a,
 	PCI_TYPE_BRIDGE = 0x0604,
 	PCI_SECONDARY_BUS = 0x19,
+	PCI_BAR0 = 0x10,
+	PCI_BAR1 = 0x14,
+	PCI_BAR2 = 0x18,
+	PCI_BAR3 = 0x1C,
+	PCI_BAR4 = 0x20,
+	PCI_BAR5 = 0x24,
 };
 
 struct pci_id {
@@ -26,10 +32,19 @@ struct pci_address {
 	uint8_t function;
 };
 
+struct pci_bar {
+	uint32_t address;
+	uint32_t size;
+
+	bool is_mmio;
+	bool disable_cache;
+};
+
 typedef void (*pci_enumerator_t)(struct pci_address addr, struct pci_id id,
                                  void *ctx);
 
-void pci_enable_bus_master(struct pci_address address);
+void pci_enable_bus_mastering(struct pci_address address);
+bool pci_read_bar(struct pci_address address, int index, struct pci_bar *bar);
 
 uint8_t pci_inb(struct pci_address address, uint8_t field);
 uint16_t pci_inw(struct pci_address address, uint8_t field);

@@ -9,7 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-inline static void *memset(void *ptr, int value, size_t size) {
+static inline void *memset(void *ptr, int value, size_t size) {
 	char *writable_ptr = (char *)ptr;
 	for (size_t i = 0; i < size; ++i) {
 		writable_ptr[i] = (char)value;
@@ -17,7 +17,7 @@ inline static void *memset(void *ptr, int value, size_t size) {
 	return ptr;
 }
 
-inline static void *memcpy(void *dst, const void *src, size_t size) {
+static inline void *memcpy(void *dst, const void *src, size_t size) {
 	char *writable_dst = (char *)dst;
 	const char *readable_dst = (const char *)src;
 	for (size_t i = 0; i < size; ++i) {
@@ -26,7 +26,7 @@ inline static void *memcpy(void *dst, const void *src, size_t size) {
 	return dst;
 }
 
-inline static size_t strlen(const char *str) {
+static inline size_t strlen(const char *str) {
 	size_t result = 0;
 	while (*str++ != 0) {
 		result++;
@@ -34,8 +34,8 @@ inline static size_t strlen(const char *str) {
 	return result;
 }
 
-#define ALIGN_UP(val, align) ((((val) + (align) + 1) / (align)) * (align))
-#define ALIGN_DOWN(val, align) ((((val)/(align))*(align))
+#define ALIGN_UP(val, align) ((((val) + (align) - (1)) / (align)) * (align))
+#define ALIGN_DOWN(val, align) (((val) / (align)) * (align))
 #define ARR_SIZE(val) (sizeof(val) / sizeof(*(val)))
 
 #endif

@@ -3,13 +3,13 @@
 
 #include <utils.h>
 
-inline static uint32_t cpu_get_cr3() {
+static inline uint32_t cpu_get_cr3() {
 	uint32_t val;
 	asm volatile("mov %%cr3, %0" : "=r"(val));
 	return val;
 }
 
-inline static uint32_t cpu_set_cr3(uint32_t val) {
+static inline uint32_t cpu_set_cr3(uint32_t val) {
 	asm volatile("mov %0, %%cr3" : : "r"(val));
 	return val;
 }

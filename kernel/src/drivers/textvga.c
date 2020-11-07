@@ -1,10 +1,10 @@
 #include <drivers/textvga.h>
 #include <i386/ports.h>
 
-const static uintptr_t TEXT_VGA_MEMORY = 0xc00b8000;
-const static uint16_t VGA_HEIGHT = 25;
-const static uint16_t VGA_WIDTH = 80;
-const static uint16_t TAB_SIZE = 4;
+static const uintptr_t TEXT_VGA_MEMORY = 0xc00b8000;
+static const uint16_t VGA_HEIGHT = 25;
+static const uint16_t VGA_WIDTH = 80;
+static const uint16_t TAB_SIZE = 4;
 static uint8_t vga_color = 0x07;
 
 static uint16_t vga_add_color(char character) {

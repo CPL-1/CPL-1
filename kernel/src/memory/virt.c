@@ -2,6 +2,7 @@
 #include <kmsg.h>
 #include <memory/phys.h>
 #include <memory/virt.h>
+#include <proc/priv.h>
 
 #define VIRT_MOD_NAME "Kernel virtual memory mapper"
 
@@ -57,4 +58,37 @@ uint32_t virt_new_cr3() {
 	memset(writable_frame, 0, PAGE_SIZE);
 	memcpy(writable_frame + 768, page_dir + 768, (1024 - 768) * 4);
 	return frame;
+}
+
+static void virt_map_in_kernel_part(uint32_t vaddr, uint32_t paddr,
+                                    bool cache_disabled) {
+	uint32_t pd_index = virt_pd_index(vaddr);
+	uint32_t pt_index = virt_pt_index(vaddr);
+	uint32_t cr3 = cr3_get();
+	uint32_t page_table_addr = virt_walk_to_next(cr3, pd_index);
+	struct virt_page_table *table =
+	    (struct virt_page_table *)(page_table_addr + KERNEL_MAPPING_BASE);
+	table->entries[pt_index].addr = paddr;
+	table->entries[pt_index].present = true;
+	table->entries[pt_index].writable = true;
+	table->entries[pt_index].write_through = true;
+	table->entries[pt_index].cache_disabled = cache_disabled;
+}
+
+void virt_flush_cr3_ring0() { cr3_set(cr3_get()); }
+
+static void virt_flush_cr3() { priv_call_ring0((int)virt_flush_cr3_ring0, 0); }
+
+uint32_t virt_get_io_mapping(uint32_t paddr, uint32_t size,
+                             bool cache_disabled) {
+	uint32_t area = phys_lo_alloc_area(size);
+	if (area == 0) {
+		return 0;
+	}
+	for (uint32_t offset = 0; offset < size; offset += PAGE_SIZE) {
+		virt_map_in_kernel_part(KERNEL_MAPPING_BASE + area + offset,
+		                        paddr + offset, cache_disabled);
+	}
+	virt_flush_cr3();
+	return area + KERNEL_MAPPING_BASE;
 }

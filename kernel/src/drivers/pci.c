@@ -7,8 +7,8 @@ inline static uint32_t pci_get_io_field_address(struct pci_address addr,
 	       (addr.function << 8) | (field & 0xfc);
 }
 
-#define PCI_ADDRESS_PORT 0xCF8
-#define PCI_VALUE_PORT 0xCFC
+#define PCI_ADDRESS_PORT 0xcf8
+#define PCI_VALUE_PORT 0xcfc
 
 uint8_t pci_inb(struct pci_address address, uint8_t field) {
 	uint32_t io_address = pci_get_io_field_address(address, field);
@@ -19,37 +19,37 @@ uint8_t pci_inb(struct pci_address address, uint8_t field) {
 uint16_t pci_inw(struct pci_address address, uint8_t field) {
 	uint32_t io_address = pci_get_io_field_address(address, field);
 	outl(PCI_ADDRESS_PORT, io_address);
-	return inw(PCI_VALUE_PORT + (field & 2));
+	return inw(PCI_VALUE_PORT + (field & 3));
 }
 
 uint32_t pci_inl(struct pci_address address, uint8_t field) {
 	uint32_t io_address = pci_get_io_field_address(address, field);
 	outl(PCI_ADDRESS_PORT, io_address);
-	return inl(PCI_VALUE_PORT);
+	return inl(PCI_VALUE_PORT + (field & 3));
 }
 
 void pci_outb(struct pci_address address, uint8_t field, uint8_t value) {
 	uint32_t io_address = pci_get_io_field_address(address, field);
 	outl(PCI_ADDRESS_PORT, io_address);
-	outb(PCI_VALUE_PORT, value + (field & 3));
+	outb(PCI_VALUE_PORT + (field & 3), value);
 }
 
 void pci_outw(struct pci_address address, uint8_t field, uint16_t value) {
 	uint32_t io_address = pci_get_io_field_address(address, field);
 	outl(PCI_ADDRESS_PORT, io_address);
-	outw(PCI_VALUE_PORT, value + (field & 2));
+	outw(PCI_VALUE_PORT + (field & 3), value);
 }
 
 void pci_outl(struct pci_address address, uint8_t field, uint32_t value) {
 	uint32_t io_address = pci_get_io_field_address(address, field);
 	outl(PCI_ADDRESS_PORT, io_address);
-	outl(PCI_VALUE_PORT, value);
+	outl(PCI_VALUE_PORT + (field & 3), value);
 }
 
-void pci_enable_bus_master(struct pci_address address) {
-	uint16_t command = pci_inw(address, PCI_COMMAND);
+void pci_enable_bus_mastering(struct pci_address address) {
+	uint16_t command = pci_inl(address, PCI_COMMAND);
 	command = command | (1 << 2) | (1 << 0);
-	pci_outw(address, PCI_COMMAND, command);
+	pci_outl(address, PCI_COMMAND, command);
 }
 
 static struct pci_address pci_make_default_address() {
@@ -138,4 +138,41 @@ void pci_enumerate(pci_enumerator_t enumerator, void *ctx) {
 			pci_enumerate_bus(i, enumerator, ctx);
 		}
 	}
+}
+
+bool pci_read_bar(struct pci_address address, int index, struct pci_bar *bar) {
+	uint8_t reg = 4 * index + 0x10;
+	uint32_t bar_address = pci_inl(address, reg);
+	if (bar_address == 0) {
+		return false;
+	}
+	bar->is_mmio = ((bar_address & 1) == 0);
+	bar->disable_cache = false;
+	if (bar->is_mmio && ((bar_address & (1 << 3)) != 0)) {
+		bar->disable_cache = true;
+	}
+	bool is_64bit =
+	    (bar->is_mmio && ((((bar_address >> 1U) & 0b11U)) == 0b10U));
+	if (is_64bit) {
+		uint32_t bar_high_address = pci_inl(address, reg + 4);
+		if (bar_high_address != 0) {
+			return false;
+		}
+	}
+	bar_address &= ~(bar->is_mmio ? (0b1111U) : (0b11U));
+	pci_outl(address, reg, 0xffffffff);
+	uint32_t bar_size = pci_inl(address, reg);
+	if (is_64bit) {
+		pci_outl(address, reg, 0xffffffff);
+		uint32_t bar_high_size = pci_inl(address, reg + 4);
+		if (bar_high_size != 0) {
+			pci_outl(address, reg + 4, 0);
+			return false;
+		}
+	}
+	bar_size &= ~(bar->is_mmio ? (0b1111) : (0b11));
+	bar_size = ~bar_size + 1;
+	bar->size = bar_size;
+	bar->address = bar_address;
+	return true;
 }

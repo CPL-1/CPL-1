@@ -3,25 +3,25 @@
 #include <proc/mutex.h>
 
 #define BLOCK_SIZE 16 * PAGE_SIZE
+#define HEAP_SIZE_CLASSES_COUNT 13
 
 static struct mutex heap_mutex;
-static uint32_t heap_size_classes[] = {
+static uint32_t heap_size_classes[HEAP_SIZE_CLASSES_COUNT] = {
     16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
-static const size_t heap_size_classes_count = ARR_SIZE(heap_size_classes);
 
 struct heap_slub_obj_hdr {
 	struct heap_slub_obj_hdr *next;
 };
 
-static struct heap_slub_obj_hdr *slubs[heap_size_classes_count];
+static struct heap_slub_obj_hdr *slubs[HEAP_SIZE_CLASSES_COUNT];
 
 static uint32_t heap_get_size_class(uint32_t size) {
-	for (size_t i = 0; i < heap_size_classes_count; ++i) {
+	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
 		if (size < heap_size_classes[i]) {
 			return i;
 		}
 	}
-	return heap_size_classes_count;
+	return HEAP_SIZE_CLASSES_COUNT;
 }
 
 static bool heap_add_objects_to_slubs(uint32_t index) {
@@ -43,7 +43,7 @@ static bool heap_add_objects_to_slubs(uint32_t index) {
 
 void heap_init() {
 	mutex_init(&heap_mutex);
-	for (size_t i = 0; i < heap_size_classes_count; ++i) {
+	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
 		slubs[i] = NULL;
 	}
 }
@@ -54,7 +54,7 @@ void *heap_alloc(uint32_t size) {
 	}
 	mutex_lock(&heap_mutex);
 	uint32_t size_class = heap_get_size_class(size);
-	if (size_class == heap_size_classes_count) {
+	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
 		uint32_t result = phys_lo_alloc_area(ALIGN_UP(size, PAGE_SIZE));
 		if (result == 0) {
 			mutex_unlock(&heap_mutex);
@@ -82,7 +82,7 @@ void heap_free(void *area, uint32_t size) {
 	}
 	mutex_lock(&heap_mutex);
 	uint32_t size_class = heap_get_size_class(size);
-	if (size_class == heap_size_classes_count) {
+	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
 		phys_lo_free_area((uint32_t)area, ALIGN_UP(size, PAGE_SIZE));
 		mutex_unlock(&heap_mutex);
 		return;
