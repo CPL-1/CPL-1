@@ -1,6 +1,5 @@
 #include <drivers/pci.h>
 #include <drivers/storage/nvme.h>
-#include <drivers/storage/storage.h>
 #include <kmsg.h>
 #include <memory/heap.h>
 #include <memory/virt.h>
@@ -8,6 +7,7 @@
 
 #define NVME_SUBMISSION_QUEUE_SIZE 2
 #define NVME_COMPLETITION_QUEUE_SIZE 2
+#define NVME_QUEUE_PHYS_CONTIG (1 << 0)
 
 struct nvme_cap_register {
 	uint32_t mqes : 16;
@@ -173,6 +173,46 @@ union nvme_sq_entry {
 		uint32_t : 32;
 		uint32_t : 32;
 	} packed identify;
+	struct {
+		uint8_t opcode;
+		uint8_t flags;
+		uint16_t command_id;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint64_t prp1;
+		uint64_t : 64;
+		uint16_t sqid;
+		uint16_t qsize;
+		uint16_t sq_flags;
+		uint16_t cqid;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+	} packed create_sq;
+	struct {
+		uint8_t opcode;
+		uint8_t flags;
+		uint16_t command_id;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint64_t prp1;
+		uint64_t : 64;
+		uint16_t cqid;
+		uint16_t qsize;
+		uint16_t cq_flags;
+		uint16_t irq_vector;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+		uint32_t : 32;
+	} packed create_cq;
 } packed;
 
 struct nvme_cq_entry {
@@ -185,6 +225,69 @@ struct nvme_cq_entry {
 	uint16_t status : 15;
 } packed;
 
+struct nvme_id_power_state {
+	uint16_t max_power;
+	uint8_t rsvd2;
+	uint8_t flags;
+	uint32_t entry_lat;
+	uint32_t exit_lat;
+	uint8_t read_tput;
+	uint8_t read_lat;
+	uint8_t write_tput;
+	uint8_t write_lat;
+	uint16_t idle_power;
+	uint8_t idle_scale;
+	uint8_t rsvd19;
+	uint16_t active_power;
+	uint8_t active_work_scale;
+	uint8_t rsvd23[9];
+} packed;
+
+struct nvme_identify_info {
+	uint16_t vid;
+	uint16_t ssvid;
+	char sn[20];
+	char mn[40];
+	char fr[8];
+	uint8_t rab;
+	uint8_t ieee[3];
+	uint8_t mic;
+	uint8_t mdts;
+	uint16_t cntlid;
+	uint32_t ver;
+	uint8_t rsvd84[172];
+	uint16_t oacs;
+	uint8_t acl;
+	uint8_t aerl;
+	uint8_t frmw;
+	uint8_t lpa;
+	uint8_t elpe;
+	uint8_t npss;
+	uint8_t avscc;
+	uint8_t apsta;
+	uint16_t wctemp;
+	uint16_t cctemp;
+	uint8_t rsvd270[242];
+	uint8_t sqes;
+	uint8_t cqes;
+	uint8_t rsvd514[2];
+	uint32_t nn;
+	uint16_t oncs;
+	uint16_t fuses;
+	uint8_t fna;
+	uint8_t vwc;
+	uint16_t awun;
+	uint16_t awupf;
+	uint8_t nvscc;
+	uint8_t rsvd531;
+	uint16_t acwu;
+	uint8_t rsvd534[2];
+	uint32_t sgls;
+	uint8_t rsvd540[1508];
+	struct nvme_id_power_state psd[32];
+	uint8_t vs[1024];
+} packed;
+
 struct nvme_drive {
 	volatile uint32_t *bar0;
 	union nvme_sq_entry *admin_submission_queue;
@@ -195,6 +298,7 @@ struct nvme_drive {
 	volatile uint16_t *admin_completition_doorbell;
 	volatile uint16_t *submission_doorbell;
 	volatile uint16_t *completition_doorbell;
+	struct nvme_identify_info *identify_info;
 	size_t admin_submission_queue_head;
 	size_t admin_completition_queue_head;
 	size_t submission_queue_head;
@@ -237,18 +341,6 @@ uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
 	return drive->admin_completition_queue->status;
 }
 
-static bool nvme_rw_sectors(unused struct storage_drive *drive,
-                            unused uint64_t offset, unused uint8_t *buf,
-                            unused size_t sectors_count, unused bool write) {
-	unused struct nvme_drive *nvme_drive_info =
-	    (struct nvme_drive *)(drive->private_info);
-	return false;
-}
-
-struct storage_drive_ops nvme_drive_ops = {
-    .rw_sectors = nvme_rw_sectors,
-};
-
 void nvme_init(struct pci_address addr) {
 	struct nvme_drive *nvme_drive_info = ALLOC_OBJ(struct nvme_drive);
 	if (nvme_drive_info == NULL) {
@@ -259,13 +351,6 @@ void nvme_init(struct pci_address addr) {
 	nvme_drive_info->completition_queue_head = 0;
 	nvme_drive_info->submission_queue_head = 0;
 
-	struct storage_drive *drive_info = ALLOC_OBJ(struct storage_drive);
-	if (drive_info == NULL) {
-		kmsg_err("NVME Driver", "Failed to allocate drive object");
-	}
-
-	drive_info->private_info = nvme_drive_info;
-	drive_info->ops = &(nvme_drive_ops);
 	struct pci_bar bar;
 	if (!pci_read_bar(addr, 0, &bar)) {
 		kmsg_err("NVME Driver", "Failed to read BAR0");
@@ -350,6 +435,10 @@ void nvme_init(struct pci_address addr) {
 	    (uint32_t)admin_submission_queue - KERNEL_MAPPING_BASE;
 	uint32_t admin_completition_queue_physical =
 	    (uint32_t)admin_completition_queue - KERNEL_MAPPING_BASE;
+	unused uint32_t submission_queue_physical =
+	    (uint32_t)submission_queue - KERNEL_MAPPING_BASE;
+	uint32_t completition_queue_physical =
+	    (uint32_t)completition_queue - KERNEL_MAPPING_BASE;
 
 	asq = nvme_read_asq_register(bar0);
 	acq = nvme_read_acq_register(bar0);
@@ -359,8 +448,8 @@ void nvme_init(struct pci_address addr) {
 	nvme_write_acq_register(bar0, acq);
 
 	aqa = nvme_read_aqa_register(bar0);
-	aqa.acqs = 2;
-	aqa.asqs = 2;
+	aqa.acqs = NVME_COMPLETITION_QUEUE_SIZE - 1;
+	aqa.asqs = NVME_SUBMISSION_QUEUE_SIZE - 1;
 	nvme_write_aqa_register(bar0, aqa);
 
 	cc = nvme_read_cc_register(bar0);
@@ -384,8 +473,8 @@ void nvme_init(struct pci_address addr) {
 		asm volatile("pause");
 		csts = nvme_read_csts_register(bar0);
 	}
-	kmsg_log("NVME driver", "NVME Controller reenabled");
 
+	kmsg_log("NVME Driver", "NVME Controller reenabled");
 	uint32_t doorbell_size = 1 << (2 + cap.dstrd);
 	uint32_t doorbells_base = (uint32_t)bar0 + 0x1000;
 	nvme_drive_info->admin_submission_doorbell =
@@ -397,20 +486,39 @@ void nvme_init(struct pci_address addr) {
 	nvme_drive_info->completition_doorbell =
 	    (volatile uint16_t *)(doorbells_base + doorbell_size * 3);
 
-	union nvme_sq_entry identify_command;
-	memset(&identify_command, 0, sizeof(identify_command));
+	union nvme_sq_entry identify_command = {0};
 	identify_command.identify.opcode = NVME_IDENTIFY;
 	identify_command.identify.nsid = 0;
 	identify_command.identify.cns = 1;
-	void *identify_info = heap_alloc(4096);
+	struct nvme_identify_info *identify_info =
+	    ALLOC_OBJ(struct nvme_identify_info);
 	if (identify_info == NULL) {
-		kmsg_err("NVME driver", "Failed to allocate identify info object");
+		kmsg_err("NVME Driver", "Failed to allocate identify info object");
 	}
 	identify_command.identify.prp1 =
 	    ((uint32_t)identify_info - KERNEL_MAPPING_BASE);
 	identify_command.identify.prp2 = 0;
 	nvme_execute_admin_cmd(nvme_drive_info, identify_command);
+	nvme_drive_info->identify_info = (struct nvme_identify_info *)identify_info;
 	kmsg_log("NVME Driver", "Identify command executed successfully");
 
-	storage_add_drive(drive_info);
+	union nvme_sq_entry create_queue_command = {0};
+
+	create_queue_command.create_cq.opcode = NVME_CREATE_COMPLETITION_QUEUE;
+	create_queue_command.create_cq.prp1 = completition_queue_physical;
+	create_queue_command.create_cq.cqid = 1;
+	create_queue_command.create_cq.qsize = NVME_COMPLETITION_QUEUE_SIZE - 1;
+	create_queue_command.create_cq.cq_flags = NVME_QUEUE_PHYS_CONTIG;
+	create_queue_command.create_cq.irq_vector = 0;
+	nvme_execute_admin_cmd(nvme_drive_info, create_queue_command);
+	kmsg_log("NVME Driver", "Created completition queue");
+
+	create_queue_command.create_sq.opcode = NVME_CREATE_SUBMISSION_QUEUE;
+	create_queue_command.create_sq.prp1 = submission_queue_physical;
+	create_queue_command.create_sq.cqid = 1;
+	create_queue_command.create_sq.sqid = 1;
+	create_queue_command.create_sq.qsize = NVME_SUBMISSION_QUEUE_SIZE - 1;
+	create_queue_command.create_sq.sq_flags = NVME_QUEUE_PHYS_CONTIG;
+	nvme_execute_admin_cmd(nvme_drive_info, create_queue_command);
+	kmsg_log("NVME Driver", "Created submission queue");
 }
