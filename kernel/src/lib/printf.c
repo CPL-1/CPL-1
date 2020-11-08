@@ -53,38 +53,38 @@ void va_printf(const char *fmt, va_list args) {
 		} else {
 			++i;
 			switch (fmt[i]) {
-				case '%':
-					vga_putc_no_cursor_update('%');
+			case '%':
+				vga_putc_no_cursor_update('%');
+				break;
+			case 'd':
+				puti(va_arg(args, int32_t), 10);
+				break;
+			case 'u':
+				putui(va_arg(args, uint32_t), 10, false);
+				break;
+			case 'p':
+				putp(va_arg(args, uintptr_t), 8);
+				break;
+			case 's':
+				puts(va_arg(args, char *));
+				break;
+			case 'c':
+				vga_putc_no_cursor_update((char)va_arg(args, int));
+				break;
+			case 'l':
+				++i;
+				switch (fmt[i]) {
+				case 'u':
+					putui(va_arg(args, uint32_t), 10, false);
 					break;
 				case 'd':
 					puti(va_arg(args, int32_t), 10);
 					break;
-				case 'u':
-					putui(va_arg(args, uint32_t), 10, false);
-					break;
-				case 'p':
-					putp(va_arg(args, uintptr_t), 8);
-					break;
-				case 's':
-					puts(va_arg(args, char *));
-					break;
-				case 'c':
-					vga_putc_no_cursor_update((char)va_arg(args, int));
-					break;
-				case 'l':
-					++i;
-					switch (fmt[i]) {
-						case 'u':
-							putui(va_arg(args, uint32_t), 10, false);
-							break;
-						case 'd':
-							puti(va_arg(args, int32_t), 10);
-							break;
-						default:
-							break;
-					}
 				default:
 					break;
+				}
+			default:
+				break;
 			}
 		}
 	}

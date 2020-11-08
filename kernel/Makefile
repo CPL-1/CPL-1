@@ -30,4 +30,4 @@ clean: object_clean
 	rm -f kernel.elf
 
 run: kernel object_clean
-	qemu-system-x86_64 -kernel kernel.elf -trace nvme* -no-reboot -no-shutdown -drive file=../test.img,if=none,format=raw,id=NVME1 -device nvme,drive=NVME1,serial=nvme-1
+	qemu-system-x86_64 -kernel kernel.elf -d int -no-reboot -no-shutdown -drive file=../test.img,if=none,format=raw,id=NVME1 -device nvme,drive=NVME1,serial=nvme-1

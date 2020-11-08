@@ -68,8 +68,8 @@ struct nvme_acq_register {
 	uint64_t page : 52;
 } packed_align(8);
 
-static struct nvme_cap_register nvme_read_cap_register(
-    volatile uint32_t *bar0) {
+static struct nvme_cap_register
+nvme_read_cap_register(volatile uint32_t *bar0) {
 	struct nvme_cap_register result = {0};
 	uint64_t *as_pointer = (uint64_t *)&result;
 	*as_pointer = ((uint64_t)bar0[1] << 32ULL) | (uint64_t)bar0[0];
@@ -83,32 +83,32 @@ static struct nvme_cc_register nvme_read_cc_register(volatile uint32_t *bar0) {
 	return result;
 }
 
-static struct nvme_csts_register nvme_read_csts_register(
-    volatile uint32_t *bar0) {
+static struct nvme_csts_register
+nvme_read_csts_register(volatile uint32_t *bar0) {
 	struct nvme_csts_register result = {0};
 	uint32_t *as_pointer = (uint32_t *)&result;
 	*as_pointer = bar0[7];
 	return result;
 }
 
-static struct nvme_aqa_register nvme_read_aqa_register(
-    volatile uint32_t *bar0) {
+static struct nvme_aqa_register
+nvme_read_aqa_register(volatile uint32_t *bar0) {
 	struct nvme_aqa_register result = {0};
 	uint32_t *as_pointer = (uint32_t *)&result;
 	*as_pointer = bar0[9];
 	return result;
 }
 
-static struct nvme_asq_register nvme_read_asq_register(
-    volatile uint32_t *bar0) {
+static struct nvme_asq_register
+nvme_read_asq_register(volatile uint32_t *bar0) {
 	struct nvme_asq_register result = {0};
 	uint64_t *as_pointer = (uint64_t *)&result;
 	*as_pointer = ((uint64_t)bar0[11] << 32ULL) | (uint64_t)bar0[10];
 	return result;
 }
 
-static struct nvme_acq_register nvme_read_acq_register(
-    volatile uint32_t *bar0) {
+static struct nvme_acq_register
+nvme_read_acq_register(volatile uint32_t *bar0) {
 	struct nvme_acq_register result = {0};
 	uint64_t *as_pointer = (uint64_t *)&result;
 	*as_pointer = ((uint64_t)bar0[13] << 32ULL) | (uint64_t)bar0[12];
@@ -303,8 +303,71 @@ struct nvme_drive {
 	size_t admin_completition_queue_head;
 	size_t submission_queue_head;
 	size_t completition_queue_head;
+	struct nvme_drive_namespace *namespaces;
 	bool admin_phase_bit;
 	bool phase_bit;
+};
+
+enum {
+	NVME_NS_FEAT_THIN = 1 << 0,
+	NVME_NS_FLBAS_LBA_MASK = 0xf,
+	NVME_NS_FLBAS_META_EXT = 0x10,
+	NVME_LBAF_RP_BEST = 0,
+	NVME_LBAF_RP_BETTER = 1,
+	NVME_LBAF_RP_GOOD = 2,
+	NVME_LBAF_RP_DEGRADED = 3,
+	NVME_NS_DPC_PI_LAST = 1 << 4,
+	NVME_NS_DPC_PI_FIRST = 1 << 3,
+	NVME_NS_DPC_PI_TYPE3 = 1 << 2,
+	NVME_NS_DPC_PI_TYPE2 = 1 << 1,
+	NVME_NS_DPC_PI_TYPE1 = 1 << 0,
+	NVME_NS_DPS_PI_FIRST = 1 << 3,
+	NVME_NS_DPS_PI_MASK = 0x7,
+	NVME_NS_DPS_PI_TYPE1 = 1,
+	NVME_NS_DPS_PI_TYPE2 = 2,
+	NVME_NS_DPS_PI_TYPE3 = 3,
+};
+
+struct nvme_lbaf {
+	uint16_t ms;
+	uint8_t ds;
+	uint8_t rp;
+};
+
+struct nvme_namespace_info {
+	uint64_t nsze;
+	uint64_t ncap;
+	uint64_t nuse;
+	uint8_t nsfeat;
+	uint8_t nlbaf;
+	uint8_t flbas;
+	uint8_t mc;
+	uint8_t dpc;
+	uint8_t dps;
+	uint8_t nmic;
+	uint8_t rescap;
+	uint8_t fpi;
+	uint8_t rsvd33;
+	uint16_t nawun;
+	uint16_t nawupf;
+	uint16_t nacwu;
+	uint16_t nabsn;
+	uint16_t nabo;
+	uint16_t nabspf;
+	uint16_t rsvd46;
+	uint64_t nvmcap[2];
+	uint8_t rsvd64[40];
+	uint8_t nguid[16];
+	uint8_t eui64[8];
+	struct nvme_lbaf lbaf[16];
+	uint8_t rsvd192[192];
+	uint8_t vs[3712];
+} packed;
+
+struct nvme_drive_namespace {
+	struct nvme_drive *drive;
+	struct nvme_namespace_info *info;
+	size_t namespace_id;
 };
 
 uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
@@ -498,7 +561,9 @@ void nvme_init(struct pci_address addr) {
 	identify_command.identify.prp1 =
 	    ((uint32_t)identify_info - KERNEL_MAPPING_BASE);
 	identify_command.identify.prp2 = 0;
-	nvme_execute_admin_cmd(nvme_drive_info, identify_command);
+	if (nvme_execute_admin_cmd(nvme_drive_info, identify_command) != 0) {
+		kmsg_err("NVME Driver", "Failed to execute identify command");
+	}
 	nvme_drive_info->identify_info = (struct nvme_identify_info *)identify_info;
 	kmsg_log("NVME Driver", "Identify command executed successfully");
 
@@ -510,7 +575,9 @@ void nvme_init(struct pci_address addr) {
 	create_queue_command.create_cq.qsize = NVME_COMPLETITION_QUEUE_SIZE - 1;
 	create_queue_command.create_cq.cq_flags = NVME_QUEUE_PHYS_CONTIG;
 	create_queue_command.create_cq.irq_vector = 0;
-	nvme_execute_admin_cmd(nvme_drive_info, create_queue_command);
+	if (nvme_execute_admin_cmd(nvme_drive_info, create_queue_command) != 0) {
+		kmsg_err("NVME Driver", "Failed to create completition queue");
+	}
 	kmsg_log("NVME Driver", "Created completition queue");
 
 	create_queue_command.create_sq.opcode = NVME_CREATE_SUBMISSION_QUEUE;
@@ -519,6 +586,43 @@ void nvme_init(struct pci_address addr) {
 	create_queue_command.create_sq.sqid = 1;
 	create_queue_command.create_sq.qsize = NVME_SUBMISSION_QUEUE_SIZE - 1;
 	create_queue_command.create_sq.sq_flags = NVME_QUEUE_PHYS_CONTIG;
-	nvme_execute_admin_cmd(nvme_drive_info, create_queue_command);
+	if (nvme_execute_admin_cmd(nvme_drive_info, create_queue_command) != 0) {
+		kmsg_err("NVME Driver", "Failed to create submission queue");
+	}
 	kmsg_log("NVME Driver", "Created submission queue");
+
+	uint32_t namespaces_count = identify_info->nn;
+	printf("         NVME Drive namespaces count: %u\n", identify_info->nn);
+	struct nvme_drive_namespace *namespaces =
+	    (struct nvme_drive_namespace *)heap_alloc(
+	        sizeof(struct nvme_drive_namespace) * namespaces_count);
+	if (namespaces == NULL) {
+		kmsg_log("NVME Driver", "Failed to allocate namespaces objects");
+	}
+	nvme_drive_info->namespaces = namespaces;
+
+	for (size_t i = 0; i < namespaces_count; ++i) {
+		struct nvme_drive_namespace *namespace = namespaces + i;
+		namespace->namespace_id = i + 1;
+		namespace->drive = nvme_drive_info;
+		namespace->info = ALLOC_OBJ(struct nvme_namespace_info);
+		if (namespace->info == NULL) {
+			kmsg_log("NVME Driver", "Failed to allocate namespace info object");
+		}
+
+		union nvme_sq_entry get_namespace_info_command = {0};
+		get_namespace_info_command.identify.opcode = NVME_IDENTIFY;
+		get_namespace_info_command.identify.nsid = i + 1;
+		get_namespace_info_command.identify.cns = 0;
+		get_namespace_info_command.identify.prp1 =
+		    (uint32_t) namespace->info - KERNEL_MAPPING_BASE;
+		if (nvme_execute_admin_cmd(nvme_drive_info,
+		                           get_namespace_info_command) != 0) {
+			kmsg_err("NVME Driver", "Failed to read namespace info");
+		}
+		kmsg_log("NVME Driver", "Successfully read NVME namespace info");
+		printf("         Drive namespace %u initialized. Namespace size: %u "
+		       "blocks\n",
+		       i + 1, namespace->info->nsze);
+	}
 }

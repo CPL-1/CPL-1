@@ -1,5 +1,6 @@
 #include <drivers/pic.h>
 #include <drivers/pit.h>
+#include <fembed.h>
 #include <i386/idt.h>
 #include <i386/ports.h>
 
@@ -7,7 +8,7 @@ extern void pit_interrupt_handler();
 
 static uint32_t pit_handler = 0;
 
-void pit_call_handler(uint32_t frame) {
+void pit_call_handler(unused void *ctx, uint32_t frame) {
 	if (pit_handler != 0) {
 		((void (*)(uint32_t))pit_handler)(frame);
 	}
@@ -24,7 +25,8 @@ void pit_init(uint32_t freq) {
 	outb(0x40, lo);
 	outb(0x40, hi);
 
-	idt_install_isr(0x20, (uint32_t)pit_interrupt_handler);
+	idt_install_isr(0x20,
+	                (uint32_t)fembed_make_irq_handler(pit_call_handler, NULL));
 }
 
 void pit_set_callback(uint32_t entry) {

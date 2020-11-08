@@ -4,6 +4,7 @@
 #include <drivers/pic.h>
 #include <drivers/pit.h>
 #include <drivers/textvga.h>
+#include <fembed.h>
 #include <i386/cr3.h>
 #include <i386/gdt.h>
 #include <i386/idt.h>
