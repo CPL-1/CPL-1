@@ -203,14 +203,13 @@ struct nvme_drive {
 	bool phase_bit;
 };
 
-static struct nvme_cq_entry nvme_execute_admin_cmd(
-    struct nvme_drive *drive, union nvme_sq_entry command) {
+uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
+                                union nvme_sq_entry command) {
 	drive->admin_submission_queue[drive->admin_submission_queue_head] = command;
 	drive->admin_submission_queue_head++;
 	if (drive->admin_submission_queue_head == NVME_SUBMISSION_QUEUE_SIZE) {
 		drive->admin_submission_queue_head = 0;
 	}
-
 	volatile struct nvme_cq_entry *completition_entry =
 	    drive->admin_completition_queue + drive->admin_completition_queue_head;
 	completition_entry->phase_bit = drive->admin_phase_bit;
@@ -230,12 +229,12 @@ static struct nvme_cq_entry nvme_execute_admin_cmd(
 	drive->admin_completition_queue_head++;
 	if (drive->admin_completition_queue_head == NVME_COMPLETITION_QUEUE_SIZE) {
 		drive->admin_completition_queue_head = 0;
+		drive->admin_phase_bit = !(drive->admin_phase_bit);
 	}
 
-	drive->admin_phase_bit = !(drive->admin_phase_bit);
 	*(drive->admin_completition_doorbell) =
 	    drive->admin_completition_queue_head;
-	return *(drive->admin_completition_queue);
+	return drive->admin_completition_queue->status;
 }
 
 static bool nvme_rw_sectors(unused struct storage_drive *drive,
@@ -252,13 +251,14 @@ struct storage_drive_ops nvme_drive_ops = {
 
 void nvme_init(struct pci_address addr) {
 	struct nvme_drive *nvme_drive_info = ALLOC_OBJ(struct nvme_drive);
+	if (nvme_drive_info == NULL) {
+		kmsg_err("NVME Driver", "Failed to allocate NVME drive object");
+	}
 	nvme_drive_info->admin_completition_queue_head = 0;
 	nvme_drive_info->admin_submission_queue_head = 0;
 	nvme_drive_info->completition_queue_head = 0;
 	nvme_drive_info->submission_queue_head = 0;
-	if (nvme_drive_info == NULL) {
-		kmsg_err("NVME Driver", "Failed to allocate NVME drive object");
-	}
+
 	struct storage_drive *drive_info = ALLOC_OBJ(struct storage_drive);
 	if (drive_info == NULL) {
 		kmsg_err("NVME Driver", "Failed to allocate drive object");
@@ -315,36 +315,46 @@ void nvme_init(struct pci_address addr) {
 		         "NVME controller doesn't support host page size");
 	}
 
+	size_t submission_queue_size = ALIGN_UP(
+	    sizeof(union nvme_sq_entry) * NVME_SUBMISSION_QUEUE_SIZE, PAGE_SIZE);
 	union nvme_sq_entry *admin_submission_queue =
-	    (union nvme_sq_entry *)heap_alloc(
-	        ALIGN_UP(sizeof(union nvme_sq_entry) * NVME_SUBMISSION_QUEUE_SIZE,
-	                 PAGE_SIZE));
-	struct nvme_cq_entry *admin_completition_queue =
-	    (struct nvme_cq_entry *)heap_alloc(ALIGN_UP(
-	        sizeof(struct nvme_cq_entry) * NVME_COMPLETITION_QUEUE_SIZE,
-	        PAGE_SIZE));
+	    (union nvme_sq_entry *)heap_alloc(submission_queue_size);
+	union nvme_sq_entry *submission_queue =
+	    (union nvme_sq_entry *)heap_alloc(submission_queue_size);
 
-	if (admin_submission_queue == NULL || admin_completition_queue == NULL) {
+	size_t completition_queue_size = ALIGN_UP(
+	    sizeof(struct nvme_cq_entry) * NVME_COMPLETITION_QUEUE_SIZE, PAGE_SIZE);
+	struct nvme_cq_entry *admin_completition_queue =
+	    (struct nvme_cq_entry *)heap_alloc(completition_queue_size);
+	struct nvme_cq_entry *completition_queue =
+	    (struct nvme_cq_entry *)heap_alloc(completition_queue_size);
+
+	if (admin_submission_queue == NULL || admin_completition_queue == NULL ||
+	    submission_queue == NULL || completition_queue == NULL) {
 		kmsg_err("NVME Driver",
-		         "Failed to allocate admin queues for NVME controller");
+		         "Failed to allocate queues for NVME controller");
 	}
 	nvme_drive_info->admin_submission_queue = admin_submission_queue;
 	nvme_drive_info->admin_completition_queue = admin_completition_queue;
+	nvme_drive_info->submission_queue = submission_queue;
+	nvme_drive_info->completition_queue = completition_queue;
 	nvme_drive_info->admin_phase_bit = false;
 	nvme_drive_info->phase_bit = false;
-	memset(admin_submission_queue, 0, 128);
-	memset(admin_completition_queue, 0, 128);
+	memset(admin_submission_queue, 0, submission_queue_size);
+	memset(admin_completition_queue, 0, completition_queue_size);
+	memset(submission_queue, 0, submission_queue_size);
+	memset(completition_queue, 0, completition_queue_size);
 	kmsg_log("NVME Driver", "NVME controller admin queues allocated");
 
-	uint32_t submission_queue_physical =
+	uint32_t admin_submission_queue_physical =
 	    (uint32_t)admin_submission_queue - KERNEL_MAPPING_BASE;
-	uint32_t completition_queue_physical =
+	uint32_t admin_completition_queue_physical =
 	    (uint32_t)admin_completition_queue - KERNEL_MAPPING_BASE;
 
 	asq = nvme_read_asq_register(bar0);
 	acq = nvme_read_acq_register(bar0);
-	asq.page = submission_queue_physical / PAGE_SIZE;
-	acq.page = completition_queue_physical / PAGE_SIZE;
+	asq.page = admin_submission_queue_physical / PAGE_SIZE;
+	acq.page = admin_completition_queue_physical / PAGE_SIZE;
 	nvme_write_asq_register(bar0, asq);
 	nvme_write_acq_register(bar0, acq);
 
@@ -397,10 +407,8 @@ void nvme_init(struct pci_address addr) {
 		kmsg_err("NVME driver", "Failed to allocate identify info object");
 	}
 	identify_command.identify.prp1 =
-	    ((uint32_t)&identify_command - KERNEL_MAPPING_BASE);
+	    ((uint32_t)identify_info - KERNEL_MAPPING_BASE);
 	identify_command.identify.prp2 = 0;
-	nvme_execute_admin_cmd(nvme_drive_info, identify_command);
-	kmsg_log("NVME Driver", "Identify command executed successfully");
 	nvme_execute_admin_cmd(nvme_drive_info, identify_command);
 	kmsg_log("NVME Driver", "Identify command executed successfully");
 
