@@ -4,7 +4,7 @@
 inline static uint32_t pci_get_io_field_address(struct pci_address addr,
                                                 uint8_t field) {
 	return 0x80000000 | (addr.bus << 16) | (addr.slot << 11) |
-	       (addr.function << 8) | (field & 0xfc);
+	       (addr.function << 8) | (field & ~((uint32_t)(3)));
 }
 
 #define PCI_ADDRESS_PORT 0xcf8
@@ -142,7 +142,8 @@ void pci_enumerate(pci_enumerator_t enumerator, void *ctx) {
 
 bool pci_read_bar(struct pci_address address, int index, struct pci_bar *bar) {
 	uint8_t reg = 4 * index + 0x10;
-	uint32_t bar_address = pci_inl(address, reg);
+	uint32_t bar_orig_address = pci_inl(address, reg);
+	uint32_t bar_address = bar_orig_address;
 	if (bar_address == 0) {
 		return false;
 	}
@@ -161,18 +162,22 @@ bool pci_read_bar(struct pci_address address, int index, struct pci_bar *bar) {
 	}
 	bar_address &= ~(bar->is_mmio ? (0b1111U) : (0b11U));
 	pci_outl(address, reg, 0xffffffff);
-	uint32_t bar_size = pci_inl(address, reg);
+	uint32_t bar_size_low = pci_inl(address, reg);
+	uint32_t bar_size_high = 0;
+	pci_outl(address, reg, bar_orig_address);
 	if (is_64bit) {
-		pci_outl(address, reg, 0xffffffff);
-		uint32_t bar_high_size = pci_inl(address, reg + 4);
-		if (bar_high_size != 0) {
-			pci_outl(address, reg + 4, 0);
-			return false;
-		}
+		pci_outl(address, reg + 4, 0xffffffff);
+		bar_size_high = pci_inl(address, reg + 4);
+		pci_outl(address, reg + 4, 0);
 	}
-	bar_size &= ~(bar->is_mmio ? (0b1111) : (0b11));
-	bar_size = ~bar_size + 1;
-	bar->size = bar_size;
+	uint64_t bar_size =
+	    (((uint64_t)bar_size_high) << 32ULL) | ((uint64_t)bar_size_low);
+	bar_size &= ~(bar->is_mmio ? (0b1111ULL) : (0b11ULL));
+	bar_size = ~bar_size + 1ULL;
+	if (bar_size > 0xffffffff) {
+		return false;
+	}
+	bar->size = (uint32_t)bar_size;
 	bar->address = bar_address;
 	return true;
 }

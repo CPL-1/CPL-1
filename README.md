@@ -13,28 +13,34 @@ CPL-1 is written to run in protected mode. Why? The answer is simple: I have nev
 
 ### What I need to build CPL-1?
 
-CPL-1 uses gcc, libgcc, ld, nasm and GNU Make to build. In the future I am planning to switch to gcc, as it is significantly easier to port gcc than to port clang.
+CPL-1 uses gcc, libgcc, ld, nasm and GNU Make to build. 
 
 For NixOS, I simply type ```nix-shell -p pkgsi686Linux.gcc pkgsi686Linux.libgcc nasm``` before doing any development
 
 ### How I build CPL-1?
 
-To build kernel
+#### CPL-1 Kernel
+
+Start with
 ```
-make kernel
+cd kernel
 ```
 
+To build kernel
+```
+make
+```
 To clean object files
 ```
 make object_clean
 ```
+To clean everything (including kernel.elf file)
+```
+make clean
+```
 To build and run kernel with ```-kernel``` QEMU switch
 ```
-make
-```
-To build kernel, start QEMU, launch GDB, and connect it to QEMU for debugging (```kernel_main``` is automatically added as a breakpoint)
-```
-make debug
+make run
 ```
 
 ### What CPL-1 is licensed under?

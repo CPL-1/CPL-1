@@ -7,10 +7,10 @@ AS := nasm
 LD := gcc
 TARGET := i386-elf
 CFLAGS := -m32 -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -O2 -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-80387 -Isrc -lgcc -mno-red-zone -fno-pic -fomit-frame-pointer -ffreestanding -fstrict-volatile-bitfields
-ASFLAGS := -f elf -g
+ASFLAGS := -f elf
 LDFLAGS := -m32 -ffreestanding -static -nostdlib -no-pie
 
-all: kernel object_clean run
+all: kernel object_clean
 
 %.o: %.c
 	$(CC) $(CFLAGS) $< -o $@
@@ -29,5 +29,5 @@ object_clean:
 clean: object_clean
 	rm -f kernel.elf
 
-run: kernel
+run: kernel object_clean
 	qemu-system-x86_64 -kernel kernel.elf -d guest_errors -no-reboot -no-shutdown -drive file=../test.img,if=none,format=raw,id=NVME1 -device nvme,drive=NVME1,serial=nvme-1

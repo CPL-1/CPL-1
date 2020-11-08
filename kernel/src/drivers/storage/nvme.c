@@ -177,6 +177,8 @@ struct nvme_cq_entry {
 
 struct nvme_drive {
 	volatile struct nvme_bar0 *bar0;
+	volatile struct nvme_sq_entry *admin_submission_queue;
+	volatile struct nvme_cq_entry *admin_completition_queue;
 	volatile struct nvme_sq_entry *submission_queue;
 	volatile struct nvme_cq_entry *completition_queue;
 };
@@ -212,9 +214,7 @@ void nvme_init(struct pci_address addr) {
 	if (bar.is_mmio == false) {
 		kmsg_err("NVME Driver", "BAR0 doesn't support MMIO");
 	}
-	bar.address = 0xffffe000;
-	bar.size = 0x2000;
-	printf("NVME BAR0 MMIO base at 0x%p\n", bar.address);
+	printf("         NVME BAR0 MMIO base at 0x%p\n", bar.address);
 	pci_enable_bus_mastering(addr);
 
 	uint32_t mapping_paddr = ALIGN_DOWN(bar.address, PAGE_SIZE);
@@ -255,23 +255,23 @@ void nvme_init(struct pci_address addr) {
 		         "NVME controller doesn't support host page size");
 	}
 
-	volatile struct nvme_sq_entry *submission_queue =
+	volatile struct nvme_sq_entry *admin_submission_queue =
 	    (volatile struct nvme_sq_entry *)heap_alloc(4096);
-	volatile struct nvme_cq_entry *completition_queue =
+	volatile struct nvme_cq_entry *admin_completition_queue =
 	    (volatile struct nvme_cq_entry *)heap_alloc(4096);
 
-	if (submission_queue == NULL || completition_queue == NULL) {
+	if (admin_submission_queue == NULL || admin_completition_queue == NULL) {
 		kmsg_err("NVME Driver",
 		         "Failed to allocate admin queues for NVME controller");
 	}
-
-	nvme_drive_info->submission_queue = submission_queue;
-	nvme_drive_info->completition_queue = completition_queue;
+	nvme_drive_info->admin_submission_queue = admin_submission_queue;
+	nvme_drive_info->admin_completition_queue = admin_completition_queue;
+	kmsg_log("NVME Driver", "NVME controller admin queues allocated");
 
 	uint32_t submission_queue_physical =
-	    (uint32_t)submission_queue - KERNEL_MAPPING_BASE;
+	    (uint32_t)admin_submission_queue - KERNEL_MAPPING_BASE;
 	uint32_t completition_queue_physical =
-	    (uint32_t)completition_queue - KERNEL_MAPPING_BASE;
+	    (uint32_t)admin_completition_queue - KERNEL_MAPPING_BASE;
 
 	asq = nvme_read_asq_register(bar0);
 	acq = nvme_read_acq_register(bar0);
@@ -306,7 +306,7 @@ void nvme_init(struct pci_address addr) {
 		asm volatile("pause");
 		csts = nvme_read_csts_register(bar0);
 	}
-	kmsg_log("NVME driver", "NVME Controller enabled");
-	// Adding initialized drive
+	kmsg_log("NVME driver", "NVME Controller reenabled");
+
 	storage_add_drive(drive_info);
 }
