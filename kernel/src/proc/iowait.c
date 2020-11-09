@@ -36,7 +36,9 @@ void iowait_interrupt_handler(void *ctx, void *frame) {
 	while (head != NULL) {
 		if (head->check_wakeup_handler == NULL ||
 		    head->check_wakeup_handler(head->ctx)) {
-			head->int_handler(head->ctx, frame);
+			if (head->int_handler != NULL) {
+				head->int_handler(head->ctx, frame);
+			}
 			if (proc_is_valid_proc_id(head->id)) {
 				proc_continue(head->id);
 			}

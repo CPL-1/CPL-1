@@ -3,6 +3,7 @@
 #include <kmsg.h>
 #include <memory/heap.h>
 #include <memory/virt.h>
+#include <proc/iowait.h>
 #include <proc/mutex.h>
 #include <utils.h>
 
@@ -307,28 +308,6 @@ struct nvme_identify_info {
 	uint8_t vs[1024];
 } packed;
 
-struct nvme_drive {
-	volatile uint32_t *bar0;
-	union nvme_sq_entry *admin_submission_queue;
-	volatile struct nvme_cq_entry *admin_completition_queue;
-	union nvme_sq_entry *submission_queue;
-	volatile struct nvme_cq_entry *completition_queue;
-	volatile uint16_t *admin_submission_doorbell;
-	volatile uint16_t *admin_completition_doorbell;
-	volatile uint16_t *submission_doorbell;
-	volatile uint16_t *completition_doorbell;
-	struct nvme_identify_info *identify_info;
-	size_t admin_submission_queue_head;
-	size_t admin_completition_queue_head;
-	size_t submission_queue_head;
-	size_t completition_queue_head;
-	struct nvme_drive_namespace *namespaces;
-	uint64_t *prps;
-	struct mutex mutex;
-	bool admin_phase_bit;
-	bool phase_bit;
-};
-
 enum {
 	NVME_NS_FEAT_THIN = 1 << 0,
 	NVME_NS_FLBAS_LBA_MASK = 0xf,
@@ -385,6 +364,31 @@ struct nvme_namespace_info {
 	uint8_t vs[3712];
 } packed;
 
+struct nvme_drive {
+	struct pci_address addr;
+	volatile uint32_t *bar0;
+	union nvme_sq_entry *admin_submission_queue;
+	volatile struct nvme_cq_entry *admin_completition_queue;
+	union nvme_sq_entry *submission_queue;
+	volatile struct nvme_cq_entry *completition_queue;
+	volatile uint16_t *admin_submission_doorbell;
+	volatile uint16_t *admin_completition_doorbell;
+	volatile uint16_t *submission_doorbell;
+	volatile uint16_t *completition_doorbell;
+	struct nvme_identify_info *identify_info;
+	size_t admin_submission_queue_head;
+	size_t admin_completition_queue_head;
+	size_t submission_queue_head;
+	size_t completition_queue_head;
+	struct nvme_drive_namespace *namespaces;
+	struct iowait_list_entry *iowait_entry;
+	uint64_t *prps;
+	struct mutex mutex;
+	bool admin_phase_bit;
+	bool phase_bit;
+	bool fallback_to_polling;
+};
+
 struct nvme_drive_namespace {
 	struct nvme_drive *drive;
 	struct nvme_namespace_info *info;
@@ -393,6 +397,13 @@ struct nvme_drive_namespace {
 	uint64_t transfer_blocks_max;
 	uint64_t blocks_count;
 };
+
+bool nvme_check_interrupt(void *ctx) {
+	struct nvme_drive *nvme_drive_info = (struct nvme_drive *)ctx;
+	struct pci_address addr = nvme_drive_info->addr;
+	uint16_t status = pci_inw(addr, PCI_STATUS);
+	return ((status & (1 << 3)) != 0);
+}
 
 uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
                                 union nvme_sq_entry command) {
@@ -441,14 +452,18 @@ uint16_t nvme_execute_io_cmd(struct nvme_drive *drive,
 
 	*(drive->submission_doorbell) = drive->submission_queue_head;
 
-	while (completition_entry->phase_bit == drive->phase_bit) {
-		struct nvme_csts_register csts;
-		csts = nvme_read_csts_register(drive->bar0);
-		if (csts.cfs == 1) {
-			kmsg_err("NVME Driver",
-			         "Fatal error occured while executing admin command\n");
+	if (drive->fallback_to_polling) {
+		while (completition_entry->phase_bit == drive->phase_bit) {
+			struct nvme_csts_register csts;
+			csts = nvme_read_csts_register(drive->bar0);
+			if (csts.cfs == 1) {
+				kmsg_err("NVME Driver",
+				         "Fatal error occured while executing admin command\n");
+			}
+			asm volatile("pause");
 		}
-		asm volatile("pause");
+	} else {
+		iowait_wait(drive->iowait_entry);
 	}
 
 	drive->completition_queue_head++;
@@ -517,6 +532,7 @@ void nvme_init(struct pci_address addr) {
 	nvme_drive_info->admin_submission_queue_head = 0;
 	nvme_drive_info->completition_queue_head = 0;
 	nvme_drive_info->submission_queue_head = 0;
+	nvme_drive_info->addr = addr;
 	mutex_init(&(nvme_drive_info->mutex));
 
 	struct pci_bar bar;
@@ -750,6 +766,16 @@ void nvme_init(struct pci_address addr) {
 		kmsg_err("NVME Driver", "Failed to allocate PRP list");
 	}
 	nvme_drive_info->prps = prps;
+
+	uint8_t irq = pci_inb(addr, PCI_INT_LINE);
+	printf("         NVME controller uses irq vector %u\n", (uint32_t)irq);
+	if (irq > 15) {
+		nvme_drive_info->fallback_to_polling = true;
+	} else {
+		nvme_drive_info->fallback_to_polling = false;
+		nvme_drive_info->iowait_entry = iowait_add_handler(
+		    irq, NULL, nvme_check_interrupt, nvme_drive_info);
+	}
 
 	char *buf = heap_alloc(nvme_drive_info->namespaces[0].block_size *
 	                       nvme_drive_info->namespaces[0].blocks_count);
