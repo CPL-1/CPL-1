@@ -8,6 +8,9 @@ void intlock_lock() {
 }
 
 void intlock_unlock() {
+	if (ints_count == 0) {
+		return;
+	}
 	--ints_count;
 	if (ints_count == 0) {
 		asm volatile("sti");

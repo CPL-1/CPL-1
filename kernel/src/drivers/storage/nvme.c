@@ -514,7 +514,6 @@ bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf, uint64_t lba,
 			drive->prps[i] =
 			    (uint64_t)((uint32_t)buf - KERNEL_MAPPING_BASE - page_offset +
 			               PAGE_SIZE + i * PAGE_SIZE);
-			printf("%p\n", drive->prps[i]);
 		}
 	}
 
@@ -776,14 +775,4 @@ void nvme_init(struct pci_address addr) {
 		nvme_drive_info->iowait_entry = iowait_add_handler(
 		    irq, NULL, nvme_check_interrupt, nvme_drive_info);
 	}
-
-	char *buf = heap_alloc(nvme_drive_info->namespaces[0].block_size *
-	                       nvme_drive_info->namespaces[0].blocks_count);
-	memset(buf, 0,
-	       nvme_drive_info->namespaces[0].block_size *
-	           nvme_drive_info->namespaces[0].blocks_count);
-	printf("%p\n", buf);
-	nvme_rw_lba(nvme_drive_info, 1, buf, 0,
-	            nvme_drive_info->namespaces[0].blocks_count, false);
-	printf("%s\n", buf);
 }
