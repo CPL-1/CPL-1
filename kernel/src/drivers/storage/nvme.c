@@ -3,10 +3,12 @@
 #include <kmsg.h>
 #include <memory/heap.h>
 #include <memory/virt.h>
+#include <proc/mutex.h>
 #include <utils.h>
 
 #define NVME_SUBMISSION_QUEUE_SIZE 2
 #define NVME_COMPLETITION_QUEUE_SIZE 2
+#define NVME_MAX_MDTS 8
 #define NVME_QUEUE_PHYS_CONTIG (1 << 0)
 
 struct nvme_cap_register {
@@ -213,6 +215,23 @@ union nvme_sq_entry {
 		uint32_t : 32;
 		uint32_t : 32;
 	} packed create_cq;
+	struct {
+		uint8_t opcode;
+		uint8_t flags;
+		uint16_t command_id;
+		uint32_t nsid;
+		uint64_t rsvd2;
+		uint64_t metadata;
+		uint64_t prp1;
+		uint64_t prp2;
+		uint64_t slba;
+		uint16_t length;
+		uint16_t control;
+		uint32_t dsmgmt;
+		uint32_t reftag;
+		uint16_t apptag;
+		uint16_t appmask;
+	} packed rw;
 } packed;
 
 struct nvme_cq_entry {
@@ -304,6 +323,8 @@ struct nvme_drive {
 	size_t submission_queue_head;
 	size_t completition_queue_head;
 	struct nvme_drive_namespace *namespaces;
+	uint64_t *prps;
+	struct mutex mutex;
 	bool admin_phase_bit;
 	bool phase_bit;
 };
@@ -368,6 +389,9 @@ struct nvme_drive_namespace {
 	struct nvme_drive *drive;
 	struct nvme_namespace_info *info;
 	size_t namespace_id;
+	uint64_t block_size;
+	uint64_t transfer_blocks_max;
+	uint64_t blocks_count;
 };
 
 uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
@@ -404,6 +428,86 @@ uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
 	return drive->admin_completition_queue->status;
 }
 
+uint16_t nvme_execute_io_cmd(struct nvme_drive *drive,
+                             union nvme_sq_entry command) {
+	drive->submission_queue[drive->submission_queue_head] = command;
+	drive->submission_queue_head++;
+	if (drive->submission_queue_head == NVME_SUBMISSION_QUEUE_SIZE) {
+		drive->submission_queue_head = 0;
+	}
+	volatile struct nvme_cq_entry *completition_entry =
+	    drive->completition_queue + drive->completition_queue_head;
+	completition_entry->phase_bit = drive->phase_bit;
+
+	*(drive->submission_doorbell) = drive->submission_queue_head;
+
+	while (completition_entry->phase_bit == drive->phase_bit) {
+		struct nvme_csts_register csts;
+		csts = nvme_read_csts_register(drive->bar0);
+		if (csts.cfs == 1) {
+			kmsg_err("NVME Driver",
+			         "Fatal error occured while executing admin command\n");
+		}
+		asm volatile("pause");
+	}
+
+	drive->completition_queue_head++;
+	if (drive->completition_queue_head == NVME_COMPLETITION_QUEUE_SIZE) {
+		drive->completition_queue_head = 0;
+		drive->phase_bit = !(drive->phase_bit);
+	}
+
+	*(drive->completition_doorbell) = drive->completition_queue_head;
+	return drive->completition_queue->status;
+}
+
+bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf, uint64_t lba,
+                 size_t count, bool write) {
+	mutex_lock(&(drive->mutex));
+	struct nvme_drive_namespace *namespace = drive->namespaces + (ns - 1);
+	size_t block_size = namespace->block_size;
+	uint32_t page_offset = (uint32_t)buf & (PAGE_SIZE - 1);
+
+	unused union nvme_sq_entry rw_command;
+	rw_command.rw.opcode = write ? NVME_CMD_WRITE : NVME_CMD_READ;
+	rw_command.rw.flags = 0;
+	rw_command.rw.control = 0;
+	rw_command.rw.dsmgmt = 0;
+	rw_command.rw.reftag = 0;
+	rw_command.rw.apptag = 0;
+	rw_command.rw.appmask = 0;
+	rw_command.rw.metadata = 0;
+	rw_command.rw.slba = lba;
+	rw_command.rw.nsid = ns;
+	rw_command.rw.length = count - 1;
+	uint32_t aligned_down = ALIGN_DOWN((uint32_t)buf, PAGE_SIZE);
+	uint32_t aligned_up =
+	    ALIGN_UP((uint32_t)(buf + count * block_size), PAGE_SIZE);
+	size_t prp_entries_count = ((aligned_up - aligned_down) / PAGE_SIZE) - 1;
+
+	if (prp_entries_count == 0) {
+		rw_command.rw.prp1 = (uint64_t)((uint32_t)buf - KERNEL_MAPPING_BASE);
+	} else if (prp_entries_count == 1) {
+		rw_command.rw.prp1 = (uint64_t)((uint32_t)buf - KERNEL_MAPPING_BASE);
+		rw_command.rw.prp2 = (uint64_t)((uint32_t)buf - KERNEL_MAPPING_BASE -
+		                                page_offset + PAGE_SIZE);
+	} else {
+		rw_command.rw.prp1 = (uint64_t)((uint32_t)buf - KERNEL_MAPPING_BASE);
+		rw_command.rw.prp2 =
+		    (uint64_t)((uint32_t)(drive->prps) - KERNEL_MAPPING_BASE);
+		for (size_t i = 0; i < prp_entries_count; ++i) {
+			drive->prps[i] =
+			    (uint64_t)((uint32_t)buf - KERNEL_MAPPING_BASE - page_offset +
+			               PAGE_SIZE + i * PAGE_SIZE);
+			printf("%p\n", drive->prps[i]);
+		}
+	}
+
+	uint16_t status = nvme_execute_io_cmd(drive, rw_command);
+	mutex_unlock(&(drive->mutex));
+	return status == 0;
+}
+
 void nvme_init(struct pci_address addr) {
 	struct nvme_drive *nvme_drive_info = ALLOC_OBJ(struct nvme_drive);
 	if (nvme_drive_info == NULL) {
@@ -413,6 +517,7 @@ void nvme_init(struct pci_address addr) {
 	nvme_drive_info->admin_submission_queue_head = 0;
 	nvme_drive_info->completition_queue_head = 0;
 	nvme_drive_info->submission_queue_head = 0;
+	mutex_init(&(nvme_drive_info->mutex));
 
 	struct pci_bar bar;
 	if (!pci_read_bar(addr, 0, &bar)) {
@@ -601,6 +706,13 @@ void nvme_init(struct pci_address addr) {
 	}
 	nvme_drive_info->namespaces = namespaces;
 
+	size_t max_size = 1 << (12 + nvme_drive_info->identify_info->mdts);
+	if (nvme_drive_info->identify_info->mdts > NVME_MAX_MDTS ||
+	    max_size == 4096) {
+		max_size = 1 << (12 + NVME_MAX_MDTS);
+	}
+	printf("         Max transfer size: %u\n", max_size);
+
 	for (size_t i = 0; i < namespaces_count; ++i) {
 		struct nvme_drive_namespace *namespace = namespaces + i;
 		namespace->namespace_id = i + 1;
@@ -621,8 +733,27 @@ void nvme_init(struct pci_address addr) {
 			kmsg_err("NVME Driver", "Failed to read namespace info");
 		}
 		kmsg_log("NVME Driver", "Successfully read NVME namespace info");
+
+		uint8_t format_used = namespace->info->flbas & 0b11;
+		size_t block_size = 1 << namespace->info->lbaf[format_used].ds;
+		size_t transfer_blocks_max = max_size / block_size;
+		namespace->block_size = block_size;
+		namespace->transfer_blocks_max = transfer_blocks_max;
+		namespace->blocks_count = namespace->info->nsze;
 		printf("         Drive namespace %u initialized. Namespace size: %u "
 		       "blocks\n",
 		       i + 1, namespace->info->nsze);
 	}
+
+	uint64_t *prps = heap_alloc(max_size / PAGE_SIZE * 8);
+	if (prps == NULL) {
+		kmsg_err("NVME Driver", "Failed to allocate PRP list");
+	}
+	nvme_drive_info->prps = prps;
+
+	char *buf = heap_alloc(59 * 512);
+	memset(buf, 0, 30000);
+	printf("%p\n", buf);
+	nvme_rw_lba(nvme_drive_info, 1, buf, 0, 59, false);
+	printf("%s\n", buf);
 }

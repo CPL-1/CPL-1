@@ -19,6 +19,7 @@ enum {
 	PCI_BAR3 = 0x1C,
 	PCI_BAR4 = 0x20,
 	PCI_BAR5 = 0x24,
+	PCI_INT_LINE = 0x3C,
 };
 
 struct pci_id {
