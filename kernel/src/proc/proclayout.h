@@ -3,6 +3,8 @@
 
 #include <proc/proc.h>
 
+#define PROC_KERNEL_STACK_SIZE 4096
+
 struct proc_trap_frame {
 	uint32_t ds, gs, fs, es;
 	uint32_t edi, esi, ebp;

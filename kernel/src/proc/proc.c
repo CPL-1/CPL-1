@@ -253,12 +253,12 @@ void proc_init() {
 	proc_initialized = true;
 }
 
-void proc_dispose_queue_poll() {
+bool proc_dispose_queue_poll() {
 	intlock_lock();
 	struct proc_process *process = proc_dealloc_queue_head;
 	if (process == NULL) {
 		intlock_unlock();
-		return;
+		return false;
 	}
 	kmsg_log("User Request Monitor", "Disposing process...");
 	proc_dealloc_queue_head = process->next_in_queue;
@@ -270,4 +270,5 @@ void proc_dispose_queue_poll() {
 		heap_free((void *)(process->kernel_stack), PROC_KERNEL_STACK_SIZE);
 	}
 	FREE_OBJ(process);
+	return true;
 }

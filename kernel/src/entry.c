@@ -29,6 +29,17 @@ void print_pci(struct pci_address addr, struct pci_id id, void *context) {
 	       addr.bus, addr.slot, addr.function, id.vendor_id, id.device_id);
 }
 
+void urm_thread() {
+	while (true) {
+		while (proc_dispose_queue_poll()) {
+			asm volatile("pause");
+		}
+		proc_yield();
+	}
+}
+
+void kernel_init_process();
+
 void kernel_main(uint32_t mb_offset) {
 	intlock_lock();
 	vga_init();
@@ -71,8 +82,20 @@ void kernel_main(uint32_t mb_offset) {
 	iowait_enable_used_irq();
 	kmsg_log("IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	kmsg_log("Process Manager & Scheduler", "Starting User Request Monitor...");
-	while (true) {
-		proc_dispose_queue_poll();
-		asm volatile("pause");
-	}
+	struct proc_id urm_id = proc_new_process(proc_my_id());
+	struct proc_process *urm_data = proc_get_data(urm_id);
+	urm_data->frame.ds = urm_data->frame.es = urm_data->frame.gs =
+	    urm_data->frame.fs = urm_data->frame.ss = 0x21;
+	urm_data->frame.cs = 0x19;
+	urm_data->frame.eip = (uint32_t)kernel_init_process;
+	urm_data->frame.esp = urm_data->kernel_stack + PROC_KERNEL_STACK_SIZE;
+	urm_data->frame.eflags = (1 << 9) | (1 << 12);
+	proc_continue(urm_id);
+	urm_thread();
+}
+
+void kernel_init_process() {
+	kmsg_log("Kernel Init", "Executing in a separate init process");
+	while (true)
+		;
 }

@@ -2,7 +2,6 @@
 #define __PROC_H_INCLUDED__
 
 #define MAX_PROC_COUNT 4096
-#define PROC_KERNEL_STACK_SIZE 4096
 #define INVALID_PROC_ID                                                        \
 	(struct proc_id) { .id = MAX_PROC_COUNT, .instance_number = 0 }
 
@@ -31,6 +30,6 @@ struct proc_process *proc_get_data(struct proc_id id);
 void proc_exit(int exit_code);
 void proc_dispose(struct proc_process *process);
 
-void proc_dispose_queue_poll();
+bool proc_dispose_queue_poll();
 
 #endif
