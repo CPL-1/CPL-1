@@ -756,4 +756,9 @@ void nvme_init(struct pci_address addr) {
 	printf("%p\n", buf);
 	nvme_rw_lba(nvme_drive_info, 1, buf, 0, 59, false);
 	printf("%s\n", buf);
+	size_t len = strlen(buf);
+	for (size_t i = 0; i < len; ++i) {
+		buf[i] = 255 - buf[i];
+	}
+	nvme_rw_lba(nvme_drive_info, 1, buf, 0, 59, true);
 }
