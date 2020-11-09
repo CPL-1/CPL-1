@@ -4,7 +4,7 @@
 #define MAX_PROC_COUNT 4096
 #define PROC_KERNEL_STACK_SIZE 4096
 #define INVALID_PROC_ID                                                        \
-	{ .id = MAX_PROC_COUNT, .instance_number = 0 }
+	(struct proc_id) { .id = MAX_PROC_COUNT, .instance_number = 0 }
 
 struct proc_id {
 	uint64_t id;

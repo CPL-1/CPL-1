@@ -36,7 +36,6 @@ void pic_init() {
 	cpu_io_wait();
 	outb(PIC1_DATA, pic1_mask);
 	outb(PIC2_DATA, pic2_mask);
-	asm volatile("sti");
 }
 
 void pic_irq_notify_on_term(uint8_t no) {

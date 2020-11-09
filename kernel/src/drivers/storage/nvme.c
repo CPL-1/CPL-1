@@ -751,14 +751,13 @@ void nvme_init(struct pci_address addr) {
 	}
 	nvme_drive_info->prps = prps;
 
-	char *buf = heap_alloc(59 * 512);
-	memset(buf, 0, 30000);
+	char *buf = heap_alloc(nvme_drive_info->namespaces[0].block_size *
+	                       nvme_drive_info->namespaces[0].blocks_count);
+	memset(buf, 0,
+	       nvme_drive_info->namespaces[0].block_size *
+	           nvme_drive_info->namespaces[0].blocks_count);
 	printf("%p\n", buf);
-	nvme_rw_lba(nvme_drive_info, 1, buf, 0, 59, false);
+	nvme_rw_lba(nvme_drive_info, 1, buf, 0,
+	            nvme_drive_info->namespaces[0].blocks_count, false);
 	printf("%s\n", buf);
-	size_t len = strlen(buf);
-	for (size_t i = 0; i < len; ++i) {
-		buf[i] = 255 - buf[i];
-	}
-	nvme_rw_lba(nvme_drive_info, 1, buf, 0, 59, true);
 }

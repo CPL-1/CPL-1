@@ -11,15 +11,19 @@ struct function_with_argument {
 	void *func;
 } packed;
 
-void *fembed_make_irq_handler(void *func, void *arg) {
-	uint32_t template_size =
+size_t fembed_size() {
+	size_t template_size =
 	    (uint32_t)fembed_template_end - (uint32_t)fembed_template;
+	return template_size;
+}
+
+void *fembed_make_irq_handler(void *func, void *arg) {
 	struct function_with_argument *new_function =
-	    (struct function_with_argument *)heap_alloc(template_size);
+	    (struct function_with_argument *)heap_alloc(fembed_size());
 	if (new_function == NULL) {
 		return NULL;
 	}
-	memcpy(new_function, (void *)fembed_template, template_size);
+	memcpy(new_function, (void *)fembed_template, fembed_size());
 	new_function->func = func;
 	new_function->arg = arg;
 	return (void *)new_function;

@@ -215,7 +215,7 @@ void proc_yield() {
 	pit_trigger_interrupt();
 }
 
-void proc_preempt(struct proc_trap_frame *frame) {
+void proc_preempt(unused void *ctx, struct proc_trap_frame *frame) {
 	memcpy(&(proc_current_process->frame), frame,
 	       sizeof(struct proc_trap_frame));
 	proc_current_process = proc_current_process->next;

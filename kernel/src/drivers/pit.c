@@ -3,17 +3,7 @@
 #include <fembed.h>
 #include <i386/idt.h>
 #include <i386/ports.h>
-
-extern void pit_interrupt_handler();
-
-static uint32_t pit_handler = 0;
-
-void pit_call_handler(unused void *ctx, uint32_t frame) {
-	if (pit_handler != 0) {
-		((void (*)(uint32_t))pit_handler)(frame);
-	}
-	pic_irq_notify_on_term(0);
-}
+#include <proc/iowait.h>
 
 void pit_init(uint32_t freq) {
 	uint32_t divisor = 1193180 / freq;
@@ -24,14 +14,10 @@ void pit_init(uint32_t freq) {
 
 	outb(0x40, lo);
 	outb(0x40, hi);
-
-	idt_install_isr(0x20,
-	                (uint32_t)fembed_make_irq_handler(pit_call_handler, NULL));
-}
-
-void pit_set_callback(uint32_t entry) {
-	pit_handler = entry;
-	pic_irq_enable(0);
 }
 
 void pit_trigger_interrupt() { asm volatile("int $0x20"); }
+
+void pit_set_callback(uint32_t entry) {
+	iowait_add_handler(0, (iowait_handler_t)entry, NULL, NULL);
+}

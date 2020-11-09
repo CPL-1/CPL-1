@@ -13,6 +13,8 @@
 #include <memory/heap.h>
 #include <memory/phys.h>
 #include <memory/virt.h>
+#include <proc/intlock.h>
+#include <proc/iowait.h>
 #include <proc/priv.h>
 #include <proc/proc.h>
 #include <proc/proclayout.h>
@@ -28,6 +30,7 @@ void print_pci(struct pci_address addr, struct pci_id id, void *context) {
 }
 
 void kernel_main(uint32_t mb_offset) {
+	intlock_lock();
 	vga_init();
 	kmsg_log("Kernel Init",
 	         "Preparing to unleash the real power of your CPU...");
@@ -46,6 +49,8 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("Kernel virtual memory mapper");
 	heap_init();
 	kmsg_init_done("Kernel heap manager");
+	iowait_init();
+	kmsg_init_done("IO wait subsystem");
 	idt_init();
 	kmsg_init_done("IDT loader");
 	pic_init();
@@ -62,6 +67,9 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("Process Manager & Scheduler");
 	detect_hardware();
 	kmsg_init_done("Hardware Autodetection Routine");
+	intlock_unlock();
+	iowait_enable_used_irq();
+	kmsg_log("IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	kmsg_log("Process Manager & Scheduler", "Starting User Request Monitor...");
 	while (true) {
 		proc_dispose_queue_poll();
