@@ -53,3 +53,23 @@ void mutex_unlock(struct mutex *mutex) {
 		proc_continue(process->pid);
 	}
 }
+
+bool mutex_is_queued(struct mutex *mutex) {
+	if (!proc_is_initialized()) {
+		return false;
+	}
+	intlock_lock();
+	bool result = mutex->queue_head != NULL;
+	intlock_unlock();
+	return result;
+}
+
+bool mutex_is_locked(struct mutex *mutex) {
+	if (!proc_is_initialized()) {
+		return false()
+	}
+	intlock_lock();
+	bool result = mutex->locked;
+	intlock_unlock();
+	return result;
+}
