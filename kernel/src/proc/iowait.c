@@ -35,7 +35,7 @@ void iowait_interrupt_handler(void *ctx, void *frame) {
 	struct iowait_list_entry *head = iowait_handler_lists[irq];
 	while (head != NULL) {
 		if (head->check_wakeup_handler == NULL ||
-		    head->check_wakeup_handler(head->ctx)) {
+			head->check_wakeup_handler(head->ctx)) {
 			if (head->int_handler != NULL) {
 				head->int_handler(head->ctx, frame);
 			}
@@ -51,21 +51,21 @@ void iowait_interrupt_handler(void *ctx, void *frame) {
 
 struct iowait_list_entry *
 iowait_add_handler(uint8_t irq, iowait_handler_t int_handler,
-                   iowait_wakeup_handler_t check_hander, void *ctx) {
+				   iowait_wakeup_handler_t check_hander, void *ctx) {
 	struct iowait_list_entry *entry = ALLOC_OBJ(struct iowait_list_entry);
 	if (entry == NULL) {
 		kmsg_err("IO wait subsystem",
-		         "Failed to allocate object for IOWait handler");
+				 "Failed to allocate object for IOWait handler");
 	}
 	entry->int_handler = int_handler;
 	entry->check_wakeup_handler = check_hander;
 	entry->ctx = ctx;
 	if (iowait_handler_lists[irq] == NULL) {
 		void *interrupt_handler = fembed_make_irq_handler(
-		    iowait_interrupt_handler, &iowait_irq_contexts[irq]);
+			iowait_interrupt_handler, iowait_irq_contexts + irq);
 		if (interrupt_handler == NULL) {
 			kmsg_err("IO wait subsystem",
-			         "Failed to allocate function object for IRQ handler");
+					 "Failed to allocate function object for IRQ handler");
 		}
 		idt_install_isr(irq + 0x20, (uint32_t)interrupt_handler);
 	}
@@ -88,5 +88,6 @@ void iowait_enable_used_irq() {
 			pic_irq_enable(i);
 		}
 	}
-	asm volatile("sti");
+	pic_irq_disable(0);
+	intlock_flush();
 }

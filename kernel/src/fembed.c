@@ -13,13 +13,13 @@ struct function_with_argument {
 
 size_t fembed_size() {
 	size_t template_size =
-	    (uint32_t)fembed_template_end - (uint32_t)fembed_template;
+		(uint32_t)fembed_template_end - (uint32_t)fembed_template;
 	return template_size;
 }
 
 void *fembed_make_irq_handler(void *func, void *arg) {
 	struct function_with_argument *new_function =
-	    (struct function_with_argument *)heap_alloc(fembed_size());
+		(struct function_with_argument *)heap_alloc(fembed_size());
 	if (new_function == NULL) {
 		return NULL;
 	}

@@ -18,6 +18,6 @@ void pit_init(uint32_t freq) {
 
 void pit_trigger_interrupt() { asm volatile("int $0x20"); }
 
-void pit_set_callback(uint32_t entry) {
+void pit_set_callback(unused uint32_t entry) {
 	iowait_add_handler(0, (iowait_handler_t)entry, NULL, NULL);
 }
