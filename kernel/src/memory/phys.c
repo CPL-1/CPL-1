@@ -129,12 +129,12 @@ void phys_init() {
 		uint32_t entry_type = mmap_buf.entries[i].type;
 		if (entry_type == AVAILABLE) {
 			if (mmap_buf.entries[i].len + mmap_buf.entries[i].addr >
-			        0x100000000ULL ||
-			    mmap_buf.entries[i].len > 0xffffffffULL ||
-			    mmap_buf.entries[i].addr > 0xffffffffULL) {
+					0x100000000ULL ||
+				mmap_buf.entries[i].len > 0xffffffffULL ||
+				mmap_buf.entries[i].addr > 0xffffffffULL) {
 				kmsg_warn(PHYS_MOD_NAME,
-				          "area that is not visible in protected mode was "
-				          "found. This area will be ignored\n");
+						  "area that is not visible in protected mode was "
+						  "found. This area will be ignored\n");
 				continue;
 			}
 			uint32_t len = (uint32_t)(mmap_buf.entries[i].len);

@@ -24,7 +24,7 @@ static uint16_t vga_x, vga_y;
 static void vga_scroll() {
 	void *vga_first_line = (void *)(TEXT_VGA_MEMORY);
 	const void *vga_second_line =
-	    (const void *)(TEXT_VGA_MEMORY + 2 * VGA_WIDTH);
+		(const void *)(TEXT_VGA_MEMORY + 2 * VGA_WIDTH);
 	memcpy(vga_first_line, vga_second_line, 2 * VGA_WIDTH * (VGA_HEIGHT - 1));
 	for (size_t x = 0; x < VGA_WIDTH; ++x) {
 		vga_putc_raw_at(x, VGA_HEIGHT - 1, ' ');

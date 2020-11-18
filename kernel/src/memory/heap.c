@@ -7,7 +7,7 @@
 
 static struct mutex heap_mutex;
 static uint32_t heap_size_classes[HEAP_SIZE_CLASSES_COUNT] = {
-    16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
+	16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
 
 struct heap_slub_obj_hdr {
 	struct heap_slub_obj_hdr *next;
@@ -17,7 +17,7 @@ static struct heap_slub_obj_hdr *slubs[HEAP_SIZE_CLASSES_COUNT];
 
 static uint32_t heap_get_size_class(uint32_t size) {
 	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
-		if (size < heap_size_classes[i]) {
+		if (size <= heap_size_classes[i]) {
 			return i;
 		}
 	}
@@ -83,8 +83,8 @@ void heap_free(void *area, uint32_t size) {
 	mutex_lock(&heap_mutex);
 	uint32_t size_class = heap_get_size_class(size);
 	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
-		phys_lo_free_area((uint32_t)area, ALIGN_UP(size, PAGE_SIZE));
 		mutex_unlock(&heap_mutex);
+		phys_lo_free_area((uint32_t)area, ALIGN_UP(size, PAGE_SIZE));
 		return;
 	}
 	struct heap_slub_obj_hdr *hdr = (struct heap_slub_obj_hdr *)area;

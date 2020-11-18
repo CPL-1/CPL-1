@@ -1,5 +1,7 @@
 #include <drivers/pit.h>
+#include <fembed.h>
 #include <i386/cpu.h>
+#include <i386/idt.h>
 #include <i386/tss.h>
 #include <kmsg.h>
 #include <memory/heap.h>
@@ -17,7 +19,7 @@ static struct proc_process *proc_current_process;
 static struct proc_process *proc_dealloc_queue_head;
 static bool proc_initialized = false;
 
-#define PROC_SCHEDULER_STACK_SIZE 4096
+#define PROC_SCHEDULER_STACK_SIZE 65536
 static char proc_scheduler_stack[PROC_SCHEDULER_STACK_SIZE];
 
 bool proc_is_initialized() { return proc_initialized; }
@@ -79,7 +81,7 @@ struct proc_id proc_new_process(struct proc_id parent) {
 	}
 	memset(&(process->frame), 0, sizeof(process->frame));
 	process->next = process->prev = process->wait_queue_head =
-	    process->wait_queue_tail = process->next_in_queue = NULL;
+		process->wait_queue_tail = process->next_in_queue = NULL;
 	process->ppid = parent;
 	process->pid = new_id;
 	process->cr3 = new_cr3;
@@ -172,7 +174,7 @@ void proc_exit(int exit_code) {
 	} else {
 		if (parent_process->wait_queue_head == NULL) {
 			parent_process->wait_queue_head = parent_process->wait_queue_tail =
-			    process;
+				process;
 		} else {
 			parent_process->wait_queue_tail->next_in_queue = process;
 		}
@@ -212,18 +214,18 @@ struct proc_process *proc_wait_for_child_term() {
 
 void proc_yield() {
 	intlock_flush();
-	pit_trigger_interrupt();
+	asm volatile("int $0xfe");
 }
 
 void proc_preempt(unused void *ctx, struct proc_trap_frame *frame) {
 	memcpy(&(proc_current_process->frame), frame,
-	       sizeof(struct proc_trap_frame));
+		   sizeof(struct proc_trap_frame));
 	proc_current_process = proc_current_process->next;
 	memcpy(frame, &(proc_current_process->frame),
-	       sizeof(struct proc_trap_frame));
+		   sizeof(struct proc_trap_frame));
 	cpu_set_cr3(proc_current_process->cr3);
 	tss_set_dpl1_stack(
-	    proc_current_process->kernel_stack + PROC_KERNEL_STACK_SIZE, 0x21);
+		proc_current_process->kernel_stack + PROC_KERNEL_STACK_SIZE, 0x21);
 }
 
 void proc_init() {
@@ -248,8 +250,14 @@ void proc_init() {
 	kernel_process_data->prev = kernel_process_data;
 	proc_dealloc_queue_head = NULL;
 	tss_set_dpl0_stack(
-	    (uint32_t)proc_scheduler_stack + PROC_SCHEDULER_STACK_SIZE, 0x10);
+		(uint32_t)proc_scheduler_stack + PROC_SCHEDULER_STACK_SIZE, 0x10);
 	pit_set_callback((uint32_t)proc_preempt);
+	void *yield_callback = fembed_make_irq_handler((void *)proc_preempt, NULL);
+	if (yield_callback == NULL) {
+		kmsg_err("Process Manager & Scheduler",
+				 "Failed to make yield callback");
+	}
+	idt_install_isr(0xfe, (uint32_t)yield_callback);
 	proc_initialized = true;
 }
 

@@ -43,7 +43,7 @@ struct pci_bar {
 };
 
 typedef void (*pci_enumerator_t)(struct pci_address addr, struct pci_id id,
-                                 void *ctx);
+								 void *ctx);
 
 void pci_enable_bus_mastering(struct pci_address address);
 bool pci_read_bar(struct pci_address address, int index, struct pci_bar *bar);

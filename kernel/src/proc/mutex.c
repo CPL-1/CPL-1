@@ -66,7 +66,7 @@ bool mutex_is_queued(struct mutex *mutex) {
 
 bool mutex_is_locked(struct mutex *mutex) {
 	if (!proc_is_initialized()) {
-		return false()
+		return false;
 	}
 	intlock_lock();
 	bool result = mutex->locked;

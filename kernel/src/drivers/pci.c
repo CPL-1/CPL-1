@@ -2,9 +2,9 @@
 #include <i386/ports.h>
 
 inline static uint32_t pci_get_io_field_address(struct pci_address addr,
-                                                uint8_t field) {
+												uint8_t field) {
 	return 0x80000000 | (addr.bus << 16) | (addr.slot << 11) |
-	       (addr.function << 8) | (field & ~((uint32_t)(3)));
+		   (addr.function << 8) | (field & ~((uint32_t)(3)));
 }
 
 #define PCI_ADDRESS_PORT 0xcf8
@@ -67,7 +67,7 @@ static struct pci_address pci_make_function_addr(uint8_t function) {
 }
 
 static struct pci_address pci_make_bus_and_slot_addr(uint8_t bus,
-                                                     uint8_t slot) {
+													 uint8_t slot) {
 	struct pci_address addr = pci_make_default_address();
 	addr.bus = bus;
 	addr.slot = slot;
@@ -76,14 +76,14 @@ static struct pci_address pci_make_bus_and_slot_addr(uint8_t bus,
 
 uint16_t pci_get_type(struct pci_address address) {
 	return ((uint16_t)(pci_inb(address, PCI_CLASS)) << 8) |
-	       pci_inb(address, PCI_SUBCLASS);
+		   pci_inb(address, PCI_SUBCLASS);
 }
 
 static void pci_enumerate_bus(uint8_t bus, pci_enumerator_t enumerator,
-                              void *ctx);
+							  void *ctx);
 
 static void pci_enumerate_functions(uint8_t bus, uint8_t slot, uint8_t function,
-                                    pci_enumerator_t enumerator, void *ctx) {
+									pci_enumerator_t enumerator, void *ctx) {
 	struct pci_address addr;
 	addr.bus = bus;
 	addr.slot = slot;
@@ -100,7 +100,7 @@ static void pci_enumerate_functions(uint8_t bus, uint8_t slot, uint8_t function,
 }
 
 static void pci_enumerate_slot(uint8_t bus, uint8_t slot,
-                               pci_enumerator_t enumerator, void *ctx) {
+							   pci_enumerator_t enumerator, void *ctx) {
 	struct pci_address slot_address = pci_make_bus_and_slot_addr(bus, slot);
 	if (pci_inw(slot_address, PCI_VENDOR_ID) == PCI_NONE) {
 		return;
@@ -121,7 +121,7 @@ static void pci_enumerate_slot(uint8_t bus, uint8_t slot,
 }
 
 static void pci_enumerate_bus(uint8_t bus, pci_enumerator_t enumerator,
-                              void *ctx) {
+							  void *ctx) {
 	for (uint8_t slot = 0; slot < 32; ++slot) {
 		pci_enumerate_slot(bus, slot, enumerator, ctx);
 	}
@@ -153,7 +153,7 @@ bool pci_read_bar(struct pci_address address, int index, struct pci_bar *bar) {
 		bar->disable_cache = true;
 	}
 	bool is_64bit =
-	    (bar->is_mmio && ((((bar_address >> 1U) & 0b11U)) == 0b10U));
+		(bar->is_mmio && ((((bar_address >> 1U) & 0b11U)) == 0b10U));
 	if (is_64bit) {
 		uint32_t bar_high_address = pci_inl(address, reg + 4);
 		if (bar_high_address != 0) {
@@ -171,7 +171,7 @@ bool pci_read_bar(struct pci_address address, int index, struct pci_bar *bar) {
 		pci_outl(address, reg + 4, 0);
 	}
 	uint64_t bar_size =
-	    (((uint64_t)bar_size_high) << 32ULL) | ((uint64_t)bar_size_low);
+		(((uint64_t)bar_size_high) << 32ULL) | ((uint64_t)bar_size_low);
 	bar_size &= ~(bar->is_mmio ? (0b1111ULL) : (0b11ULL));
 	bar_size = ~bar_size + 1ULL;
 	if (bar_size > 0xffffffff) {

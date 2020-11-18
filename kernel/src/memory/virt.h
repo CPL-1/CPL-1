@@ -35,7 +35,7 @@ static inline uint16_t virt_pt_index(uint32_t vaddr) {
 
 static inline uint32_t virt_walk_to_next(uint32_t current, uint16_t index) {
 	struct virt_page_table *table =
-	    (struct virt_page_table *)(current + KERNEL_MAPPING_BASE);
+		(struct virt_page_table *)(current + KERNEL_MAPPING_BASE);
 	if (!table->entries[index].present) {
 		return 0;
 	}
@@ -45,6 +45,6 @@ static inline uint32_t virt_walk_to_next(uint32_t current, uint16_t index) {
 void virt_kernel_mapping_init();
 uint32_t virt_new_cr3();
 uint32_t virt_get_io_mapping(uint32_t paddr, uint32_t size,
-                             bool cache_disabled);
+							 bool cache_disabled);
 
 #endif

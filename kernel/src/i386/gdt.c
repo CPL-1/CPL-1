@@ -21,7 +21,7 @@ static struct gdt_entry gdt[GDT_ENTRIES_COUNT];
 static struct gdtr gdt_pointer;
 
 void gdt_install_entry(uint32_t index, uint32_t base, uint32_t limit,
-                       uint8_t access, uint8_t granularity) {
+					   uint8_t access, uint8_t granularity) {
 	gdt[index].base_low = (base & 0xFFFFFF);
 	gdt[index].base_high = (base >> 24) & 0xFF;
 
@@ -41,7 +41,7 @@ void gdt_install_tss() {
 }
 
 void gdt_init() {
-	gdt_install_entry(0, 0, 0, 0, 0);                // null descriptor
+	gdt_install_entry(0, 0, 0, 0, 0);				 // null descriptor
 	gdt_install_entry(1, 0, 0xFFFFFFFF, 0x9A, 0xCF); // scheduler code 0x08
 	gdt_install_entry(2, 0, 0xFFFFFFFF, 0x92, 0xCF); // scheduler data 0x10
 	gdt_install_entry(3, 0, 0xFFFFFFFF, 0xBA, 0xCF); // kernel code 0x18

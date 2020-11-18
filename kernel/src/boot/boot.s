@@ -20,7 +20,7 @@ dd HEADER_CHECKSUM
 section .bss
 align 4096
 stack_bottom:
-resb 16384
+resb 65536
 stack_top:
 stack_top_phys: equ stack_top - KERNEL_MAPPING_BASE
 boot_page_dir:
