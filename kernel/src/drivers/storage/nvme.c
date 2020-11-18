@@ -382,11 +382,11 @@ static void nvme_write_acq_register(volatile uint32_t *bar0,
 	bar0[13] = (uint32_t)((*as_pointer >> 32ULL) & 0xFFFFFFFF);
 }
 
-static void nvme_enable_interrupts(volatile uint32_t *bar0) {
+unused static void nvme_enable_interrupts(volatile uint32_t *bar0) {
 	bar0[0x03] = ~((uint32_t)1);
 }
 
-static bool nvme_check_interrupt(void *ctx) {
+unused static bool nvme_check_interrupt(void *ctx) {
 	struct nvme_drive *nvme_drive_info = (struct nvme_drive *)ctx;
 	struct pci_address addr = nvme_drive_info->addr;
 	uint16_t status = pci_inw(addr, PCI_STATUS);
