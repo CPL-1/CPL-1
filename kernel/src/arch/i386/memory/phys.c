@@ -1,6 +1,8 @@
-#include <core/memory/phys.h>
+#include <arch/i386/init/multiboot.h>
+#include <arch/i386/memory/config.h>
+#include <arch/i386/memory/phys.h>
+#include <arch/memory/phys.h>
 #include <core/proc/mutex.h>
-#include <init/multiboot.h>
 #include <lib/kmsg.h>
 
 #define PHYS_MOD_NAME "phys"
@@ -41,7 +43,7 @@ static bool phys_bit_get(uint32_t index) {
 	return (phys_bitmap[index / 32] & (1 << (index % 32))) != 0;
 }
 
-uint32_t phys_lo_alloc_frame() {
+uintptr_t i386_phys_krnl_alloc_frame() {
 	mutex_lock(&phys_mutex);
 	for (; phys_low_arena_lo < phys_low_arena_hi; ++phys_low_arena_lo) {
 		if (!phys_bit_get(phys_low_arena_lo)) {
@@ -54,7 +56,7 @@ uint32_t phys_lo_alloc_frame() {
 	return 0;
 }
 
-uint32_t phys_hi_alloc_frame() {
+uintptr_t arch_phys_user_alloc_frame() {
 	mutex_lock(&phys_mutex);
 	for (; phys_high_arena_lo < phys_high_arena_hi; ++phys_high_arena_lo) {
 		if (!phys_bit_get(phys_high_arena_lo)) {
@@ -67,7 +69,7 @@ uint32_t phys_hi_alloc_frame() {
 	return 0;
 }
 
-uint32_t phys_lo_alloc_area(uint32_t size) {
+uintptr_t arch_phys_krnl_alloc_area(size_t size) {
 	mutex_lock(&phys_mutex);
 	const uint32_t frames_needed = size / PAGE_SIZE;
 	uint32_t free_frames = 0;
@@ -94,7 +96,7 @@ uint32_t phys_lo_alloc_area(uint32_t size) {
 	return 0;
 }
 
-void phys_free_frame(uint32_t frame) {
+static void phys_free_frame(uint32_t frame) {
 	mutex_lock(&phys_mutex);
 	uint32_t index = frame / PAGE_SIZE;
 	if (index < phys_low_arena_hi) {
@@ -110,15 +112,19 @@ void phys_free_frame(uint32_t frame) {
 	mutex_unlock(&phys_mutex);
 }
 
-void phys_lo_free_area(uint32_t start, uint32_t size) {
+void arch_phys_user_free_frame(uintptr_t frame) { phys_free_frame(frame); }
+void i386_phys_krnl_free_frame(uint32_t frame) { phys_free_frame(frame); }
+
+void arch_phys_krnl_free_area(uintptr_t area, size_t size) {
+	size = ALIGN_UP(size, PAGE_SIZE);
 	mutex_lock(&phys_mutex);
 	for (uint32_t offset = 0; offset < size; offset += PAGE_SIZE) {
-		phys_free_frame(start + offset);
+		phys_free_frame(area + offset);
 	}
 	mutex_unlock(&phys_mutex);
 }
 
-void phys_init() {
+void i386_phys_init() {
 	mutex_init(&phys_mutex);
 	memset(&phys_bitmap, 0xff, sizeof(phys_bitmap));
 	struct multiboot_mmap mmap_buf;

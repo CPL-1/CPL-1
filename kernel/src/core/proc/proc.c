@@ -1,9 +1,9 @@
 #include <arch/i386/cpu.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/tss.h>
+#include <arch/memory/phys.h>
+#include <arch/memory/virt.h>
 #include <core/memory/heap.h>
-#include <core/memory/phys.h>
-#include <core/memory/virt.h>
 #include <core/proc/intlock.h>
 #include <core/proc/proc.h>
 #include <core/proc/proclayout.h>
@@ -67,7 +67,7 @@ struct proc_id proc_new_process(struct proc_id parent) {
 	if (process == NULL) {
 		goto fail;
 	}
-	uint32_t new_cr3 = virt_new_cr3();
+	uint32_t new_cr3 = arch_virt_new_root();
 	if (new_cr3 == 0) {
 		goto free_process_obj;
 	}
@@ -92,7 +92,7 @@ struct proc_id proc_new_process(struct proc_id parent) {
 free_stack:
 	heap_free((void *)stack, PROC_KERNEL_STACK_SIZE);
 free_cr3:
-	phys_free_frame(new_cr3);
+	arch_virt_free_root(new_cr3);
 free_process_obj:
 	FREE_OBJ(process);
 fail:;
@@ -223,7 +223,7 @@ void proc_preempt(unused void *ctx, struct proc_trap_frame *frame) {
 	proc_current_process = proc_current_process->next;
 	memcpy(frame, &(proc_current_process->frame),
 		   sizeof(struct proc_trap_frame));
-	cpu_set_cr3(proc_current_process->cr3);
+	i386_cpu_set_cr3(proc_current_process->cr3);
 	tss_set_dpl1_stack(
 		proc_current_process->kernel_stack + PROC_KERNEL_STACK_SIZE, 0x21);
 }
@@ -272,7 +272,7 @@ bool proc_dispose_queue_poll() {
 	proc_dealloc_queue_head = process->next_in_queue;
 	intlock_unlock();
 	if (process->cr3 != 0) {
-		phys_free_frame(process->cr3);
+		arch_virt_free_root(process->cr3);
 	}
 	if (process->kernel_stack != 0) {
 		heap_free((void *)(process->kernel_stack), PROC_KERNEL_STACK_SIZE);

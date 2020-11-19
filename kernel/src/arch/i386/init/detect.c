@@ -1,6 +1,6 @@
+#include <arch/i386/init/detect.h>
 #include <drivers/pci.h>
 #include <drivers/storage/nvme.h>
-#include <init/detect.h>
 #include <lib/kmsg.h>
 
 void detect_hardware_callback(struct pci_address addr, struct pci_id id,

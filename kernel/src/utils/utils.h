@@ -8,7 +8,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <utils/attributes.h>
-#include <utils/config.h>
 
 static inline void *memset(void *ptr, int value, size_t size) {
 	char *writable_ptr = (char *)ptr;

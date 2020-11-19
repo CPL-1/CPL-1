@@ -1,5 +1,5 @@
-#ifndef __TSS_H_INCLUDED__
-#define __TSS_H_INCLUDED__
+#ifndef __I386_TSS_H_INCLUDED__
+#define __I386_TSS_H_INCLUDED__
 
 #include <utils/utils.h>
 

@@ -1,13 +1,17 @@
 #include <arch/i386/cr3.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
+#include <arch/i386/init/detect.h>
+#include <arch/i386/init/multiboot.h>
+#include <arch/i386/memory/phys.h>
+#include <arch/i386/memory/virt.h>
 #include <arch/i386/tss.h>
+#include <arch/memory/phys.h>
+#include <arch/memory/virt.h>
 #include <core/fd/fs/devfs.h>
 #include <core/fd/fs/rootfs.h>
 #include <core/fd/vfs.h>
 #include <core/memory/heap.h>
-#include <core/memory/phys.h>
-#include <core/memory/virt.h>
 #include <core/proc/intlock.h>
 #include <core/proc/iowait.h>
 #include <core/proc/priv.h>
@@ -18,8 +22,6 @@
 #include <drivers/pic.h>
 #include <drivers/pit.h>
 #include <drivers/textvga.h>
-#include <init/detect.h>
-#include <init/multiboot.h>
 #include <lib/dynarray.h>
 #include <lib/fembed.h>
 #include <lib/kmsg.h>
@@ -57,9 +59,9 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("TSS Loader");
 	multiboot_init(mb_offset);
 	kmsg_init_done("Multiboot v1.0 Tables Parser");
-	phys_init();
+	i386_phys_init();
 	kmsg_init_done("Physical Memory Allocator");
-	virt_kernel_mapping_init();
+	i386_virt_kernel_mapping_init();
 	kmsg_init_done("Kernel Virtual Memory Mapper");
 	heap_init();
 	kmsg_init_done("Kernel Heap Manager");

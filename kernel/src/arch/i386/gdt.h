@@ -1,5 +1,5 @@
-#ifndef __GDT_H_INCLUDED__
-#define __GDT_H_INCLUDED__
+#ifndef __I386_GDT_H_INCLUDED__
+#define __I386_GDT_H_INCLUDED__
 
 #include <utils/utils.h>
 

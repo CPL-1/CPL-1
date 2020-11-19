@@ -19,21 +19,21 @@ static uint8_t pic2_mask = 0xff;
 
 void pic_init() {
 	outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC1_DATA, 0x20);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC2_DATA, 0x28);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC1_DATA, 4);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC2_DATA, 2);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC1_DATA, ICW4_8086);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC2_DATA, ICW4_8086);
-	cpu_io_wait();
+	i386_cpu_io_wait();
 	outb(PIC1_DATA, pic1_mask);
 	outb(PIC2_DATA, pic2_mask);
 }

@@ -1,5 +1,5 @@
-#ifndef __PORTS_H_INCLUDED__
-#define __PORTS_H_INCLUDED__
+#ifndef __I386_PORTS_H_INCLUDED__
+#define __I386_PORTS_H_INCLUDED__
 
 #include <utils/utils.h>
 

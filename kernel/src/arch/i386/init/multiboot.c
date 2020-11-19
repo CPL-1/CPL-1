@@ -1,6 +1,6 @@
-#include <init/multiboot.h>
+#include <arch/i386/init/multiboot.h>
+#include <arch/i386/memory/config.h>
 #include <lib/kmsg.h>
-#include <utils/config.h>
 
 #define MULTIBOOT_MOD_NAME "Multiboot Parser"
 

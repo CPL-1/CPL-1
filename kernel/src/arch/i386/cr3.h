@@ -1,5 +1,5 @@
-#ifndef __CR3_H_INCLUDED__
-#define __CR3_H_INCLUDED__
+#ifndef __I386_CR3_H_INCLUDED__
+#define __I386_CR3_H_INCLUDED__
 
 #include <utils/utils.h>
 
