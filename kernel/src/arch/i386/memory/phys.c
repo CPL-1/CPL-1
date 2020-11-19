@@ -5,128 +5,134 @@
 #include <core/proc/mutex.h>
 #include <lib/kmsg.h>
 
-#define PHYS_MOD_NAME "phys"
+#define PHYS_MOD_NAME "i386 Physical Memory Manager"
 
-extern int phys_kernel_end;
+extern uint32_t i386_phys_kernel_end;
 
-static uint32_t phys_bitmap[0x5000];
+static uint32_t i386_phys_bitmap[0x5000];
 
-static uint32_t phys_low_arena_lo = KERNEL_IGNORED_AREA_SIZE / PAGE_SIZE;
-static const uint32_t phys_low_arena_hi = PHYS_LOW_LIMIT / PAGE_SIZE;
-static uint32_t phys_high_arena_lo = phys_low_arena_hi;
-static const uint32_t phys_high_arena_hi = 0x5000;
-static struct mutex phys_mutex;
+static uint32_t i386_phys_low_arena_lo =
+	I386_KERNEL_IGNORED_AREA_SIZE / I386_PAGE_SIZE;
+static const uint32_t i386_phys_low_arena_hi =
+	I386_PHYS_LOW_LIMIT / I386_PAGE_SIZE;
+static uint32_t i386_phys_high_arena_lo = i386_phys_low_arena_hi;
+static const uint32_t i386_phys_high_arena_hi = 0x5000;
+static struct mutex i386_phys_mutex;
 
-static void phys_bit_set(uint32_t index) {
-	phys_bitmap[index / 32] |= (1 << (index % 32));
+static void i386_phys_bit_set(uint32_t index) {
+	i386_phys_bitmap[index / 32] |= (1 << (index % 32));
 }
 
-static void phys_bit_clear(uint32_t index) {
-	phys_bitmap[index / 32] &= ~(1 << (index % 32));
+static void i386_phys_bit_clear(uint32_t index) {
+	i386_phys_bitmap[index / 32] &= ~(1 << (index % 32));
 }
 
-static void phys_bitmap_clear_range(uint32_t start, uint32_t size) {
+static void i386_phys_bitmap_clear_range(uint32_t start, uint32_t size) {
 	uint32_t end = start + size;
-	for (uint32_t i = (start / PAGE_SIZE); i < (end / PAGE_SIZE); ++i) {
-		phys_bit_clear(i);
+	for (uint32_t i = (start / I386_PAGE_SIZE); i < (end / I386_PAGE_SIZE);
+		 ++i) {
+		i386_phys_bit_clear(i);
 	}
 }
 
-static void phys_bitmap_set_range(uint32_t start, uint32_t size) {
+static void i386_phys_bitmap_set_range(uint32_t start, uint32_t size) {
 	uint32_t end = start + size;
-	for (uint32_t i = (start / PAGE_SIZE); i < (end / PAGE_SIZE); ++i) {
-		phys_bit_set(i);
+	for (uint32_t i = (start / I386_PAGE_SIZE); i < (end / I386_PAGE_SIZE);
+		 ++i) {
+		i386_phys_bit_set(i);
 	}
 }
 
-static bool phys_bit_get(uint32_t index) {
-	return (phys_bitmap[index / 32] & (1 << (index % 32))) != 0;
+static bool i386_phys_bit_get(uint32_t index) {
+	return (i386_phys_bitmap[index / 32] & (1 << (index % 32))) != 0;
 }
 
 uintptr_t i386_phys_krnl_alloc_frame() {
-	mutex_lock(&phys_mutex);
-	for (; phys_low_arena_lo < phys_low_arena_hi; ++phys_low_arena_lo) {
-		if (!phys_bit_get(phys_low_arena_lo)) {
-			phys_bit_set(phys_low_arena_lo);
-			mutex_unlock(&phys_mutex);
-			return phys_low_arena_lo * PAGE_SIZE;
+	mutex_lock(&i386_phys_mutex);
+	for (; i386_phys_low_arena_lo < i386_phys_low_arena_hi;
+		 ++i386_phys_low_arena_lo) {
+		if (!i386_phys_bit_get(i386_phys_low_arena_lo)) {
+			i386_phys_bit_set(i386_phys_low_arena_lo);
+			mutex_unlock(&i386_phys_mutex);
+			return i386_phys_low_arena_lo * I386_PAGE_SIZE;
 		}
 	}
-	mutex_unlock(&phys_mutex);
+	mutex_unlock(&i386_phys_mutex);
 	return 0;
 }
 
 uintptr_t arch_phys_user_alloc_frame() {
-	mutex_lock(&phys_mutex);
-	for (; phys_high_arena_lo < phys_high_arena_hi; ++phys_high_arena_lo) {
-		if (!phys_bit_get(phys_high_arena_lo)) {
-			phys_bit_set(phys_high_arena_lo);
-			mutex_unlock(&phys_mutex);
-			return phys_high_arena_lo * PAGE_SIZE;
+	mutex_lock(&i386_phys_mutex);
+	for (; i386_phys_high_arena_lo < i386_phys_high_arena_hi;
+		 ++i386_phys_high_arena_lo) {
+		if (!i386_phys_bit_get(i386_phys_high_arena_lo)) {
+			i386_phys_bit_set(i386_phys_high_arena_lo);
+			mutex_unlock(&i386_phys_mutex);
+			return i386_phys_high_arena_lo * I386_PAGE_SIZE;
 		}
 	}
-	mutex_unlock(&phys_mutex);
+	mutex_unlock(&i386_phys_mutex);
 	return 0;
 }
 
 uintptr_t arch_phys_krnl_alloc_area(size_t size) {
-	mutex_lock(&phys_mutex);
-	const uint32_t frames_needed = size / PAGE_SIZE;
+	mutex_lock(&i386_phys_mutex);
+	const uint32_t frames_needed = size / I386_PAGE_SIZE;
 	uint32_t free_frames = 0;
-	uint32_t result_ind = phys_low_arena_lo;
-	uint32_t current_ind = phys_low_arena_lo;
-	while (current_ind < phys_low_arena_hi) {
-		if (phys_bit_get(current_ind)) {
+	uint32_t result_ind = i386_phys_low_arena_lo;
+	uint32_t current_ind = i386_phys_low_arena_lo;
+	while (current_ind < i386_phys_low_arena_hi) {
+		if (i386_phys_bit_get(current_ind)) {
 			free_frames = 0;
 			result_ind = current_ind + 1;
 		} else {
 			++free_frames;
 		}
 		if (free_frames >= frames_needed) {
-			phys_bitmap_set_range(result_ind * PAGE_SIZE, size);
-			if (result_ind == phys_low_arena_lo) {
-				phys_low_arena_lo += frames_needed;
+			i386_phys_bitmap_set_range(result_ind * I386_PAGE_SIZE, size);
+			if (result_ind == i386_phys_low_arena_lo) {
+				i386_phys_low_arena_lo += frames_needed;
 			}
-			mutex_unlock(&phys_mutex);
-			return result_ind * PAGE_SIZE;
+			mutex_unlock(&i386_phys_mutex);
+			return result_ind * I386_PAGE_SIZE;
 		}
 		++current_ind;
 	}
-	mutex_unlock(&phys_mutex);
+	mutex_unlock(&i386_phys_mutex);
 	return 0;
 }
 
-static void phys_free_frame(uint32_t frame) {
-	mutex_lock(&phys_mutex);
-	uint32_t index = frame / PAGE_SIZE;
-	if (index < phys_low_arena_hi) {
-		if (index < phys_low_arena_lo) {
-			phys_low_arena_lo = index;
+static void i386_phys_free_frame(uint32_t frame) {
+	mutex_lock(&i386_phys_mutex);
+	uint32_t index = frame / I386_PAGE_SIZE;
+	if (index < i386_phys_low_arena_hi) {
+		if (index < i386_phys_low_arena_lo) {
+			i386_phys_low_arena_lo = index;
 		}
 	} else {
-		if (index < phys_high_arena_lo) {
-			phys_high_arena_lo = index;
+		if (index < i386_phys_high_arena_lo) {
+			i386_phys_high_arena_lo = index;
 		}
 	}
-	phys_bit_clear(frame / PAGE_SIZE);
-	mutex_unlock(&phys_mutex);
+	i386_phys_bit_clear(frame / I386_PAGE_SIZE);
+	mutex_unlock(&i386_phys_mutex);
 }
 
-void arch_phys_user_free_frame(uintptr_t frame) { phys_free_frame(frame); }
-void i386_phys_krnl_free_frame(uint32_t frame) { phys_free_frame(frame); }
+void arch_phys_user_free_frame(uintptr_t frame) { i386_phys_free_frame(frame); }
+void i386_phys_krnl_free_frame(uint32_t frame) { i386_phys_free_frame(frame); }
 
 void arch_phys_krnl_free_area(uintptr_t area, size_t size) {
-	size = ALIGN_UP(size, PAGE_SIZE);
-	mutex_lock(&phys_mutex);
-	for (uint32_t offset = 0; offset < size; offset += PAGE_SIZE) {
-		phys_free_frame(area + offset);
+	size = ALIGN_UP(size, I386_PAGE_SIZE);
+	mutex_lock(&i386_phys_mutex);
+	for (uint32_t offset = 0; offset < size; offset += I386_PAGE_SIZE) {
+		i386_phys_free_frame(area + offset);
 	}
-	mutex_unlock(&phys_mutex);
+	mutex_unlock(&i386_phys_mutex);
 }
 
 void i386_phys_init() {
-	mutex_init(&phys_mutex);
-	memset(&phys_bitmap, 0xff, sizeof(phys_bitmap));
+	mutex_init(&i386_phys_mutex);
+	memset(&i386_phys_bitmap, 0xff, sizeof(i386_phys_bitmap));
 	struct multiboot_mmap mmap_buf;
 	if (!multiboot_get_mmap(&mmap_buf)) {
 		kmsg_err(PHYS_MOD_NAME, "No memory map present");
@@ -145,8 +151,9 @@ void i386_phys_init() {
 			}
 			uint32_t len = (uint32_t)(mmap_buf.entries[i].len);
 			uint32_t addr = (uint32_t)(mmap_buf.entries[i].addr);
-			phys_bitmap_clear_range(addr, len);
+			i386_phys_bitmap_clear_range(addr, len);
 		}
 	}
-	phys_bitmap_set_range(0, ALIGN_UP((uint32_t)&phys_kernel_end, PAGE_SIZE));
+	i386_phys_bitmap_set_range(
+		0, ALIGN_UP((uint32_t)&i386_phys_kernel_end, I386_PAGE_SIZE));
 }

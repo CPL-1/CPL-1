@@ -3,7 +3,7 @@
 
 #include <utils/utils.h>
 
-void gdt_init();
-uint16_t gdt_get_tss_segment();
+void i386_gdt_init();
+uint16_t i386_gdt_get_tss_segment();
 
 #endif

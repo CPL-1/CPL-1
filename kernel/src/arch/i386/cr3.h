@@ -3,8 +3,8 @@
 
 #include <utils/utils.h>
 
-void cr3_init();
-void cr3_set(uint32_t val);
-uint32_t cr3_get();
+void i386_cr3_init();
+void i386_cr3_set(uint32_t val);
+uint32_t i386_cr3_get();
 
 #endif

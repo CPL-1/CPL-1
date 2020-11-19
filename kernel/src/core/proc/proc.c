@@ -224,7 +224,7 @@ void proc_preempt(unused void *ctx, struct proc_trap_frame *frame) {
 	memcpy(frame, &(proc_current_process->frame),
 		   sizeof(struct proc_trap_frame));
 	i386_cpu_set_cr3(proc_current_process->cr3);
-	tss_set_dpl1_stack(
+	i386_tss_set_dpl1_stack(
 		proc_current_process->kernel_stack + PROC_KERNEL_STACK_SIZE, 0x21);
 }
 
@@ -249,7 +249,7 @@ void proc_init() {
 	kernel_process_data->next = kernel_process_data;
 	kernel_process_data->prev = kernel_process_data;
 	proc_dealloc_queue_head = NULL;
-	tss_set_dpl0_stack(
+	i386_tss_set_dpl0_stack(
 		(uint32_t)proc_scheduler_stack + PROC_SCHEDULER_STACK_SIZE, 0x10);
 	pit_set_callback((uint32_t)proc_preempt);
 	void *yield_callback = fembed_make_irq_handler((void *)proc_preempt, NULL);
@@ -257,7 +257,7 @@ void proc_init() {
 		kmsg_err("Process Manager & Scheduler",
 				 "Failed to make yield callback");
 	}
-	idt_install_isr(0xfe, (uint32_t)yield_callback);
+	i386_idt_install_isr(0xfe, (uint32_t)yield_callback);
 	proc_initialized = true;
 }
 

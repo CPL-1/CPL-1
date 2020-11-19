@@ -69,8 +69,9 @@ struct multiboot_info {
 static struct multiboot_info *mb_info;
 
 void multiboot_init(uint32_t phys_info) {
-	mb_info = (struct multiboot_info *)(phys_info + KERNEL_MAPPING_BASE);
-	if (phys_info + sizeof(struct multiboot_info) > KERNEL_INIT_MAPPING_SIZE) {
+	mb_info = (struct multiboot_info *)(phys_info + I386_KERNEL_MAPPING_BASE);
+	if (phys_info + sizeof(struct multiboot_info) >
+		I386_KERNEL_INIT_MAPPING_SIZE) {
 		kmsg_err(
 			MULTIBOOT_MOD_NAME,
 			"Multiboot information is not visible from boot kernel mapping");
@@ -81,13 +82,14 @@ bool multiboot_get_mmap(struct multiboot_mmap *buf) {
 	if ((mb_info->flags & (1 << 6)) == 0) {
 		return false;
 	}
-	if (mb_info->mmap_addr + mb_info->mmap_length > KERNEL_INIT_MAPPING_SIZE) {
+	if (mb_info->mmap_addr + mb_info->mmap_length >
+		I386_KERNEL_INIT_MAPPING_SIZE) {
 		kmsg_warn(MULTIBOOT_MOD_NAME,
 				  "Memory map is not visible from boot kernel mapping");
 		return false;
 	}
 	buf->entries = (struct multiboot_mmap_entry *)(mb_info->mmap_addr +
-												   KERNEL_MAPPING_BASE);
+												   I386_KERNEL_MAPPING_BASE);
 	buf->entries_count = mb_info->mmap_length;
 	return true;
 }

@@ -51,11 +51,11 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_log("Kernel Init",
 			 "Preparing to unleash the real power of your CPU...");
 	kmsg_init_done("VGA Text Display Driver");
-	cr3_init();
+	i386_cr3_init();
 	kmsg_init_done("Root Page Table Manager");
-	gdt_init();
+	i386_gdt_init();
 	kmsg_init_done("GDT Loader");
-	tss_init();
+	i386_tss_init();
 	kmsg_init_done("TSS Loader");
 	multiboot_init(mb_offset);
 	kmsg_init_done("Multiboot v1.0 Tables Parser");
@@ -67,7 +67,7 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("Kernel Heap Manager");
 	iowait_init();
 	kmsg_init_done("IO Wait Subsystem");
-	idt_init();
+	i386_idt_init();
 	kmsg_init_done("IDT Loader");
 	pic_init();
 	kmsg_init_done("8259 Programmable Interrupt Controller Driver");

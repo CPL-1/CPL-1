@@ -31,5 +31,5 @@ SECTIONS
         *(.bss)
     }
 
-    phys_kernel_end = . - 0xC0000000;
+    i386_phys_kernel_end = . - 0xC0000000;
 }
