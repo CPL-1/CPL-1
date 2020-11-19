@@ -5,7 +5,7 @@ asm_obj := $(asm_src:.s=.o)
 CC := gcc
 AS := nasm
 LD := gcc
-CFLAGS := -m32 -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -g -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-80387 -Isrc -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -fomit-frame-pointer -ffreestanding -fstrict-volatile-bitfields
+CFLAGS := -m32 -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -O2 -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-80387 -Isrc -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -fomit-frame-pointer -ffreestanding -fstrict-volatile-bitfields
 ASFLAGS := -f elf
 LDFLAGS := -m32 -ffreestanding -static -nostdlib -no-pie
 
@@ -29,8 +29,8 @@ clean: object_clean
 	rm -f kernel.elf
 
 run: kernel object_clean
-	qemu-system-i386 -kernel kernel.elf -no-reboot -no-shutdown -drive file=../test.img,if=none,format=raw,id=NVME1 -device nvme,drive=NVME1,serial=nvme-1 -trace nvme* -trace pci*
+	qemu-system-i386 -kernel kernel.elf -no-reboot -no-shutdown -drive file=../test.img,if=none,format=raw,id=NVME1 -device nvme,drive=NVME1,serial=nvme-1 -enable-kvm
 
 debug: kernel object_clean
-	qemu-system-i386 -kernel kernel.elf -d int -no-reboot -no-shutdown -s -S -daemonize -drive file=../test.img,if=none,format=raw,id=NVME1 -device nvme,drive=NVME1,serial=nvme-1
+	qemu-system-i386 -kernel kernel.elf -d int -no-reboot -no-shutdown -s -S -daemonize -drive file=../test.img,if=none,format=raw,id=NVME1 -device nvme,drive=NVME1,serial=nvme-1 -singlestep
 	gdb kernel.elf -ex "target remote :1234" -ex "b kernel_main" -ex "c"

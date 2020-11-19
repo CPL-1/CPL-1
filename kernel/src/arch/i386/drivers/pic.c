@@ -1,6 +1,6 @@
 #include <arch/i386/cpu.h>
+#include <arch/i386/drivers/pic.h>
 #include <arch/i386/ports.h>
-#include <drivers/pic.h>
 
 #define PIC1 0x20
 #define PIC2 0xA0
@@ -17,7 +17,7 @@
 static uint8_t pic1_mask = 0xff;
 static uint8_t pic2_mask = 0xff;
 
-void pic_init() {
+void i386_pic_init() {
 	outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
 	i386_cpu_io_wait();
 	outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
@@ -38,14 +38,14 @@ void pic_init() {
 	outb(PIC2_DATA, pic2_mask);
 }
 
-void pic_irq_notify_on_term(uint8_t no) {
+void i386_pic_irq_notify_on_term(uint8_t no) {
 	if (no >= 8) {
 		outb(PIC2_COMMAND, PIC_EOI);
 	}
 	outb(PIC1_COMMAND, PIC_EOI);
 }
 
-void pic_irq_enable(uint8_t no) {
+void i386_pic_irq_enable(uint8_t no) {
 	if (no > 8) {
 		no -= 8;
 		pic2_mask &= ~(1 << no);
@@ -56,7 +56,7 @@ void pic_irq_enable(uint8_t no) {
 	outb(PIC1_DATA, pic1_mask);
 }
 
-void pic_irq_disable(uint8_t no) {
+void i386_pic_irq_disable(uint8_t no) {
 	if (no > 8) {
 		no -= 8;
 		pic2_mask |= (1 << no);

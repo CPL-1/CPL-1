@@ -1,9 +1,10 @@
 #ifndef __IOWAIT_H_INCLUDED__
 #define __IOWAIT_H_INCLUDED__
 
+#include <hal/proc/isrhandler.h>
 #include <utils/utils.h>
 
-typedef void (*iowait_handler_t)(void *ctx, void *frame);
+typedef hal_isr_handler_t iowait_handler_t;
 typedef bool (*iowait_wakeup_handler_t)(void *ctx);
 
 void iowait_init();

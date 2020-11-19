@@ -1,5 +1,4 @@
 #include <core/memory/heap.h>
-#include <core/proc/intlock.h>
 #include <lib/kmsg.h>
 #include <lib/pathsplit.h>
 

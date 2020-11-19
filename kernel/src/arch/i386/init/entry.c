@@ -1,29 +1,30 @@
 #include <arch/i386/cr3.h>
+#include <arch/i386/drivers/pic.h>
+#include <arch/i386/drivers/pit.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/init/detect.h>
 #include <arch/i386/init/multiboot.h>
 #include <arch/i386/memory/phys.h>
 #include <arch/i386/memory/virt.h>
+#include <arch/i386/proc/iowait.h>
+#include <arch/i386/proc/state.h>
 #include <arch/i386/tss.h>
-#include <arch/memory/phys.h>
-#include <arch/memory/virt.h>
 #include <core/fd/fs/devfs.h>
 #include <core/fd/fs/rootfs.h>
 #include <core/fd/vfs.h>
 #include <core/memory/heap.h>
-#include <core/proc/intlock.h>
-#include <core/proc/iowait.h>
 #include <core/proc/priv.h>
 #include <core/proc/proc.h>
 #include <core/proc/proclayout.h>
 #include <core/proc/ring1.h>
 #include <drivers/pci.h>
-#include <drivers/pic.h>
-#include <drivers/pit.h>
 #include <drivers/textvga.h>
+#include <hal/memory/phys.h>
+#include <hal/memory/virt.h>
+#include <hal/proc/intlock.h>
+#include <hal/proc/isrhandler.h>
 #include <lib/dynarray.h>
-#include <lib/fembed.h>
 #include <lib/kmsg.h>
 
 void print_pci(struct pci_address addr, struct pci_id id, void *context) {
@@ -39,6 +40,7 @@ void urm_thread() {
 	while (true) {
 		while (proc_dispose_queue_poll()) {
 		}
+		asm volatile("pause");
 		proc_yield();
 	}
 }
@@ -46,7 +48,7 @@ void urm_thread() {
 void kernel_init_process();
 
 void kernel_main(uint32_t mb_offset) {
-	intlock_lock();
+	hal_intlock_lock();
 	vga_init();
 	kmsg_log("Kernel Init",
 			 "Preparing to unleash the real power of your CPU...");
@@ -69,9 +71,9 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("IO Wait Subsystem");
 	i386_idt_init();
 	kmsg_init_done("IDT Loader");
-	pic_init();
+	i386_pic_init();
 	kmsg_init_done("8259 Programmable Interrupt Controller Driver");
-	pit_init(25);
+	i386_pit_init(25);
 	kmsg_init_done("8253/8254 Programmable Interval Timer Driver");
 	priv_init();
 	kmsg_init_done("Privilege Manager");
@@ -89,19 +91,21 @@ void kernel_main(uint32_t mb_offset) {
 	kmsg_log("Kernel Init", "Mounted Device Filesystem on /dev/");
 	detect_hardware();
 	kmsg_init_done("Hardware Autodetection Routine");
-	intlock_unlock();
+	hal_intlock_unlock();
 	iowait_enable_used_irq();
 	kmsg_log("IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	kmsg_log("Process Manager & Scheduler", "Starting User Request Monitor...");
-	struct proc_id urm_id = proc_new_process(proc_my_id());
-	struct proc_process *urm_data = proc_get_data(urm_id);
-	urm_data->frame.ds = urm_data->frame.es = urm_data->frame.gs =
-		urm_data->frame.fs = urm_data->frame.ss = 0x21;
-	urm_data->frame.cs = 0x19;
-	urm_data->frame.eip = (uint32_t)kernel_init_process;
-	urm_data->frame.esp = urm_data->kernel_stack + PROC_KERNEL_STACK_SIZE;
-	urm_data->frame.eflags = (1 << 9) | (1 << 12);
-	proc_continue(urm_id);
+	struct proc_id init_id = proc_new_process(proc_my_id());
+	struct proc_process *init_data = proc_get_data(init_id);
+	struct i386_cpu_state *init_state =
+		(struct i386_cpu_state *)(init_data->process_state);
+	init_state->ds = init_state->es = init_state->gs = init_state->fs =
+		init_state->ss = 0x21;
+	init_state->cs = 0x19;
+	init_state->eip = (uint32_t)kernel_init_process;
+	init_state->esp = init_data->kernel_stack + PROC_KERNEL_STACK_SIZE;
+	init_state->eflags = (1 << 9) | (1 << 12);
+	proc_continue(init_id);
 	urm_thread();
 }
 

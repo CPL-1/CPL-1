@@ -1,10 +1,11 @@
+#include <arch/i386/drivers/pic.h>
 #include <arch/i386/idt.h>
+#include <arch/i386/proc/iowait.h>
+#include <arch/i386/proc/isrhandler.h>
 #include <core/memory/heap.h>
-#include <core/proc/intlock.h>
-#include <core/proc/iowait.h>
 #include <core/proc/proc.h>
-#include <drivers/pic.h>
-#include <lib/fembed.h>
+#include <hal/proc/intlock.h>
+#include <hal/proc/isrhandler.h>
 #include <lib/kmsg.h>
 
 struct iowait_list_entry {
@@ -46,7 +47,7 @@ void iowait_interrupt_handler(void *ctx, void *frame) {
 		}
 		head = head->next;
 	}
-	pic_irq_notify_on_term(irq);
+	i386_pic_irq_notify_on_term(irq);
 }
 
 struct iowait_list_entry *
@@ -61,8 +62,9 @@ iowait_add_handler(uint8_t irq, iowait_handler_t int_handler,
 	entry->check_wakeup_handler = check_hander;
 	entry->ctx = ctx;
 	if (iowait_handler_lists[irq] == NULL) {
-		void *interrupt_handler = fembed_make_irq_handler(
-			iowait_interrupt_handler, iowait_irq_contexts + irq);
+		void *interrupt_handler =
+			i386_isr_handler_new((hal_isr_handler_t)iowait_interrupt_handler,
+								 iowait_irq_contexts + irq);
 		if (interrupt_handler == NULL) {
 			kmsg_err("IO wait subsystem",
 					 "Failed to allocate function object for IRQ handler");
@@ -76,7 +78,7 @@ iowait_add_handler(uint8_t irq, iowait_handler_t int_handler,
 }
 
 void iowait_wait(struct iowait_list_entry *entry) {
-	intlock_lock();
+	hal_intlock_lock();
 	struct proc_id id = proc_my_id();
 	entry->id = id;
 	proc_pause(id, true);
@@ -85,9 +87,8 @@ void iowait_wait(struct iowait_list_entry *entry) {
 void iowait_enable_used_irq() {
 	for (size_t i = 0; i < 16; ++i) {
 		if (iowait_handler_lists[i] != NULL) {
-			pic_irq_enable(i);
+			i386_pic_irq_enable(i);
 		}
 	}
-	pic_irq_disable(0);
-	intlock_flush();
+	hal_intlock_flush();
 }

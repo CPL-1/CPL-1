@@ -1,9 +1,9 @@
 bits 32
 
-global fembed_template
-global fembed_template_end
+global i386_isr_with_ctx_template_begin
+global i386_isr_with_ctx_template_end
 
-fembed_template:
+i386_isr_with_ctx_template_begin:
     pusha
 
     push es
@@ -31,4 +31,4 @@ fembed_template:
 
     popa
     iretd
-fembed_template_end:
+i386_isr_with_ctx_template_end:

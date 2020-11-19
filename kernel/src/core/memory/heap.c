@@ -1,6 +1,6 @@
-#include <arch/memory/phys.h>
-#include <arch/memory/virt.h>
 #include <core/proc/mutex.h>
+#include <hal/memory/phys.h>
+#include <hal/memory/virt.h>
 
 #define BLOCK_SIZE 65536
 #define HEAP_SIZE_CLASSES_COUNT 13
@@ -27,13 +27,13 @@ static uint32_t heap_get_size_class(uint32_t size) {
 static bool heap_add_objects_to_slubs(uint32_t index) {
 	uint32_t size = heap_size_classes[index];
 	uint32_t objects_count = BLOCK_SIZE / size;
-	uint32_t block = arch_phys_krnl_alloc_area(BLOCK_SIZE);
+	uint32_t block = hal_phys_krnl_alloc_area(BLOCK_SIZE);
 	if (block == 0) {
 		return false;
 	}
 	for (size_t i = 0; i < objects_count; ++i) {
 		size_t offset = i * size;
-		uint32_t address = ARCH_VIRT_KERNEL_MAPPING_BASE + block + offset;
+		uint32_t address = HAL_VIRT_KERNEL_MAPPING_BASE + block + offset;
 		struct heap_slub_obj_hdr *block = (struct heap_slub_obj_hdr *)address;
 		block->next = slubs[index];
 		slubs[index] = block;
@@ -56,13 +56,13 @@ void *heap_alloc(uint32_t size) {
 	uint32_t size_class = heap_get_size_class(size);
 	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
 		uint32_t result =
-			arch_phys_krnl_alloc_area(ALIGN_UP(size, ARCH_VIRT_PAGE_SIZE));
+			hal_phys_krnl_alloc_area(ALIGN_UP(size, HAL_VIRT_PAGE_SIZE));
 		if (result == 0) {
 			mutex_unlock(&heap_mutex);
 			return NULL;
 		} else {
 			mutex_unlock(&heap_mutex);
-			return (void *)(result + ARCH_VIRT_KERNEL_MAPPING_BASE);
+			return (void *)(result + HAL_VIRT_KERNEL_MAPPING_BASE);
 		}
 	}
 	if (slubs[size_class] == NULL) {
@@ -85,8 +85,8 @@ void heap_free(void *area, uint32_t size) {
 	uint32_t size_class = heap_get_size_class(size);
 	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
 		mutex_unlock(&heap_mutex);
-		arch_phys_krnl_free_area((uint32_t)area,
-								 ALIGN_UP(size, ARCH_VIRT_PAGE_SIZE));
+		hal_phys_krnl_free_area((uint32_t)area,
+								ALIGN_UP(size, HAL_VIRT_PAGE_SIZE));
 		return;
 	}
 	struct heap_slub_obj_hdr *hdr = (struct heap_slub_obj_hdr *)area;

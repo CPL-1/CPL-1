@@ -1,13 +1,12 @@
-#include <arch/memory/virt.h>
+#include <arch/i386/proc/iowait.h>
 #include <core/fd/fs/devfs.h>
 #include <core/fd/vfs.h>
 #include <core/memory/heap.h>
-#include <core/proc/iowait.h>
 #include <core/proc/mutex.h>
 #include <core/storage/storage.h>
 #include <drivers/pci.h>
-#include <drivers/pic.h>
 #include <drivers/storage/nvme.h>
+#include <hal/memory/virt.h>
 #include <lib/kmsg.h>
 #include <utils/utils.h>
 
@@ -471,7 +470,7 @@ static bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf,
 	mutex_lock(&(drive->mutex));
 	struct nvme_drive_namespace *namespace = drive->namespaces + (ns - 1);
 	size_t block_size = namespace->block_size;
-	uint32_t page_offset = (uint32_t)buf & (ARCH_VIRT_PAGE_SIZE - 1);
+	uint32_t page_offset = (uint32_t)buf & (HAL_VIRT_PAGE_SIZE - 1);
 
 	unused union nvme_sq_entry rw_command;
 	rw_command.rw.opcode = write ? NVME_CMD_WRITE : NVME_CMD_READ;
@@ -485,30 +484,30 @@ static bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf,
 	rw_command.rw.slba = lba;
 	rw_command.rw.nsid = ns;
 	rw_command.rw.length = count - 1;
-	uint32_t aligned_down = ALIGN_DOWN((uintptr_t)buf, ARCH_VIRT_PAGE_SIZE);
+	uint32_t aligned_down = ALIGN_DOWN((uintptr_t)buf, HAL_VIRT_PAGE_SIZE);
 	uint32_t aligned_up =
-		ALIGN_UP((uintptr_t)(buf + count * block_size), ARCH_VIRT_PAGE_SIZE);
+		ALIGN_UP((uintptr_t)(buf + count * block_size), HAL_VIRT_PAGE_SIZE);
 	size_t prp_entries_count =
-		((aligned_up - aligned_down) / ARCH_VIRT_PAGE_SIZE) - 1;
+		((aligned_up - aligned_down) / HAL_VIRT_PAGE_SIZE) - 1;
 
 	if (prp_entries_count == 0) {
 		rw_command.rw.prp1 =
-			(uint64_t)((uintptr_t)buf - ARCH_VIRT_KERNEL_MAPPING_BASE);
+			(uint64_t)((uintptr_t)buf - HAL_VIRT_KERNEL_MAPPING_BASE);
 	} else if (prp_entries_count == 1) {
 		rw_command.rw.prp1 =
-			(uint64_t)((uintptr_t)buf - ARCH_VIRT_KERNEL_MAPPING_BASE);
+			(uint64_t)((uintptr_t)buf - HAL_VIRT_KERNEL_MAPPING_BASE);
 		rw_command.rw.prp2 =
-			(uint64_t)((uintptr_t)buf - ARCH_VIRT_KERNEL_MAPPING_BASE -
-					   page_offset + ARCH_VIRT_PAGE_SIZE);
+			(uint64_t)((uintptr_t)buf - HAL_VIRT_KERNEL_MAPPING_BASE -
+					   page_offset + HAL_VIRT_PAGE_SIZE);
 	} else {
 		rw_command.rw.prp1 =
-			(uint64_t)((uintptr_t)buf - ARCH_VIRT_KERNEL_MAPPING_BASE);
-		rw_command.rw.prp2 = (uint64_t)((uintptr_t)(drive->prps) -
-										ARCH_VIRT_KERNEL_MAPPING_BASE);
+			(uint64_t)((uintptr_t)buf - HAL_VIRT_KERNEL_MAPPING_BASE);
+		rw_command.rw.prp2 =
+			(uint64_t)((uintptr_t)(drive->prps) - HAL_VIRT_KERNEL_MAPPING_BASE);
 		for (size_t i = 0; i < prp_entries_count; ++i) {
 			drive->prps[i] =
-				(uint64_t)((uintptr_t)buf - ARCH_VIRT_KERNEL_MAPPING_BASE -
-						   page_offset + (i + 1) * ARCH_VIRT_PAGE_SIZE);
+				(uint64_t)((uintptr_t)buf - HAL_VIRT_KERNEL_MAPPING_BASE -
+						   page_offset + (i + 1) * HAL_VIRT_PAGE_SIZE);
 		}
 	}
 
@@ -548,11 +547,11 @@ void nvme_init(struct pci_address addr) {
 	printf("         NVME BAR0 MMIO base at 0x%p\n", bar.address);
 	pci_enable_bus_mastering(addr);
 
-	uintptr_t mapping_paddr = ALIGN_DOWN(bar.address, ARCH_VIRT_PAGE_SIZE);
+	uintptr_t mapping_paddr = ALIGN_DOWN(bar.address, HAL_VIRT_PAGE_SIZE);
 	size_t mapping_size =
-		ALIGN_UP(bar.size + (bar.address - mapping_paddr), ARCH_VIRT_PAGE_SIZE);
-	uintptr_t mapping = arch_virt_get_io_mapping(mapping_paddr, mapping_size,
-												 bar.disable_cache);
+		ALIGN_UP(bar.size + (bar.address - mapping_paddr), HAL_VIRT_PAGE_SIZE);
+	uintptr_t mapping =
+		hal_virt_get_io_mapping(mapping_paddr, mapping_size, bar.disable_cache);
 	if (mapping == 0) {
 		kmsg_err("NVME Driver", "Failed to map BAR0");
 	}
@@ -590,7 +589,7 @@ void nvme_init(struct pci_address addr) {
 
 	size_t submission_queue_size =
 		ALIGN_UP(sizeof(union nvme_sq_entry) * NVME_SUBMISSION_QUEUE_SIZE,
-				 ARCH_VIRT_PAGE_SIZE);
+				 HAL_VIRT_PAGE_SIZE);
 	union nvme_sq_entry *admin_submission_queue =
 		(union nvme_sq_entry *)heap_alloc(submission_queue_size);
 	union nvme_sq_entry *submission_queue =
@@ -598,7 +597,7 @@ void nvme_init(struct pci_address addr) {
 
 	size_t completition_queue_size =
 		ALIGN_UP(sizeof(struct nvme_cq_entry) * NVME_COMPLETITION_QUEUE_SIZE,
-				 ARCH_VIRT_PAGE_SIZE);
+				 HAL_VIRT_PAGE_SIZE);
 	struct nvme_cq_entry *admin_completition_queue =
 		(struct nvme_cq_entry *)heap_alloc(completition_queue_size);
 	struct nvme_cq_entry *completition_queue =
@@ -622,18 +621,18 @@ void nvme_init(struct pci_address addr) {
 	kmsg_log("NVME Driver", "NVME controller admin queues allocated");
 
 	uint32_t admin_submission_queue_physical =
-		(uint32_t)admin_submission_queue - ARCH_VIRT_KERNEL_MAPPING_BASE;
+		(uint32_t)admin_submission_queue - HAL_VIRT_KERNEL_MAPPING_BASE;
 	uint32_t admin_completition_queue_physical =
-		(uint32_t)admin_completition_queue - ARCH_VIRT_KERNEL_MAPPING_BASE;
+		(uint32_t)admin_completition_queue - HAL_VIRT_KERNEL_MAPPING_BASE;
 	unused uint32_t submission_queue_physical =
-		(uint32_t)submission_queue - ARCH_VIRT_KERNEL_MAPPING_BASE;
+		(uint32_t)submission_queue - HAL_VIRT_KERNEL_MAPPING_BASE;
 	uint32_t completition_queue_physical =
-		(uint32_t)completition_queue - ARCH_VIRT_KERNEL_MAPPING_BASE;
+		(uint32_t)completition_queue - HAL_VIRT_KERNEL_MAPPING_BASE;
 
 	asq = nvme_read_asq_register(bar0);
 	acq = nvme_read_acq_register(bar0);
-	asq.page = admin_submission_queue_physical / ARCH_VIRT_PAGE_SIZE;
-	acq.page = admin_completition_queue_physical / ARCH_VIRT_PAGE_SIZE;
+	asq.page = admin_submission_queue_physical / HAL_VIRT_PAGE_SIZE;
+	acq.page = admin_completition_queue_physical / HAL_VIRT_PAGE_SIZE;
 	nvme_write_asq_register(bar0, asq);
 	nvme_write_acq_register(bar0, acq);
 
@@ -686,7 +685,7 @@ void nvme_init(struct pci_address addr) {
 		kmsg_err("NVME Driver", "Failed to allocate identify info object");
 	}
 	identify_command.identify.prp1 =
-		((uint32_t)identify_info - ARCH_VIRT_KERNEL_MAPPING_BASE);
+		((uint32_t)identify_info - HAL_VIRT_KERNEL_MAPPING_BASE);
 	identify_command.identify.prp2 = 0;
 	if (nvme_execute_admin_cmd(nvme_drive_info, identify_command) != 0) {
 		kmsg_err("NVME Driver", "Failed to execute identify command");
@@ -749,7 +748,7 @@ void nvme_init(struct pci_address addr) {
 		get_namespace_info_command.identify.nsid = i + 1;
 		get_namespace_info_command.identify.cns = 0;
 		get_namespace_info_command.identify.prp1 =
-			(uint32_t) namespace->info - ARCH_VIRT_KERNEL_MAPPING_BASE;
+			(uint32_t) namespace->info - HAL_VIRT_KERNEL_MAPPING_BASE;
 		if (nvme_execute_admin_cmd(nvme_drive_info,
 								   get_namespace_info_command) != 0) {
 			kmsg_err("NVME Driver", "Failed to read namespace info");
@@ -791,7 +790,7 @@ void nvme_init(struct pci_address addr) {
 		printf("         Drive namespace %u initialized!\n", i + 1);
 	}
 
-	uint64_t *prps = heap_alloc(max_size / ARCH_VIRT_PAGE_SIZE * 8);
+	uint64_t *prps = heap_alloc(max_size / HAL_VIRT_PAGE_SIZE * 8);
 	if (prps == NULL) {
 		kmsg_err("NVME Driver", "Failed to allocate PRP list");
 	}

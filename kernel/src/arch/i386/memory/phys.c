@@ -1,8 +1,8 @@
 #include <arch/i386/init/multiboot.h>
 #include <arch/i386/memory/config.h>
 #include <arch/i386/memory/phys.h>
-#include <arch/memory/phys.h>
 #include <core/proc/mutex.h>
+#include <hal/memory/phys.h>
 #include <lib/kmsg.h>
 
 #define PHYS_MOD_NAME "i386 Physical Memory Manager"
@@ -61,7 +61,7 @@ uintptr_t i386_phys_krnl_alloc_frame() {
 	return 0;
 }
 
-uintptr_t arch_phys_user_alloc_frame() {
+uintptr_t hal_phys_user_alloc_frame() {
 	mutex_lock(&i386_phys_mutex);
 	for (; i386_phys_high_arena_lo < i386_phys_high_arena_hi;
 		 ++i386_phys_high_arena_lo) {
@@ -75,7 +75,7 @@ uintptr_t arch_phys_user_alloc_frame() {
 	return 0;
 }
 
-uintptr_t arch_phys_krnl_alloc_area(size_t size) {
+uintptr_t hal_phys_krnl_alloc_area(size_t size) {
 	mutex_lock(&i386_phys_mutex);
 	const uint32_t frames_needed = size / I386_PAGE_SIZE;
 	uint32_t free_frames = 0;
@@ -118,10 +118,10 @@ static void i386_phys_free_frame(uint32_t frame) {
 	mutex_unlock(&i386_phys_mutex);
 }
 
-void arch_phys_user_free_frame(uintptr_t frame) { i386_phys_free_frame(frame); }
+void hal_phys_user_free_frame(uintptr_t frame) { i386_phys_free_frame(frame); }
 void i386_phys_krnl_free_frame(uint32_t frame) { i386_phys_free_frame(frame); }
 
-void arch_phys_krnl_free_area(uintptr_t area, size_t size) {
+void hal_phys_krnl_free_area(uintptr_t area, size_t size) {
 	size = ALIGN_UP(size, I386_PAGE_SIZE);
 	mutex_lock(&i386_phys_mutex);
 	for (uint32_t offset = 0; offset < size; offset += I386_PAGE_SIZE) {

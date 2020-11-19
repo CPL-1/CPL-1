@@ -1,14 +1,13 @@
-#include <arch/i386/cpu.h>
-#include <arch/i386/idt.h>
-#include <arch/i386/tss.h>
-#include <arch/memory/phys.h>
-#include <arch/memory/virt.h>
 #include <core/memory/heap.h>
-#include <core/proc/intlock.h>
 #include <core/proc/proc.h>
 #include <core/proc/proclayout.h>
-#include <drivers/pit.h>
-#include <lib/fembed.h>
+#include <hal/memory/phys.h>
+#include <hal/memory/virt.h>
+#include <hal/proc/intlock.h>
+#include <hal/proc/isrhandler.h>
+#include <hal/proc/stack.h>
+#include <hal/proc/state.h>
+#include <hal/proc/timer.h>
 #include <lib/kmsg.h>
 
 #define PROC_MOD_NAME "Process Manager & Scheduler"
@@ -29,33 +28,32 @@ struct proc_process *proc_get_data(struct proc_id id) {
 	if (array_index >= MAX_PROC_COUNT) {
 		return NULL;
 	}
-	intlock_lock();
+	hal_intlock_lock();
 	struct proc_process *data = proc_processes_by_id[array_index];
 	if (data == NULL) {
-		intlock_unlock();
+		hal_intlock_unlock();
 		return NULL;
 	}
 	if (proc_instance_count_by_id[array_index] != id.instance_number) {
-		intlock_unlock();
+		hal_intlock_unlock();
 		return NULL;
 	}
-	intlock_unlock();
+	hal_intlock_unlock();
 	return data;
 }
 
 static struct proc_id proc_allocate_proc_id(struct proc_process *process) {
 	struct proc_id result;
 	for (size_t i = 0; i < MAX_PROC_COUNT; ++i) {
-		intlock_lock();
+		hal_intlock_lock();
 		if (proc_processes_by_id[i] == NULL) {
 			proc_processes_by_id[i] = process;
 			result.id = i;
 			result.instance_number = proc_instance_count_by_id[i];
-			intlock_unlock();
+			hal_intlock_unlock();
 			return result;
 		}
-		intlock_unlock();
-		asm volatile("pause");
+		hal_intlock_unlock();
 	}
 	result.id = MAX_PROC_COUNT;
 	result.instance_number = 0;
@@ -67,32 +65,39 @@ struct proc_id proc_new_process(struct proc_id parent) {
 	if (process == NULL) {
 		goto fail;
 	}
-	uint32_t new_cr3 = arch_virt_new_root();
-	if (new_cr3 == 0) {
+	uintptr_t new_virt_root = hal_virt_new_root();
+	if (new_virt_root == 0) {
 		goto free_process_obj;
 	}
-	uint32_t stack = (uint32_t)heap_alloc(PROC_KERNEL_STACK_SIZE);
+	uintptr_t stack = (uintptr_t)heap_alloc(PROC_KERNEL_STACK_SIZE);
 	if (stack == 0) {
 		goto free_cr3;
 	}
-	struct proc_id new_id = proc_allocate_proc_id(process);
-	if (!proc_is_valid_proc_id(new_id)) {
+	char *process_state = (char *)(heap_alloc(HAL_PROCESS_STATE_SIZE));
+	if (process_state == NULL) {
 		goto free_stack;
 	}
-	memset(&(process->frame), 0, sizeof(process->frame));
+	struct proc_id new_id = proc_allocate_proc_id(process);
+	if (!proc_is_valid_proc_id(new_id)) {
+		goto free_process_state;
+	}
+	memset(process_state, 0, HAL_PROCESS_STATE_SIZE);
 	process->next = process->prev = process->wait_queue_head =
 		process->wait_queue_tail = process->next_in_queue = NULL;
 	process->ppid = parent;
 	process->pid = new_id;
-	process->cr3 = new_cr3;
+	process->virt_root = new_virt_root;
+	process->process_state = process_state;
 	process->kernel_stack = stack;
 	process->return_code = 0;
 	process->state = SLEEPING;
 	return new_id;
+free_process_state:
+	heap_free(process_state, HAL_PROCESS_STATE_SIZE);
 free_stack:
 	heap_free((void *)stack, PROC_KERNEL_STACK_SIZE);
 free_cr3:
-	arch_virt_free_root(new_cr3);
+	hal_virt_free_root(new_virt_root);
 free_process_obj:
 	FREE_OBJ(process);
 fail:;
@@ -107,7 +112,7 @@ void proc_continue(struct proc_id id) {
 	if (process == NULL) {
 		return;
 	}
-	intlock_lock();
+	hal_intlock_lock();
 	process->state = RUNNING;
 	struct proc_process *next, *prev;
 	next = proc_current_process;
@@ -116,7 +121,7 @@ void proc_continue(struct proc_id id) {
 	prev->next = process;
 	process->next = next;
 	process->prev = prev;
-	intlock_unlock();
+	hal_intlock_unlock();
 }
 
 static void proc_cut_from_the_list(struct proc_process *process) {
@@ -131,7 +136,7 @@ void proc_pause(struct proc_id id, bool override_state) {
 	if (process == NULL) {
 		return;
 	}
-	intlock_lock();
+	hal_intlock_lock();
 	if (override_state) {
 		process->state = SLEEPING;
 	}
@@ -139,7 +144,7 @@ void proc_pause(struct proc_id id, bool override_state) {
 	if (process == proc_current_process) {
 		proc_yield();
 	}
-	intlock_unlock();
+	hal_intlock_unlock();
 }
 
 struct proc_id proc_my_id() {
@@ -153,14 +158,14 @@ void proc_pause_self(bool override_state) {
 }
 
 void proc_dispose(struct proc_process *process) {
-	intlock_lock();
+	hal_intlock_lock();
 	process->next_in_queue = proc_dealloc_queue_head;
 	proc_dealloc_queue_head = process;
-	intlock_unlock();
+	hal_intlock_unlock();
 }
 
 void proc_exit(int exit_code) {
-	intlock_lock();
+	hal_intlock_lock();
 	struct proc_process *process = proc_current_process;
 	process->return_code = exit_code;
 	proc_instance_count_by_id[process->pid.id]++;
@@ -197,35 +202,33 @@ struct proc_process *proc_get_waiting_queue_head(struct proc_process *process) {
 }
 
 struct proc_process *proc_wait_for_child_term() {
-	intlock_lock();
+	hal_intlock_lock();
 	struct proc_process *process = proc_current_process;
 	if (process->wait_queue_head != NULL) {
 		struct proc_process *result = proc_get_waiting_queue_head(process);
-		intlock_unlock();
+		hal_intlock_unlock();
 		return result;
 	}
 	process->state = WAITING_FOR_CHILD_TERM;
 	proc_pause_self(false);
-	intlock_lock();
+	hal_intlock_lock();
 	struct proc_process *result = proc_get_waiting_queue_head(process);
-	intlock_unlock();
+	hal_intlock_unlock();
 	return result;
 }
 
 void proc_yield() {
-	intlock_flush();
-	asm volatile("int $0xfe");
+	hal_intlock_flush();
+	hal_timer_trigger_callback();
 }
 
-void proc_preempt(unused void *ctx, struct proc_trap_frame *frame) {
-	memcpy(&(proc_current_process->frame), frame,
-		   sizeof(struct proc_trap_frame));
+void proc_preempt(unused void *ctx, char *frame) {
+	memcpy(proc_current_process->process_state, frame, HAL_PROCESS_STATE_SIZE);
 	proc_current_process = proc_current_process->next;
-	memcpy(frame, &(proc_current_process->frame),
-		   sizeof(struct proc_trap_frame));
-	i386_cpu_set_cr3(proc_current_process->cr3);
-	i386_tss_set_dpl1_stack(
-		proc_current_process->kernel_stack + PROC_KERNEL_STACK_SIZE, 0x21);
+	memcpy(frame, proc_current_process->process_state, HAL_PROCESS_STATE_SIZE);
+	hal_virt_set_root(proc_current_process->virt_root);
+	hal_stack_syscall_set(proc_current_process->kernel_stack +
+						  PROC_KERNEL_STACK_SIZE);
 }
 
 void proc_init() {
@@ -248,31 +251,32 @@ void proc_init() {
 	proc_current_process = kernel_process_data;
 	kernel_process_data->next = kernel_process_data;
 	kernel_process_data->prev = kernel_process_data;
-	proc_dealloc_queue_head = NULL;
-	i386_tss_set_dpl0_stack(
-		(uint32_t)proc_scheduler_stack + PROC_SCHEDULER_STACK_SIZE, 0x10);
-	pit_set_callback((uint32_t)proc_preempt);
-	void *yield_callback = fembed_make_irq_handler((void *)proc_preempt, NULL);
-	if (yield_callback == NULL) {
-		kmsg_err("Process Manager & Scheduler",
-				 "Failed to make yield callback");
+	kernel_process_data->process_state = heap_alloc(HAL_PROCESS_STATE_SIZE);
+	if (kernel_process_data->process_state == NULL) {
+		kmsg_err(PROC_MOD_NAME, "Failed to allocate kernel process state");
 	}
-	i386_idt_install_isr(0xfe, (uint32_t)yield_callback);
+	kernel_process_data->virt_root = hal_virt_get_root();
+	proc_dealloc_queue_head = NULL;
+	hal_stack_isr_set((uintptr_t)(proc_scheduler_stack) +
+					  PROC_SCHEDULER_STACK_SIZE);
+	if (!hal_timer_set_callback((hal_isr_handler_t)proc_preempt)) {
+		kmsg_err(PROC_MOD_NAME, "Failed to set timer callback");
+	}
 	proc_initialized = true;
 }
 
 bool proc_dispose_queue_poll() {
-	intlock_lock();
+	hal_intlock_lock();
 	struct proc_process *process = proc_dealloc_queue_head;
 	if (process == NULL) {
-		intlock_unlock();
+		hal_intlock_unlock();
 		return false;
 	}
 	kmsg_log("User Request Monitor", "Disposing process...");
 	proc_dealloc_queue_head = process->next_in_queue;
-	intlock_unlock();
-	if (process->cr3 != 0) {
-		arch_virt_free_root(process->cr3);
+	hal_intlock_unlock();
+	if (process->virt_root != 0) {
+		hal_virt_free_root(process->virt_root);
 	}
 	if (process->kernel_stack != 0) {
 		heap_free((void *)(process->kernel_stack), PROC_KERNEL_STACK_SIZE);

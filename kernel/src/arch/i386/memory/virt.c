@@ -2,9 +2,9 @@
 #include <arch/i386/memory/config.h>
 #include <arch/i386/memory/phys.h>
 #include <arch/i386/memory/virt.h>
-#include <arch/memory/phys.h>
-#include <arch/memory/virt.h>
 #include <core/proc/priv.h>
+#include <hal/memory/phys.h>
+#include <hal/memory/virt.h>
 #include <lib/kmsg.h>
 
 #define VIRT_MOD_NAME "i386 Virtual Memory Manager"
@@ -29,8 +29,8 @@ struct i386_virt_page_table {
 	union i386_virt_page_table_entry entries[1024];
 } packed;
 
-uintptr_t ARCH_VIRT_KERNEL_MAPPING_BASE = I386_KERNEL_MAPPING_BASE;
-size_t ARCH_VIRT_PAGE_SIZE = I386_PAGE_SIZE;
+uintptr_t HAL_VIRT_KERNEL_MAPPING_BASE = I386_KERNEL_MAPPING_BASE;
+size_t HAL_VIRT_PAGE_SIZE = I386_PAGE_SIZE;
 
 static inline uint16_t i386_virt_pd_index(uint32_t vaddr) {
 	return (vaddr >> 22) & (0b1111111111);
@@ -92,7 +92,7 @@ void i386_virt_kernel_mapping_init() {
 	i386_cpu_set_cr3(i386_cpu_get_cr3());
 }
 
-uintptr_t arch_virt_new_root() {
+uintptr_t hal_virt_new_root() {
 	uint32_t frame = i386_phys_krnl_alloc_frame();
 	if (frame == 0) {
 		return 0;
@@ -105,11 +105,11 @@ uintptr_t arch_virt_new_root() {
 	return frame;
 }
 
-void arch_virt_free_root(uintptr_t root) { i386_phys_krnl_free_frame(root); }
+void hal_virt_free_root(uintptr_t root) { i386_phys_krnl_free_frame(root); }
 
-void arch_virt_set_root(uintptr_t root) { i386_cr3_set(root); }
+void hal_virt_set_root(uintptr_t root) { i386_cr3_set(root); }
 
-uintptr_t arch_virt_get_root(uintptr_t root) { return i386_cr3_get(root); }
+uintptr_t hal_virt_get_root(uintptr_t root) { return i386_cr3_get(root); }
 
 static void i386_virt_map_in_kernel_part(uint32_t vaddr, uint32_t paddr,
 										 bool cache_disabled) {
@@ -133,9 +133,9 @@ static void i386_virt_flush_cr3() {
 	priv_call_ring0((int)i386_virt_flush_i386_cr3_ring0, 0);
 }
 
-uintptr_t arch_virt_get_io_mapping(uintptr_t paddr, size_t size,
-								   bool cache_disabled) {
-	uint32_t area = arch_phys_krnl_alloc_area(size);
+uintptr_t hal_virt_get_io_mapping(uintptr_t paddr, size_t size,
+								  bool cache_disabled) {
+	uint32_t area = hal_phys_krnl_alloc_area(size);
 	if (area == 0) {
 		return 0;
 	}
