@@ -1,5 +1,5 @@
+#include <arch/i386/ports.h>
 #include <drivers/textvga.h>
-#include <i386/ports.h>
 #include <lib/printf.h>
 
 char char_from_digit(uint8_t digit) {

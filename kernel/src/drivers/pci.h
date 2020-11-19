@@ -1,7 +1,7 @@
 #ifndef __PCI_H_INCLUDED__
 #define __PCI_H_INCLUDED__
 
-#include <utils.h>
+#include <utils/utils.h>
 
 enum {
 	PCI_COMMAND = 0x04,

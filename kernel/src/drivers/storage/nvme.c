@@ -1,16 +1,16 @@
+#include <core/storage/storage.h>
 #include <drivers/pci.h>
 #include <drivers/pic.h>
 #include <drivers/storage/nvme.h>
-#include <drivers/storage/storage.h>
 
-#include <fd/devfs.h>
-#include <fd/vfs.h>
-#include <kmsg.h>
-#include <memory/heap.h>
-#include <memory/virt.h>
-#include <proc/iowait.h>
-#include <proc/mutex.h>
-#include <utils.h>
+#include <core/fd/fs/devfs.h>
+#include <core/fd/vfs.h>
+#include <core/memory/heap.h>
+#include <core/memory/virt.h>
+#include <core/proc/iowait.h>
+#include <core/proc/mutex.h>
+#include <lib/kmsg.h>
+#include <utils/utils.h>
 
 #define NVME_SUBMISSION_QUEUE_SIZE 2
 #define NVME_COMPLETITION_QUEUE_SIZE 2

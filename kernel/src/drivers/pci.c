@@ -1,5 +1,5 @@
+#include <arch/i386/ports.h>
 #include <drivers/pci.h>
-#include <i386/ports.h>
 
 inline static uint32_t pci_get_io_field_address(struct pci_address addr,
 												uint8_t field) {

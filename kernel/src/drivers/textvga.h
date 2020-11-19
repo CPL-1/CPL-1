@@ -1,7 +1,7 @@
 #ifndef __VGA_TEXTINCLUDED__
 #define __VGA_TEXTINCLUDED__
 
-#include <utils.h>
+#include <utils/utils.h>
 
 void vga_init();
 void vga_clear_screen();

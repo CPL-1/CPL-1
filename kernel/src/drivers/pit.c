@@ -1,9 +1,9 @@
+#include <arch/i386/idt.h>
+#include <arch/i386/ports.h>
+#include <core/proc/iowait.h>
 #include <drivers/pic.h>
 #include <drivers/pit.h>
-#include <fembed.h>
-#include <i386/idt.h>
-#include <i386/ports.h>
-#include <proc/iowait.h>
+#include <lib/fembed.h>
 
 void pit_init(uint32_t freq) {
 	uint32_t divisor = 1193180 / freq;
