@@ -1,7 +1,7 @@
 #ifndef __I386_STATE_H_INCLUDED__
 #define __I386_STATE_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 struct i386_cpu_state {
 	uint32_t ds, gs, fs, es;

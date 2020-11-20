@@ -1,7 +1,7 @@
 #ifndef __I386_PORTS_H_INCLUDED__
 #define __I386_PORTS_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 static inline void outb(uint16_t port, uint8_t val) {
 	asm volatile("outb %0, %1" : : "a"(val), "Nd"(port));

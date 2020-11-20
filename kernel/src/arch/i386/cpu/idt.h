@@ -1,7 +1,7 @@
 #ifndef __I386_IDT_H_INCLUDED__
 #define __I386_IDT_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 #define ISR_FLAGS 0xAE
 

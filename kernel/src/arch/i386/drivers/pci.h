@@ -1,7 +1,7 @@
 #ifndef __I386_PCI_H_INCLUDED__
 #define __I386_PCI_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 enum {
 	I386_PCI_COMMAND = 0x04,

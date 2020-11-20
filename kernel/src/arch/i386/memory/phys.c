@@ -1,9 +1,9 @@
 #include <arch/i386/init/multiboot.h>
 #include <arch/i386/memory/config.h>
 #include <arch/i386/memory/phys.h>
-#include <core/proc/mutex.h>
+#include <common/core/proc/mutex.h>
+#include <common/lib/kmsg.h>
 #include <hal/memory/phys.h>
-#include <lib/kmsg.h>
 
 #define PHYS_MOD_NAME "i386 Physical Memory Manager"
 

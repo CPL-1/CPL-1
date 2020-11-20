@@ -1,7 +1,7 @@
 #ifndef __I386_TSS_H_INCLUDED__
 #define __I386_TSS_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 void i386_tss_init();
 uint32_t i386_tss_get_base();

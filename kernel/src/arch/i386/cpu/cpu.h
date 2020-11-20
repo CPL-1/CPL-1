@@ -1,7 +1,7 @@
 #ifndef __I386_CPU_H_INCLUDED__
 #define __I386_CPU_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 static inline uint32_t i386_cpu_get_cr3() {
 	uint32_t val;

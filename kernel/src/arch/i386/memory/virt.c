@@ -3,9 +3,9 @@
 #include <arch/i386/memory/phys.h>
 #include <arch/i386/memory/virt.h>
 #include <arch/i386/proc/priv.h>
+#include <common/lib/kmsg.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
-#include <lib/kmsg.h>
 
 #define VIRT_MOD_NAME "i386 Virtual Memory Manager"
 #define I386_FLAGS_MASK 0b111111111111
@@ -29,8 +29,8 @@ struct i386_virt_page_table {
 	union i386_virt_page_table_entry entries[1024];
 } packed;
 
-uintptr_t HAL_VIRT_KERNEL_MAPPING_BASE = I386_KERNEL_MAPPING_BASE;
-size_t HAL_VIRT_PAGE_SIZE = I386_PAGE_SIZE;
+uintptr_t hal_virt_kernel_mapping_base = I386_KERNEL_MAPPING_BASE;
+size_t hal_virt_page_size = I386_PAGE_SIZE;
 
 static inline uint16_t i386_virt_pd_index(uint32_t vaddr) {
 	return (vaddr >> 22) & (0b1111111111);

@@ -14,19 +14,19 @@
 #include <arch/i386/proc/priv.h>
 #include <arch/i386/proc/ring1.h>
 #include <arch/i386/proc/state.h>
-#include <core/fd/fs/devfs.h>
-#include <core/fd/fs/rootfs.h>
-#include <core/fd/vfs.h>
-#include <core/memory/heap.h>
-#include <core/proc/proc.h>
-#include <core/proc/proclayout.h>
+#include <common/core/fd/fs/devfs.h>
+#include <common/core/fd/fs/rootfs.h>
+#include <common/core/fd/vfs.h>
+#include <common/core/memory/heap.h>
+#include <common/core/proc/proc.h>
+#include <common/core/proc/proclayout.h>
+#include <common/lib/dynarray.h>
+#include <common/lib/kmsg.h>
 #include <hal/drivers/tty.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
 #include <hal/proc/intlock.h>
 #include <hal/proc/isrhandler.h>
-#include <lib/dynarray.h>
-#include <lib/kmsg.h>
 
 void print_pci(struct i386_pci_address addr, struct i386_pci_id id,
 			   void *context) {

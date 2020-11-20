@@ -2,11 +2,11 @@
 #include <arch/i386/drivers/pic.h>
 #include <arch/i386/proc/iowait.h>
 #include <arch/i386/proc/isrhandler.h>
-#include <core/memory/heap.h>
-#include <core/proc/proc.h>
+#include <common/core/memory/heap.h>
+#include <common/core/proc/proc.h>
+#include <common/lib/kmsg.h>
 #include <hal/proc/intlock.h>
 #include <hal/proc/isrhandler.h>
-#include <lib/kmsg.h>
 
 struct iowait_list_entry {
 	iowait_handler_t int_handler;

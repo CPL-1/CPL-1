@@ -1,10 +1,10 @@
 #include <arch/i386/drivers/pci.h>
 #include <arch/i386/drivers/storage/nvme.h>
 #include <arch/i386/init/detect.h>
-#include <core/memory/heap.h>
-#include <drivers/storage/nvme.h>
+#include <common/core/memory/heap.h>
+#include <common/drivers/storage/nvme.h>
+#include <common/lib/kmsg.h>
 #include <hal/drivers/storage/nvme.h>
-#include <lib/kmsg.h>
 
 void detect_hardware_callback(struct i386_pci_address addr,
 							  unused struct i386_pci_id id, unused void *ctx) {

@@ -1,7 +1,7 @@
 #ifndef __PIC_H_INCLUDED__
 #define __PIC_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 void i386_pic_init();
 void i386_pic_irq_notify_on_term(uint8_t no);

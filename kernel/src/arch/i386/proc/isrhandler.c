@@ -1,4 +1,4 @@
-#include <core/memory/heap.h>
+#include <common/core/memory/heap.h>
 #include <hal/proc/isrhandler.h>
 
 extern void i386_isr_with_ctx_template_begin();

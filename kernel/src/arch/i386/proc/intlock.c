@@ -1,5 +1,5 @@
+#include <common/misc/utils.h>
 #include <hal/proc/intlock.h>
-#include <utils/utils.h>
 
 static size_t i386_intlocks_count = 0;
 

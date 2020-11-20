@@ -1,7 +1,7 @@
 #ifndef __MULTIBOOT_H_INCLUDED__
 #define __MULTIBOOT_H_INCLUDED__
 
-#include <utils/utils.h>
+#include <common/misc/utils.h>
 
 enum multiboot_mmap_entry_type {
 	AVAILABLE = 1,

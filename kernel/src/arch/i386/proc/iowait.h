@@ -1,8 +1,8 @@
 #ifndef __IOWAIT_H_INCLUDED__
 #define __IOWAIT_H_INCLUDED__
 
+#include <common/misc/utils.h>
 #include <hal/proc/isrhandler.h>
-#include <utils/utils.h>
 
 typedef hal_isr_handler_t iowait_handler_t;
 typedef bool (*iowait_wakeup_handler_t)(void *ctx);

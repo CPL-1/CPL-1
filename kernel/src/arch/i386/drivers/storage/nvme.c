@@ -1,6 +1,6 @@
 #include <arch/i386/drivers/storage/nvme.h>
 #include <arch/i386/proc/iowait.h>
-#include <core/memory/heap.h>
+#include <common/core/memory/heap.h>
 
 struct i386_nvme_pci_controller {
 	struct i386_pci_address addr;

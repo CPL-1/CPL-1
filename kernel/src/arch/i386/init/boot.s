@@ -56,10 +56,10 @@ mapping_done:
     mov ecx, cr0
     or ecx, 0x80010000
     mov cr0, ecx
-    jmp higher_halfi386_mb1_start
+    jmp i386_higher_half_start
 
 section .text
-higher_halfi386_mb1_start:
+i386_higher_half_start:
     mov esp, stack_top
     push ebx
     call i386_kernel_main
