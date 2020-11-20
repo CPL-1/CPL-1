@@ -541,7 +541,6 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	volatile uint32_t *bar0 =
 		(volatile uint32_t *)(mapping + (controller->offset - mapping_paddr));
 	nvme_drive_info->bar0 = bar0;
-	printf("BAR0 at %p\n", bar0);
 
 	struct nvme_cc_register cc;
 	struct nvme_csts_register csts;

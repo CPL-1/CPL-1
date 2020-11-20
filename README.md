@@ -1,19 +1,19 @@
 # CPL-1 Operating System
 
-![Process Test image](screenshots/process_test.png)
-*CPL-1 kernel process subsystem test*
+![Process Test image](screenshots/kernel_init.png)
+*CPL-1 kernel init log on i686 CPUs*
 
 ### What is CPL-1
 
-CPL-1 Operating System is a hobby operating system project with the goal of creating small operating system that can build itself. It is called like that as the kernel runs in ring 1 to avoid variable length interrupt frames.
+CPL-1 Operating System is a hobby operating system project with the goal of creating lightweight and portable operating system that can build itself. It is called like that as the kernel for i686 target runs in ring 1 to avoid variable length interrupt frames (previously CPL-1 was only for i686 processors, so that was quite influential).
 
-### Why CPL-1 is 32 bit only?
+### What targets are supported by CPL-1
 
-CPL-1 is written to run in protected mode. Why? The answer is simple: I have never written 32 bit OSes before, so I decided to find out whether writing 32 bit OSes is really more simple (spoiler: it is not).
+Currently there is only support for i686 CPUS with PIC 8259 interrupt controller and PCI configuration space access mechianism v1.0
 
 ### What I need to build CPL-1?
 
-CPL-1 uses gcc, libgcc, ld, nasm and GNU Make to build. 
+For i686, CPL-1 uses gcc, libgcc, ld, nasm and GNU Make to build. 
 
 For NixOS, I simply type ```nix-shell -p pkgsi686Linux.gcc pkgsi686Linux.libgcc nasm``` before doing any development
 
@@ -22,25 +22,29 @@ For NixOS, I simply type ```nix-shell -p pkgsi686Linux.gcc pkgsi686Linux.libgcc 
 #### CPL-1 Kernel
 
 Start with
+
 ```
-cd kernel
+cd kernel/build/<NAME OF ARCH>
 ```
 
-To build kernel
+To build kernel, run
 ```
-make
+make build
 ```
-To clean object files
-```
-make object_clean
-```
-To clean everything (including kernel.elf file)
+
+To delete object files, run
 ```
 make clean
 ```
-To build and run kernel with ```-kernel``` QEMU switch
+
+To test kernel with qemu, run
 ```
 make run
+```
+
+To debug kernel, run
+```
+make debug
 ```
 
 ### What CPL-1 is licensed under?
