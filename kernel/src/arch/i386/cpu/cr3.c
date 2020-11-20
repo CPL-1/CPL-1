@@ -1,5 +1,5 @@
-#include <arch/i386/cpu.h>
-#include <arch/i386/cr3.h>
+#include <arch/i386/cpu/cpu.h>
+#include <arch/i386/cpu/cr3.h>
 
 static uint32_t cr3;
 

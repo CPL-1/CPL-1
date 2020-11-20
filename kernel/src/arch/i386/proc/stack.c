@@ -1,4 +1,4 @@
-#include <arch/i386/tss.h>
+#include <arch/i386/cpu/tss.h>
 #include <hal/proc/stack.h>
 
 void hal_stack_isr_set(uintptr_t stack_top) {

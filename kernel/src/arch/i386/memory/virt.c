@@ -1,4 +1,4 @@
-#include <arch/i386/cr3.h>
+#include <arch/i386/cpu/cr3.h>
 #include <arch/i386/memory/config.h>
 #include <arch/i386/memory/phys.h>
 #include <arch/i386/memory/virt.h>

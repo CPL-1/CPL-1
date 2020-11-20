@@ -1,5 +1,5 @@
-#include <arch/i386/gdt.h>
-#include <arch/i386/tss.h>
+#include <arch/i386/cpu/gdt.h>
+#include <arch/i386/cpu/tss.h>
 #include <utils/utils.h>
 
 #define GDT_ENTRIES_COUNT 8

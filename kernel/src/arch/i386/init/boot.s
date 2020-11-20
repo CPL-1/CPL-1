@@ -1,7 +1,7 @@
 bits 32
 
-global _start
-extern kernel_main
+global i386_mb1_start
+extern i386_kernel_main
 
 HEADER_ALIGN: equ 1 << 0
 HEADER_MEMINFO: equ 1 << 1
@@ -31,7 +31,7 @@ resb 4096
 boot_page_table_phys: equ boot_page_table - KERNEL_MAPPING_BASE
 
 section .inittext
-_start:
+i386_mb1_start:
     mov esp, stack_top_phys
     mov edi, boot_page_table_phys
     xor esi, esi
@@ -56,13 +56,13 @@ mapping_done:
     mov ecx, cr0
     or ecx, 0x80010000
     mov cr0, ecx
-    jmp higher_half_start
+    jmp higher_halfi386_mb1_start
 
 section .text
-higher_half_start:
+higher_halfi386_mb1_start:
     mov esp, stack_top
     push ebx
-    call kernel_main
+    call i386_kernel_main
     pop ebx
     cli
 .halted:

@@ -1,4 +1,3 @@
-#include <arch/i386/ports.h>
 #include <hal/drivers/tty.h>
 #include <lib/printf.h>
 
@@ -133,7 +132,6 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 void write(const char *str, uint64_t size) {
 	for (uint64_t i = 0; i < size; ++i) {
 		hal_tty_putc(str[i]);
-		outb(0xe9, str[i]);
 	}
 	hal_tty_flush();
 }

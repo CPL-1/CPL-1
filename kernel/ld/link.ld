@@ -1,4 +1,4 @@
-ENTRY(_start)
+ENTRY(i386_mb1_start)
 
 SECTIONS
 {

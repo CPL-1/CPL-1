@@ -1,5 +1,5 @@
-#include <arch/i386/gdt.h>
-#include <arch/i386/tss.h>
+#include <arch/i386/cpu/gdt.h>
+#include <arch/i386/cpu/tss.h>
 
 struct i386_tss_layout {
 	uint32_t : 32;

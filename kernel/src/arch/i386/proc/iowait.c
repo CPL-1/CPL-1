@@ -1,5 +1,5 @@
+#include <arch/i386/cpu/idt.h>
 #include <arch/i386/drivers/pic.h>
-#include <arch/i386/idt.h>
 #include <arch/i386/proc/iowait.h>
 #include <arch/i386/proc/isrhandler.h>
 #include <core/memory/heap.h>

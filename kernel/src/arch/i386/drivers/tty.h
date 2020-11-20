@@ -3,6 +3,6 @@
 
 #include <utils/utils.h>
 
-void vga_init();
+void i386_tty_init();
 
 #endif

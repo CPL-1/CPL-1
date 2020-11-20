@@ -1,6 +1,6 @@
-#include <arch/i386/cpu.h>
+#include <arch/i386/cpu/cpu.h>
+#include <arch/i386/cpu/ports.h>
 #include <arch/i386/drivers/pic.h>
-#include <arch/i386/ports.h>
 
 #define PIC1 0x20
 #define PIC2 0xA0

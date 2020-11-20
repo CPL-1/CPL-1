@@ -1,10 +1,11 @@
-#include <arch/i386/cr3.h>
+#include <arch/i386/cpu/cr3.h>
+#include <arch/i386/cpu/gdt.h>
+#include <arch/i386/cpu/idt.h>
+#include <arch/i386/cpu/tss.h>
 #include <arch/i386/drivers/pci.h>
 #include <arch/i386/drivers/pic.h>
 #include <arch/i386/drivers/pit.h>
 #include <arch/i386/drivers/tty.h>
-#include <arch/i386/gdt.h>
-#include <arch/i386/idt.h>
 #include <arch/i386/init/detect.h>
 #include <arch/i386/init/multiboot.h>
 #include <arch/i386/memory/phys.h>
@@ -13,7 +14,6 @@
 #include <arch/i386/proc/priv.h>
 #include <arch/i386/proc/ring1.h>
 #include <arch/i386/proc/state.h>
-#include <arch/i386/tss.h>
 #include <core/fd/fs/devfs.h>
 #include <core/fd/fs/rootfs.h>
 #include <core/fd/vfs.h>
@@ -28,7 +28,8 @@
 #include <lib/dynarray.h>
 #include <lib/kmsg.h>
 
-void print_pci(struct pci_address addr, struct pci_id id, void *context) {
+void print_pci(struct i386_pci_address addr, struct i386_pci_id id,
+			   void *context) {
 	(void)context;
 	hal_tty_set_color(0x0f);
 	printf("         |> ");
@@ -48,9 +49,9 @@ void urm_thread() {
 
 void kernel_init_process();
 
-void kernel_main(uint32_t mb_offset) {
+void i386_kernel_main(uint32_t mb_offset) {
 	hal_intlock_lock();
-	vga_init();
+	i386_tty_init();
 	kmsg_log("Kernel Init",
 			 "Preparing to unleash the real power of your CPU...");
 	kmsg_init_done("VGA Text Display Driver");
@@ -81,7 +82,7 @@ void kernel_main(uint32_t mb_offset) {
 	ring1_switch();
 	kmsg_ok("Ring 1 Initializer", "Executing in Ring 1!");
 	kmsg_log("Entry Process", "Enumerating PCI Bus...");
-	pci_enumerate(print_pci, NULL);
+	i386_pci_enumerate(print_pci, NULL);
 	proc_init();
 	kmsg_init_done("Process Manager & Scheduler");
 	vfs_init(rootfs_make_superblock());

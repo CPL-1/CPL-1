@@ -1,4 +1,4 @@
-#include <arch/i386/idt.h>
+#include <arch/i386/cpu/idt.h>
 
 struct i386_idt_entry {
 	uint16_t base_low;
