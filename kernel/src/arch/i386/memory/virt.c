@@ -2,7 +2,7 @@
 #include <arch/i386/memory/config.h>
 #include <arch/i386/memory/phys.h>
 #include <arch/i386/memory/virt.h>
-#include <core/proc/priv.h>
+#include <arch/i386/proc/priv.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
 #include <lib/kmsg.h>

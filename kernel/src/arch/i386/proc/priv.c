@@ -1,5 +1,5 @@
 #include <arch/i386/idt.h>
-#include <core/proc/priv.h>
+#include <arch/i386/proc/priv.h>
 
 extern void priv_call_ring0_isr();
 

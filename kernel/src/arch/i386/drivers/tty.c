@@ -1,5 +1,7 @@
+#include <arch/i386/drivers/tty.h>
 #include <arch/i386/ports.h>
-#include <drivers/textvga.h>
+#include <hal/drivers/tty.h>
+#include <hal/memory/virt.h>
 
 static const uintptr_t TEXT_VGA_MEMORY = 0xc00b8000;
 static const uint16_t VGA_HEIGHT = 25;
@@ -62,7 +64,7 @@ static void vga_tab() {
 	}
 }
 
-void vga_clear_screen() {
+void hal_tty_clear() {
 	for (size_t y = 0; y < VGA_HEIGHT; ++y) {
 		for (size_t x = 0; x < VGA_WIDTH; ++x) {
 			vga_putc_raw_at(x, y, ' ');
@@ -70,7 +72,7 @@ void vga_clear_screen() {
 	}
 	vga_x = 0;
 	vga_y = 0;
-	vga_update_cursor();
+	hal_tty_flush();
 }
 
 static void vga_enable_cursor() {
@@ -83,10 +85,10 @@ static void vga_enable_cursor() {
 
 void vga_init() {
 	vga_enable_cursor();
-	vga_clear_screen();
+	hal_tty_clear();
 }
 
-void vga_update_cursor() {
+void hal_tty_flush() {
 	uint16_t pos = vga_y * VGA_WIDTH + vga_x;
 
 	outb(0x3d4, 0x0f);
@@ -96,7 +98,7 @@ void vga_update_cursor() {
 	outb(0x3d5, (uint8_t)((pos >> 8) & 0xff));
 }
 
-void vga_putc_no_cursor_update(char c) {
+void hal_tty_putc(char c) {
 	if (c == '\n') {
 		vga_newline();
 	} else if (c == '\t') {
@@ -106,12 +108,4 @@ void vga_putc_no_cursor_update(char c) {
 	}
 }
 
-void vga_puts(const char *str) {
-	char c;
-	while ((c = *str++) != '\0') {
-		vga_putc_no_cursor_update(c);
-	}
-	vga_update_cursor();
-}
-
-void vga_set_color(uint8_t color) { vga_color = color; }
+void hal_tty_set_color(uint8_t color) { vga_color = color; }

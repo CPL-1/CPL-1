@@ -1,5 +1,5 @@
 #include <arch/i386/ports.h>
-#include <drivers/textvga.h>
+#include <hal/drivers/tty.h>
 #include <lib/printf.h>
 
 char char_from_digit(uint8_t digit) {
@@ -9,7 +9,7 @@ char char_from_digit(uint8_t digit) {
 	return '0' + digit;
 }
 
-size_t putui(uint32_t val, uint8_t base, bool rec, char *buf, size_t size) {
+size_t putui(uint64_t val, uint8_t base, bool rec, char *buf, size_t size) {
 	if (val == 0 && rec) {
 		return 0;
 	}
@@ -21,15 +21,15 @@ size_t putui(uint32_t val, uint8_t base, bool rec, char *buf, size_t size) {
 	return used + 1;
 }
 
-size_t puti(int32_t val, int8_t base, char *buf, size_t size) {
+size_t puti(int64_t val, int8_t base, char *buf, size_t size) {
 	if (size == 0) {
 		return 0;
 	}
 	if (val < 0) {
 		buf[0] = '-';
-		return putui((uint32_t)-val, base, false, buf + 1, size - 1) + 1;
+		return putui((uint64_t)-val, base, false, buf + 1, size - 1) + 1;
 	}
-	return putui((uint32_t)val, base, false, buf, size);
+	return putui((uint64_t)val, base, false, buf, size);
 }
 
 size_t puts(const char *str, char *buf, size_t size) {
@@ -112,12 +112,12 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 				++i;
 				switch (fmt[i]) {
 				case 'u':
-					pos += putui(va_arg(args, uint32_t), 10, false, buf + pos,
+					pos += putui(va_arg(args, uint64_t), 10, false, buf + pos,
 								 size - pos);
 					break;
 				case 'd':
 					pos +=
-						puti(va_arg(args, int32_t), 10, buf + pos, size - pos);
+						puti(va_arg(args, int64_t), 10, buf + pos, size - pos);
 					break;
 				default:
 					break;
@@ -132,10 +132,10 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 
 void write(const char *str, uint64_t size) {
 	for (uint64_t i = 0; i < size; ++i) {
-		vga_putc_no_cursor_update(str[i]);
+		hal_tty_putc(str[i]);
 		outb(0xe9, str[i]);
 	}
-	vga_update_cursor();
+	hal_tty_flush();
 }
 
 size_t va_printf(const char *str, va_list args) {

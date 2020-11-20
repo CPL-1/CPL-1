@@ -1,6 +1,7 @@
 #include <arch/i386/cr3.h>
 #include <arch/i386/drivers/pic.h>
 #include <arch/i386/drivers/pit.h>
+#include <arch/i386/drivers/tty.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/init/detect.h>
@@ -8,18 +9,18 @@
 #include <arch/i386/memory/phys.h>
 #include <arch/i386/memory/virt.h>
 #include <arch/i386/proc/iowait.h>
+#include <arch/i386/proc/priv.h>
+#include <arch/i386/proc/ring1.h>
 #include <arch/i386/proc/state.h>
 #include <arch/i386/tss.h>
 #include <core/fd/fs/devfs.h>
 #include <core/fd/fs/rootfs.h>
 #include <core/fd/vfs.h>
 #include <core/memory/heap.h>
-#include <core/proc/priv.h>
 #include <core/proc/proc.h>
 #include <core/proc/proclayout.h>
-#include <core/proc/ring1.h>
 #include <drivers/pci.h>
-#include <drivers/textvga.h>
+#include <hal/drivers/tty.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
 #include <hal/proc/intlock.h>
@@ -29,9 +30,9 @@
 
 void print_pci(struct pci_address addr, struct pci_id id, void *context) {
 	(void)context;
-	vga_set_color(0x0f);
+	hal_tty_set_color(0x0f);
 	printf("         |> ");
-	vga_set_color(0x07);
+	hal_tty_set_color(0x07);
 	printf("bus: %d, slot: %d, function: %d, vendor_id: %d, device_id: %d\n",
 		   addr.bus, addr.slot, addr.function, id.vendor_id, id.device_id);
 }
