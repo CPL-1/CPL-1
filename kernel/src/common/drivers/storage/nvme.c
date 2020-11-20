@@ -459,7 +459,7 @@ static bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf,
 	mutex_lock(&(drive->mutex));
 	struct nvme_drive_namespace *namespace = drive->namespaces + (ns - 1);
 	size_t block_size = namespace->block_size;
-	uint32_t page_offset = (uint32_t)buf & (hal_virt_page_size - 1);
+	uintptr_t page_offset = (uintptr_t)buf & (hal_virt_page_size - 1);
 
 	unused union nvme_sq_entry rw_command;
 	rw_command.rw.opcode = write ? NVME_CMD_WRITE : NVME_CMD_READ;
@@ -473,8 +473,8 @@ static bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf,
 	rw_command.rw.slba = lba;
 	rw_command.rw.nsid = ns;
 	rw_command.rw.length = count - 1;
-	uint32_t aligned_down = ALIGN_DOWN((uintptr_t)buf, hal_virt_page_size);
-	uint32_t aligned_up =
+	uintptr_t aligned_down = ALIGN_DOWN((uintptr_t)buf, hal_virt_page_size);
+	uintptr_t aligned_up =
 		ALIGN_UP((uintptr_t)(buf + count * block_size), hal_virt_page_size);
 	size_t prp_entries_count =
 		((aligned_up - aligned_down) / hal_virt_page_size) - 1;
@@ -605,14 +605,14 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	memset(completition_queue, 0, completition_queue_size);
 	kmsg_log("NVME Driver", "NVME controller admin queues allocated");
 
-	uint32_t admin_submission_queue_physical =
-		(uint32_t)admin_submission_queue - hal_virt_kernel_mapping_base;
-	uint32_t admin_completition_queue_physical =
-		(uint32_t)admin_completition_queue - hal_virt_kernel_mapping_base;
-	unused uint32_t submission_queue_physical =
-		(uint32_t)submission_queue - hal_virt_kernel_mapping_base;
-	uint32_t completition_queue_physical =
-		(uint32_t)completition_queue - hal_virt_kernel_mapping_base;
+	uintptr_t admin_submission_queue_physical =
+		(uintptr_t)admin_submission_queue - hal_virt_kernel_mapping_base;
+	uintptr_t admin_completition_queue_physical =
+		(uintptr_t)admin_completition_queue - hal_virt_kernel_mapping_base;
+	uintptr_t submission_queue_physical =
+		(uintptr_t)submission_queue - hal_virt_kernel_mapping_base;
+	uintptr_t completition_queue_physical =
+		(uintptr_t)completition_queue - hal_virt_kernel_mapping_base;
 
 	asq = nvme_read_asq_register(bar0);
 	acq = nvme_read_acq_register(bar0);
@@ -648,8 +648,8 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	}
 
 	kmsg_log("NVME Driver", "NVME Controller reenabled");
-	uint32_t doorbell_size = 1 << (2 + cap.dstrd);
-	uint32_t doorbells_base = (uint32_t)bar0 + 0x1000;
+	uintptr_t doorbell_size = 1 << (2 + cap.dstrd);
+	uintptr_t doorbells_base = (uint32_t)bar0 + 0x1000;
 	nvme_drive_info->admin_submission_doorbell =
 		(volatile uint16_t *)(doorbells_base + doorbell_size * 0);
 	nvme_drive_info->admin_completition_doorbell =
@@ -670,7 +670,7 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 		return false;
 	}
 	identify_command.identify.prp1 =
-		((uint32_t)identify_info - hal_virt_kernel_mapping_base);
+		(uintptr_t)identify_info - hal_virt_kernel_mapping_base;
 	identify_command.identify.prp2 = 0;
 	if (nvme_execute_admin_cmd(nvme_drive_info, identify_command) != 0) {
 		kmsg_warn("NVME Driver", "Failed to execute identify command");
@@ -705,7 +705,7 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	}
 	kmsg_log("NVME Driver", "Created submission queue");
 
-	uint32_t namespaces_count = identify_info->nn;
+	size_t namespaces_count = identify_info->nn;
 	printf("         NVME Drive namespaces count: %u\n", identify_info->nn);
 	struct nvme_drive_namespace *namespaces =
 		(struct nvme_drive_namespace *)heap_alloc(
@@ -739,7 +739,7 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 		get_namespace_info_command.identify.nsid = i + 1;
 		get_namespace_info_command.identify.cns = 0;
 		get_namespace_info_command.identify.prp1 =
-			(uint32_t) namespace->info - hal_virt_kernel_mapping_base;
+			(uintptr_t) namespace->info - hal_virt_kernel_mapping_base;
 		if (nvme_execute_admin_cmd(nvme_drive_info,
 								   get_namespace_info_command) != 0) {
 			kmsg_warn("NVME Driver", "Failed to read namespace info");
