@@ -1,13 +1,13 @@
-#include <arch/i386/proc/iowait.h>
 #include <core/fd/fs/devfs.h>
 #include <core/fd/vfs.h>
 #include <core/memory/heap.h>
 #include <core/proc/mutex.h>
 #include <core/storage/storage.h>
-#include <drivers/pci.h>
 #include <drivers/storage/nvme.h>
+#include <hal/drivers/storage/nvme.h>
 #include <hal/memory/virt.h>
 #include <lib/kmsg.h>
+#include <lib/math.h>
 #include <utils/utils.h>
 
 #define NVME_SUBMISSION_QUEUE_SIZE 2
@@ -272,7 +272,7 @@ struct nvme_namespace_info {
 } packed;
 
 struct nvme_drive {
-	struct pci_address addr;
+	struct hal_nvme_controller *controller;
 	volatile uint32_t *bar0;
 	union nvme_sq_entry *admin_submission_queue;
 	volatile struct nvme_cq_entry *admin_completition_queue;
@@ -288,7 +288,6 @@ struct nvme_drive {
 	size_t submission_queue_head;
 	size_t completition_queue_head;
 	struct nvme_drive_namespace *namespaces;
-	struct iowait_list_entry *iowait_entry;
 	uint64_t *prps;
 	struct mutex mutex;
 	uint32_t id;
@@ -384,14 +383,6 @@ unused static void nvme_enable_interrupts(volatile uint32_t *bar0) {
 	bar0[0x03] = ~((uint32_t)1);
 }
 
-unused static bool nvme_check_interrupt(void *ctx) {
-	struct nvme_drive *nvme_drive_info = (struct nvme_drive *)ctx;
-	struct pci_address addr = nvme_drive_info->addr;
-	uint16_t status = pci_inw(addr, PCI_STATUS);
-	return true;
-	return ((status & (1 << 3)) != 0);
-}
-
 static uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
 									   union nvme_sq_entry command) {
 	drive->admin_submission_queue[drive->admin_submission_queue_head] = command;
@@ -440,19 +431,19 @@ static uint16_t nvme_execute_io_cmd(struct nvme_drive *drive,
 	*(drive->submission_doorbell) = drive->submission_queue_head;
 
 	if (!drive->fallback_to_polling) {
-		iowait_wait(drive->iowait_entry);
+		drive->controller->wait_for_event(drive->controller->ctx);
 	}
 	while (completition_entry->phase_bit == drive->phase_bit) {
 		if (!drive->fallback_to_polling) {
-			iowait_wait(drive->iowait_entry);
-			struct nvme_csts_register csts;
-			csts = nvme_read_csts_register(drive->bar0);
-			if (csts.cfs == 1) {
-				kmsg_err("NVME Driver",
-						 "Fatal error occured while executing admin command\n");
-			}
-			asm volatile("pause");
+			drive->controller->wait_for_event(drive->controller->ctx);
 		}
+		struct nvme_csts_register csts;
+		csts = nvme_read_csts_register(drive->bar0);
+		if (csts.cfs == 1) {
+			kmsg_err("NVME Driver",
+					 "Fatal error occured while executing admin command\n");
+		}
+		asm volatile("pause");
 	}
 
 	drive->completition_queue_head++;
@@ -523,40 +514,32 @@ static bool nvme_namespace_rw_lba(void *ctx, char *buf, uint64_t lba,
 					   count, write);
 }
 
-void nvme_init(struct pci_address addr) {
+bool nvme_init(struct hal_nvme_controller *controller) {
 	struct nvme_drive *nvme_drive_info = ALLOC_OBJ(struct nvme_drive);
 	if (nvme_drive_info == NULL) {
-		kmsg_err("NVME Driver", "Failed to allocate NVME drive object");
+		return false;
 	}
 	nvme_drive_info->admin_completition_queue_head = 0;
 	nvme_drive_info->admin_submission_queue_head = 0;
 	nvme_drive_info->completition_queue_head = 0;
 	nvme_drive_info->submission_queue_head = 0;
-	nvme_drive_info->addr = addr;
 	nvme_drive_info->id = nvme_controllers_detected;
 	nvme_controllers_detected++;
 	mutex_init(&(nvme_drive_info->mutex));
 
-	struct pci_bar bar;
-	if (!pci_read_bar(addr, 0, &bar)) {
-		kmsg_err("NVME Driver", "Failed to read BAR0");
-	}
-	if (bar.is_mmio == false) {
-		kmsg_err("NVME Driver", "BAR0 doesn't support MMIO");
-	}
-	printf("         NVME BAR0 MMIO base at 0x%p\n", bar.address);
-	pci_enable_bus_mastering(addr);
-
-	uintptr_t mapping_paddr = ALIGN_DOWN(bar.address, HAL_VIRT_PAGE_SIZE);
+	uintptr_t mapping_paddr =
+		ALIGN_DOWN(controller->offset, HAL_VIRT_PAGE_SIZE);
 	size_t mapping_size =
-		ALIGN_UP(bar.size + (bar.address - mapping_paddr), HAL_VIRT_PAGE_SIZE);
-	uintptr_t mapping =
-		hal_virt_get_io_mapping(mapping_paddr, mapping_size, bar.disable_cache);
+		ALIGN_UP(controller->size + (controller->offset - mapping_paddr),
+				 HAL_VIRT_PAGE_SIZE);
+	uintptr_t mapping = hal_virt_get_io_mapping(mapping_paddr, mapping_size,
+												controller->disable_cache);
 	if (mapping == 0) {
-		kmsg_err("NVME Driver", "Failed to map BAR0");
+		kmsg_warn("NVME Driver", "Failed to map BAR0");
+		return false;
 	}
 	volatile uint32_t *bar0 =
-		(volatile uint32_t *)(mapping + (bar.address - mapping_paddr));
+		(volatile uint32_t *)(mapping + (controller->offset - mapping_paddr));
 	nvme_drive_info->bar0 = bar0;
 	printf("BAR0 at %p\n", bar0);
 
@@ -579,14 +562,19 @@ void nvme_init(struct pci_address addr) {
 
 	cap = nvme_read_cap_register(bar0);
 	if (!cap.css_is_nvm_supported) {
-		kmsg_err("NVME Driver",
-				 "NVME controller doesn't support NVM command set");
+		kmsg_warn("NVME Driver",
+				  "NVME controller doesn't support NVM command set");
+		return false;
 	}
-	if (cap.mpsmin > 0) {
-		kmsg_err("NVME Driver",
-				 "NVME controller doesn't support host page size");
+	if (cap.mpsmin > (math_log2_roundup(HAL_VIRT_PAGE_SIZE) - 12)) {
+		kmsg_warn("NVME Driver",
+				  "NVME controller doesn't support host page size");
+		return false;
 	}
-
+	if (cap.mpsmax < (math_log2_roundup(HAL_VIRT_PAGE_SIZE) - 12)) {
+		kmsg_warn("NVME Driver",
+				  "NVME controller doesn't support host page size");
+	}
 	size_t submission_queue_size =
 		ALIGN_UP(sizeof(union nvme_sq_entry) * NVME_SUBMISSION_QUEUE_SIZE,
 				 HAL_VIRT_PAGE_SIZE);
@@ -605,8 +593,9 @@ void nvme_init(struct pci_address addr) {
 
 	if (admin_submission_queue == NULL || admin_completition_queue == NULL ||
 		submission_queue == NULL || completition_queue == NULL) {
-		kmsg_err("NVME Driver",
-				 "Failed to allocate queues for NVME controller");
+		kmsg_warn("NVME Driver",
+				  "Failed to allocate queues for NVME controller");
+		return false;
 	}
 	nvme_drive_info->admin_submission_queue = admin_submission_queue;
 	nvme_drive_info->admin_completition_queue = admin_completition_queue;
@@ -682,13 +671,15 @@ void nvme_init(struct pci_address addr) {
 	struct nvme_identify_info *identify_info =
 		ALLOC_OBJ(struct nvme_identify_info);
 	if (identify_info == NULL) {
-		kmsg_err("NVME Driver", "Failed to allocate identify info object");
+		kmsg_warn("NVME Driver", "Failed to allocate identify info object");
+		return false;
 	}
 	identify_command.identify.prp1 =
 		((uint32_t)identify_info - HAL_VIRT_KERNEL_MAPPING_BASE);
 	identify_command.identify.prp2 = 0;
 	if (nvme_execute_admin_cmd(nvme_drive_info, identify_command) != 0) {
-		kmsg_err("NVME Driver", "Failed to execute identify command");
+		kmsg_warn("NVME Driver", "Failed to execute identify command");
+		return false;
 	}
 	nvme_drive_info->identify_info = (struct nvme_identify_info *)identify_info;
 	kmsg_log("NVME Driver", "Identify command executed successfully");
@@ -702,7 +693,8 @@ void nvme_init(struct pci_address addr) {
 	create_queue_command.create_cq.cq_flags = NVME_QUEUE_PHYS_CONTIG;
 	create_queue_command.create_cq.irq_vector = 0;
 	if (nvme_execute_admin_cmd(nvme_drive_info, create_queue_command) != 0) {
-		kmsg_err("NVME Driver", "Failed to create completition queue");
+		kmsg_warn("NVME Driver", "Failed to create completition queue");
+		return false;
 	}
 	kmsg_log("NVME Driver", "Created completition queue");
 
@@ -713,7 +705,8 @@ void nvme_init(struct pci_address addr) {
 	create_queue_command.create_sq.qsize = NVME_SUBMISSION_QUEUE_SIZE - 1;
 	create_queue_command.create_sq.sq_flags = NVME_QUEUE_PHYS_CONTIG;
 	if (nvme_execute_admin_cmd(nvme_drive_info, create_queue_command) != 0) {
-		kmsg_err("NVME Driver", "Failed to create submission queue");
+		kmsg_warn("NVME Driver", "Failed to create submission queue");
+		return false;
 	}
 	kmsg_log("NVME Driver", "Created submission queue");
 
@@ -723,7 +716,8 @@ void nvme_init(struct pci_address addr) {
 		(struct nvme_drive_namespace *)heap_alloc(
 			sizeof(struct nvme_drive_namespace) * namespaces_count);
 	if (namespaces == NULL) {
-		kmsg_log("NVME Driver", "Failed to allocate namespaces objects");
+		kmsg_warn("NVME Driver", "Failed to allocate namespaces objects");
+		return false;
 	}
 	nvme_drive_info->namespaces = namespaces;
 
@@ -740,7 +734,9 @@ void nvme_init(struct pci_address addr) {
 		namespace->drive = nvme_drive_info;
 		namespace->info = ALLOC_OBJ(struct nvme_namespace_info);
 		if (namespace->info == NULL) {
-			kmsg_log("NVME Driver", "Failed to allocate namespace info object");
+			kmsg_warn("NVME Driver",
+					  "Failed to allocate namespace info object");
+			return false;
 		}
 
 		union nvme_sq_entry get_namespace_info_command = {0};
@@ -751,7 +747,8 @@ void nvme_init(struct pci_address addr) {
 			(uint32_t) namespace->info - HAL_VIRT_KERNEL_MAPPING_BASE;
 		if (nvme_execute_admin_cmd(nvme_drive_info,
 								   get_namespace_info_command) != 0) {
-			kmsg_err("NVME Driver", "Failed to read namespace info");
+			kmsg_warn("NVME Driver", "Failed to read namespace info");
+			return false;
 		}
 		kmsg_log("NVME Driver", "Successfully read NVME namespace info");
 
@@ -769,13 +766,15 @@ void nvme_init(struct pci_address addr) {
 		namespace->cache.rw_lba = nvme_namespace_rw_lba;
 		namespace->cache.ctx = (void *)namespace;
 		if (!storage_init(&(namespace->cache))) {
-			kmsg_err("NVME Driver", "Failed to initialize drive cache");
+			kmsg_warn("NVME Driver", "Failed to initialize drive cache");
+			return false;
 		}
 
 		struct vfs_inode *inode = storage_make_inode(&(namespace->cache));
 		if (inode == NULL) {
-			kmsg_err("NVME Driver",
-					 "Failed to allocate inode for new namespace");
+			kmsg_warn("NVME Driver",
+					  "Failed to allocate inode for new namespace");
+			return false;
 		}
 
 		char device_name_buf[256];
@@ -784,7 +783,8 @@ void nvme_init(struct pci_address addr) {
 				i + 1);
 
 		if (!devfs_register_inode(device_name_buf, inode)) {
-			kmsg_err("NVME Driver", "Failed to format NVME namespace name");
+			kmsg_warn("NVME Driver", "Failed to format NVME namespace name");
+			return false;
 		}
 
 		printf("         Drive namespace %u initialized!\n", i + 1);
@@ -792,21 +792,10 @@ void nvme_init(struct pci_address addr) {
 
 	uint64_t *prps = heap_alloc(max_size / HAL_VIRT_PAGE_SIZE * 8);
 	if (prps == NULL) {
-		kmsg_err("NVME Driver", "Failed to allocate PRP list");
+		kmsg_warn("NVME Driver", "Failed to allocate PRP list");
+		return false;
 	}
 	nvme_drive_info->prps = prps;
-
-	uint8_t irq = pci_inb(addr, PCI_INT_LINE);
-	printf("         NVME controller uses irq vector %u\n", (uint32_t)irq);
-	/*
-	if (irq > 15) {
-		nvme_drive_info->fallback_to_polling = true;
-	} else {
-		nvme_drive_info->fallback_to_polling = false;
-		nvme_drive_info->iowait_entry = iowait_add_handler(
-			irq, NULL, nvme_check_interrupt, nvme_drive_info);
-		nvme_enable_interrupts(bar0);
-	}
-	*/
 	nvme_drive_info->fallback_to_polling = true;
+	return true;
 }
