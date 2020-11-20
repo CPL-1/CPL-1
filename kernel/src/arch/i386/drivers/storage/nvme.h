@@ -1,7 +1,7 @@
 #ifndef __NVME_H_INCLUDED__
 #define __NVME_H_INCLUDED__
 
-#include <drivers/pci.h>
+#include <arch/i386/drivers/pci.h>
 #include <hal/drivers/storage/nvme.h>
 #include <hal/proc/isrhandler.h>
 

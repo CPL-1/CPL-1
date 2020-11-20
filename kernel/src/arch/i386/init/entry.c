@@ -1,4 +1,5 @@
 #include <arch/i386/cr3.h>
+#include <arch/i386/drivers/pci.h>
 #include <arch/i386/drivers/pic.h>
 #include <arch/i386/drivers/pit.h>
 #include <arch/i386/drivers/tty.h>
@@ -19,7 +20,6 @@
 #include <core/memory/heap.h>
 #include <core/proc/proc.h>
 #include <core/proc/proclayout.h>
-#include <drivers/pci.h>
 #include <hal/drivers/tty.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>

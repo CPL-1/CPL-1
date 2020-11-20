@@ -1,7 +1,7 @@
 #ifndef __IDE_H_INCLUDED__
 #define __IDE_H_INCLUDED__
 
-#include <drivers/pci.h>
+#include <arch/i386/drivers/pci.h>
 #include <hal/drivers/storage/nvme.h>
 
 #define NVME_PCI_TYPE 0x0108

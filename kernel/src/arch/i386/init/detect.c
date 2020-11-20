@@ -1,7 +1,7 @@
+#include <arch/i386/drivers/pci.h>
 #include <arch/i386/drivers/storage/nvme.h>
 #include <arch/i386/init/detect.h>
 #include <core/memory/heap.h>
-#include <drivers/pci.h>
 #include <drivers/storage/nvme.h>
 #include <hal/drivers/storage/nvme.h>
 #include <lib/kmsg.h>
