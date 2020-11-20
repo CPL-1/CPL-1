@@ -403,7 +403,6 @@ static uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
 			kmsg_err("NVME Driver",
 					 "Fatal error occured while executing admin command\n");
 		}
-		asm volatile("pause");
 	}
 
 	drive->admin_completition_queue_head++;
@@ -443,7 +442,6 @@ static uint16_t nvme_execute_io_cmd(struct nvme_drive *drive,
 			kmsg_err("NVME Driver",
 					 "Fatal error occured while executing admin command\n");
 		}
-		asm volatile("pause");
 	}
 
 	drive->completition_queue_head++;
@@ -554,7 +552,6 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	nvme_write_cc_register(bar0, cc);
 	csts = nvme_read_csts_register(bar0);
 	while (csts.rdy != 0) {
-		asm volatile("pause");
 		csts = nvme_read_csts_register(bar0);
 	}
 	kmsg_log("NVME Driver", "NVME Controller disabled");
@@ -647,7 +644,6 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 		if (csts.cfs != 0) {
 			kmsg_err("NVME Driver", "Error while enabling controller");
 		}
-		asm volatile("pause");
 		csts = nvme_read_csts_register(bar0);
 	}
 

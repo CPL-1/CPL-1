@@ -38,7 +38,6 @@ void kmsg_warn(const char *mod, const char *text) {
 }
 
 void kmsg_err(const char *mod, const char *text) {
-	asm volatile("cli");
 	printf("[ ");
 	hal_tty_set_color(0x0c);
 	printf("FAIL");
@@ -49,7 +48,6 @@ void kmsg_err(const char *mod, const char *text) {
 	hal_tty_set_color(0x07);
 	printf("%s\n", text);
 	while (true) {
-		asm volatile("pause");
 	}
 }
 
