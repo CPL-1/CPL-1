@@ -2,7 +2,7 @@
 #define __MATH_H_INCLUDED__
 #include <common/misc/utils.h>
 
-#define math_log2_roundup(val)                                                 \
+#define MATH_LOG2_ROUNDUP(val)                                                 \
 	({                                                                         \
 		auto copy = (val);                                                     \
 		typeof(copy) current = 1;                                              \

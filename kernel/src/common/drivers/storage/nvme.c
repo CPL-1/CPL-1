@@ -36,7 +36,7 @@ struct nvme_cap_register {
 	uint32_t pmrs : 1;
 	uint32_t cmbs : 1;
 	uint32_t : 6;
-} packed_align(8);
+} packed_align(8) little_endian;
 
 struct nvme_cc_register {
 	uint32_t en : 1;
@@ -48,7 +48,7 @@ struct nvme_cc_register {
 	uint32_t iosqes : 4;
 	uint32_t iocqes : 4;
 	uint32_t : 8;
-} packed_align(4);
+} packed_align(4) little_endian;
 
 struct nvme_csts_register {
 	uint32_t rdy : 1;
@@ -57,24 +57,24 @@ struct nvme_csts_register {
 	uint32_t nssro : 1;
 	uint32_t pp : 1;
 	uint32_t : 26;
-} packed_align(4);
+} packed_align(4) little_endian;
 
 struct nvme_aqa_register {
 	uint32_t asqs : 12;
 	uint32_t : 4;
 	uint32_t acqs : 12;
 	uint32_t : 4;
-} packed_align(4);
+} packed_align(4) little_endian;
 
 struct nvme_asq_register {
 	uint64_t : 12;
 	uint64_t page : 52;
-} packed_align(8);
+} packed_align(8) little_endian;
 
 struct nvme_acq_register {
 	uint64_t : 12;
 	uint64_t page : 52;
-} packed_align(8);
+} packed_align(8) little_endian;
 
 enum nvme_admin_opcode {
 	NVME_CREATE_SUBMISSION_QUEUE = 0x01,
@@ -102,7 +102,7 @@ union nvme_sq_entry {
 		uint32_t : 32;
 		uint32_t : 32;
 		uint32_t : 32;
-	} packed identify;
+	} packed little_endian identify;
 	struct {
 		uint8_t opcode;
 		uint8_t flags;
@@ -122,7 +122,7 @@ union nvme_sq_entry {
 		uint32_t : 32;
 		uint32_t : 32;
 		uint32_t : 32;
-	} packed create_sq;
+	} packed little_endian create_sq;
 	struct {
 		uint8_t opcode;
 		uint8_t flags;
@@ -142,7 +142,7 @@ union nvme_sq_entry {
 		uint32_t : 32;
 		uint32_t : 32;
 		uint32_t : 32;
-	} packed create_cq;
+	} packed little_endian create_cq;
 	struct {
 		uint8_t opcode;
 		uint8_t flags;
@@ -159,8 +159,8 @@ union nvme_sq_entry {
 		uint32_t reftag;
 		uint16_t apptag;
 		uint16_t appmask;
-	} packed rw;
-} packed;
+	} packed little_endian rw;
+} packed little_endian;
 
 struct nvme_cq_entry {
 	uint32_t command_specific;
@@ -170,7 +170,7 @@ struct nvme_cq_entry {
 	uint16_t command_identifier;
 	uint16_t phase_bit : 1;
 	uint16_t status : 15;
-} packed;
+} packed little_endian;
 
 struct nvme_id_power_state {
 	uint16_t max_power;
@@ -188,7 +188,7 @@ struct nvme_id_power_state {
 	uint16_t active_power;
 	uint8_t active_work_scale;
 	uint8_t rsvd23[9];
-} packed;
+} packed little_endian;
 
 struct nvme_identify_info {
 	uint16_t vid;
@@ -233,13 +233,13 @@ struct nvme_identify_info {
 	uint8_t rsvd540[1508];
 	struct nvme_id_power_state psd[32];
 	uint8_t vs[1024];
-} packed;
+} packed little_endian;
 
 struct nvme_lbaf {
 	uint16_t ms;
 	uint8_t ds;
 	uint8_t rp;
-};
+} little_endian;
 
 struct nvme_namespace_info {
 	uint64_t nsze;
@@ -269,7 +269,7 @@ struct nvme_namespace_info {
 	struct nvme_lbaf lbaf[16];
 	uint8_t rsvd192[192];
 	uint8_t vs[3712];
-} packed;
+} packed little_endian;
 
 struct nvme_drive {
 	struct hal_nvme_controller *controller;
@@ -297,7 +297,7 @@ struct nvme_drive {
 };
 
 struct nvme_drive_namespace {
-	struct storage cache;
+	struct storage_dev cache;
 	struct nvme_drive *drive;
 	struct nvme_namespace_info *info;
 	size_t namespace_id;
@@ -562,12 +562,12 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 				  "NVME controller doesn't support NVM command set");
 		return false;
 	}
-	if (cap.mpsmin > (math_log2_roundup(hal_virt_page_size) - 12)) {
+	if (cap.mpsmin > (MATH_LOG2_ROUNDUP(hal_virt_page_size) - 12)) {
 		kmsg_warn("NVME Driver",
 				  "NVME controller doesn't support host page size");
 		return false;
 	}
-	if (cap.mpsmax < (math_log2_roundup(hal_virt_page_size) - 12)) {
+	if (cap.mpsmax < (MATH_LOG2_ROUNDUP(hal_virt_page_size) - 12)) {
 		kmsg_warn("NVME Driver",
 				  "NVME controller doesn't support host page size");
 	}
@@ -628,7 +628,7 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 
 	cc = nvme_read_cc_register(bar0);
 	cc.ams = 0;
-	cc.mps = 0;
+	cc.mps = (MATH_LOG2_ROUNDUP(hal_virt_page_size) - 12);
 	cc.css = 0;
 	cc.shn = 0;
 	cc.iocqes = 4;
@@ -723,6 +723,15 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	}
 	printf("         Max transfer size: %u\n", max_size);
 
+	uint64_t *prps = heap_alloc((max_size / hal_virt_page_size) * 8);
+	if (prps == NULL) {
+		kmsg_warn("NVME Driver", "Failed to allocate PRP list");
+		return false;
+	}
+
+	nvme_drive_info->prps = prps;
+	nvme_drive_info->fallback_to_polling = true;
+
 	for (size_t i = 0; i < namespaces_count; ++i) {
 		struct nvme_drive_namespace *namespace = namespaces + i;
 		namespace->namespace_id = i + 1;
@@ -760,37 +769,17 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 		namespace->cache.sectors_count = namespace->blocks_count;
 		namespace->cache.rw_lba = nvme_namespace_rw_lba;
 		namespace->cache.ctx = (void *)namespace;
-		if (!storage_init(&(namespace->cache))) {
-			kmsg_warn("NVME Driver", "Failed to initialize drive cache");
-			return false;
-		}
-
-		struct vfs_inode *inode = storage_make_inode(&(namespace->cache));
-		if (inode == NULL) {
-			kmsg_warn("NVME Driver",
-					  "Failed to allocate inode for new namespace");
-			return false;
-		}
-
-		char device_name_buf[256];
-		memset(device_name_buf, 0, 256);
-		sprintf("nvme%un%u\0", device_name_buf, 256, nvme_drive_info->id,
+		memset(namespace->cache.name, 0, 256);
+		sprintf("nvme%un%u\0", namespace->cache.name, 256, nvme_drive_info->id,
 				i + 1);
-
-		if (!devfs_register_inode(device_name_buf, inode)) {
-			kmsg_warn("NVME Driver", "Failed to format NVME namespace name");
+		namespace->cache.partitioning_scheme = STORAGE_P_NUMERIC_PART_NAMING;
+		if (!storage_init(&(namespace->cache))) {
+			kmsg_warn("NVME Driver",
+					  "Failed to add drive object to storage stack");
 			return false;
 		}
 
 		printf("         Drive namespace %u initialized!\n", i + 1);
 	}
-
-	uint64_t *prps = heap_alloc(max_size / hal_virt_page_size * 8);
-	if (prps == NULL) {
-		kmsg_warn("NVME Driver", "Failed to allocate PRP list");
-		return false;
-	}
-	nvme_drive_info->prps = prps;
-	nvme_drive_info->fallback_to_polling = true;
 	return true;
 }

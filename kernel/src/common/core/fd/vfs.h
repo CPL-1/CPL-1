@@ -16,6 +16,8 @@ enum {
 	VFS_DT_WHT = 14,
 };
 
+enum { VFS_O_RDONLY = 0, VFS_O_WRONLY = 1, VFS_O_RDWR = 2, VFS_O_ACCMODE = 3 };
+
 struct vfs_dentry {
 	char name[VFS_MAX_NAME_LENGTH + 1];
 	size_t hash;

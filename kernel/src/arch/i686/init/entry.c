@@ -113,6 +113,11 @@ void i686_kernel_main(uint32_t mb_offset) {
 
 void kernel_init_process() {
 	kmsg_log("i686 Kernel Init", "Executing in a separate init process");
+	struct fd *devfs_root = vfs_open("/dev/", 0);
+	struct fd_dirent dirent;
+	while (fd_readdir(devfs_root, &dirent, 1) != 0) {
+		printf("name: %s\n", dirent.dt_name);
+	}
 	while (true)
 		;
 }
