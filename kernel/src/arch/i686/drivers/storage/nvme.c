@@ -8,7 +8,7 @@ struct i686_nvme_pci_controller {
 	struct i686_iowait_list_entry *entry;
 };
 
-static bool i686_nvme_check_interrupt(void *ctx) {
+unused static bool i686_nvme_check_interrupt(void *ctx) {
 	struct i686_nvme_pci_controller *controller =
 		(struct i686_nvme_pci_controller *)ctx;
 	struct i686_pci_address addr = controller->addr;
@@ -16,10 +16,13 @@ static bool i686_nvme_check_interrupt(void *ctx) {
 	return ((status & (1 << 3)) != 0);
 }
 
-static bool i686_nvme_event_init(void *ctx) {
+static bool i686_nvme_event_init(unused void *ctx) {
+	return false;
+	/*
 	struct i686_nvme_pci_controller *controller =
 		(struct i686_nvme_pci_controller *)ctx;
 	uint8_t irq = i686_pci_inb(controller->addr, I686_PCI_INT_LINE);
+	printf("NVME uses irq %u\n", (uint32_t)irq);
 	if (irq > 15) {
 		return false;
 	}
@@ -29,7 +32,7 @@ static bool i686_nvme_event_init(void *ctx) {
 	if (controller->entry == NULL) {
 		return false;
 	}
-	return true;
+	return true;*/
 }
 
 static void i686_nvme_wait_for_event(void *ctx) {

@@ -379,8 +379,8 @@ static void nvme_write_acq_register(volatile uint32_t *bar0,
 	bar0[13] = (uint32_t)((*as_pointer >> 32ULL) & 0xFFFFFFFF);
 }
 
-unused static void nvme_enable_interrupts(volatile uint32_t *bar0) {
-	bar0[0x03] = ~((uint32_t)1);
+static void nvme_enable_interrupts(volatile uint32_t *bar0) {
+	bar0[0x03] = 0xffffffff;
 }
 
 static uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
@@ -521,6 +521,7 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	nvme_drive_info->admin_submission_queue_head = 0;
 	nvme_drive_info->completition_queue_head = 0;
 	nvme_drive_info->submission_queue_head = 0;
+	nvme_drive_info->controller = controller;
 	nvme_drive_info->id = nvme_controllers_detected;
 	nvme_controllers_detected++;
 	mutex_init(&(nvme_drive_info->mutex));
@@ -730,7 +731,11 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	}
 
 	nvme_drive_info->prps = prps;
-	nvme_drive_info->fallback_to_polling = true;
+	nvme_drive_info->fallback_to_polling =
+		!controller->event_init(controller->ctx);
+	if (!nvme_drive_info->fallback_to_polling) {
+		nvme_enable_interrupts(bar0);
+	}
 
 	for (size_t i = 0; i < namespaces_count; ++i) {
 		struct nvme_drive_namespace *namespace = namespaces + i;

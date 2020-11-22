@@ -50,7 +50,6 @@ void urm_thread() {
 void kernel_init_process();
 
 void i686_kernel_main(uint32_t mb_offset) {
-	hal_intlock_lock();
 	i686_tty_init();
 	kmsg_log("i686 Kernel Init",
 			 "Preparing to unleash the real power of your CPU...");
@@ -81,22 +80,10 @@ void i686_kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("i686 Privilege Manager");
 	ring1_switch();
 	kmsg_ok("i686 Ring 1 Initializer", "Executing in Ring 1!");
-	kmsg_log("Entry Process", "Enumerating PCI Bus...");
-	i686_pci_enumerate(print_pci, NULL);
 	proc_init();
 	kmsg_init_done("Process Manager & Scheduler");
 	vfs_init(rootfs_make_superblock());
-	kmsg_init_done("Virtual File System");
-	devfs_init();
-	kmsg_init_done("Device File System");
-	vfs_mount_user("/dev/", NULL, "devfs");
-	kmsg_log("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
-	detect_hardware();
-	kmsg_init_done("i686 Hardware Autodetection Routine");
-	hal_intlock_unlock();
-	i686_iowait_enable_used_irq();
-	kmsg_log("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
-	kmsg_log("Process Manager & Scheduler", "Starting User Request Monitor...");
+	kmsg_log("i686 Kernel Init", "Starting Init Process...");
 	struct proc_id init_id = proc_new_process(proc_my_id());
 	struct proc_process *init_data = proc_get_data(init_id);
 	struct i686_cpu_state *init_state =
@@ -113,6 +100,17 @@ void i686_kernel_main(uint32_t mb_offset) {
 
 void kernel_init_process() {
 	kmsg_log("i686 Kernel Init", "Executing in a separate init process");
+	kmsg_log("Entry Process", "Enumerating PCI Bus...");
+	i686_pci_enumerate(print_pci, NULL);
+	kmsg_init_done("Virtual File System");
+	devfs_init();
+	kmsg_init_done("Device File System");
+	vfs_mount_user("/dev/", NULL, "devfs");
+	kmsg_log("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
+	i686_iowait_enable_used_irq();
+	kmsg_log("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
+	detect_hardware();
+	kmsg_init_done("i686 Hardware Autodetection Routine");
 	struct fd *devfs_root = vfs_open("/dev/", 0);
 	struct fd_dirent dirent;
 	while (fd_readdir(devfs_root, &dirent, 1) != 0) {
