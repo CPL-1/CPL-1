@@ -13,7 +13,19 @@ Currently there is only support for i686 CPUS with PIC 8259 interrupt controller
 
 ### What I need to build CPL-1?
 
-For i686 target, CPL-1 uses i686-elf-gcc (should be in PATH), i686-elf-libgcc, nasm and GNU Make to build. 
+The following dependencies should be met to build CPL-1 for i686 target
+```
+bash # All scripts use BASH to run
+i686-elf-gcc # GNU C cross compiler for i686 target, build instructions here: https://wiki.osdev.org/GCC_Cross-Compiler
+nasm # Netwide Assembler - assembler with intel syntax.
+chronic # from moreutils, displays output only if error occured
+make # GNU Make build system
+losetup # Used to modify kernel image
+fdisk # Partitioning program, used to make OS image
+mkfs.fat # from dosfstools, used to format partitions on kernel image as FAT32 
+python3 # CPython 3 interpreter. Used to run source watcher. Optional
+qemu-system-i386 # QEMU emulator for i386 target. Used for testing purposes. Optional
+```
 
 Additionally, you might need python3 to run inotify helper, but that is optional.
 
