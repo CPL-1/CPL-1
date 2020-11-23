@@ -35,8 +35,7 @@ bool storage_rw(struct storage_dev *storage, uint64_t offset, size_t size,
 void storage_flush(struct storage_dev *storage);
 struct fd *storage_fd_open(struct vfs_inode *inode, int perm);
 struct vfs_inode *storage_make_inode(struct storage_dev *storage);
-
 void storage_make_part_name(struct storage_dev *storage, char *buf,
-							size_t part_id);
+							unsigned int part_id);
 
 #endif

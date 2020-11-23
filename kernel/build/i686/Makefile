@@ -2,12 +2,12 @@ c_src := $(shell find ../../src/common/ -type f -name '*.c') $(shell find ../../
 asm_src := $(shell find ../../src/common/ -type f -name '*.s') $(shell find ../../src/arch/i686/ -type f -name '*.s')
 c_obj := $(c_src:.c=.o)
 asm_obj := $(asm_src:.s=.o)
-CC := gcc
+CC := i686-elf-gcc
 AS := nasm
-LD := gcc
-CFLAGS := -m32 -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-80387 -I../../src -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -fomit-frame-pointer -ffreestanding -fstrict-volatile-bitfields -g
+LD := i686-elf-gcc
+CFLAGS := -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-80387 -I../../src -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -fomit-frame-pointer -ffreestanding -fstrict-volatile-bitfields -g
 ASFLAGS := -f elf
-LDFLAGS := -m32 -ffreestanding -static -nostdlib -no-pie
+LDFLAGS := -ffreestanding -static -nostdlib -no-pie
 
 all: build
 

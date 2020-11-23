@@ -56,7 +56,8 @@ bool mbr_enumerate_partitions(struct storage_dev *dev) {
 		if (partdevs[i] == NULL) {
 			continue;
 		}
-		char buf[255];
+		char buf[256];
+		memset(buf, 0, 256);
 		storage_make_part_name(dev, buf, i);
 		if (!devfs_register_inode(buf, partdevs[i])) {
 			FREE_OBJ(partdevs[i]);
