@@ -13,38 +13,43 @@ Currently there is only support for i686 CPUS with PIC 8259 interrupt controller
 
 ### What I need to build CPL-1?
 
-For i686, CPL-1 uses gcc, libgcc, ld, nasm and GNU Make to build. 
+For i686 target, CPL-1 uses i686-elf-gcc (should be in PATH), i686-elf-libgcc, nasm and GNU Make to build. 
 
-For NixOS, I simply type ```nix-shell -p pkgsi686Linux.gcc pkgsi686Linux.libgcc nasm``` before doing any development
+Additionally, you might need python3 to run inotify helper, but that is optional.
 
 ### How I build CPL-1?
 
-#### CPL-1 Kernel
+#### Source watcher
 
-Start with
+Source watcher automatically deletes object files when you edit corresponding source files. This allows to decrease build times, as only files that you have edited are recompiled
 
-```
-cd kernel/build/<NAME OF ARCH>
-```
-
-To build kernel, run
-```
-make build
+You can run source watcher from repository root with
+```bash
+python3 inotify-object-delete.py
 ```
 
-To delete object files, run
-```
-make clean
+#### Building system for i686
+
+Go to ```./build/i686/```
+
+To build system, run
+```bash
+./build.sh
 ```
 
-To test kernel with qemu, run
-```
-make run
+To run system, run
+```bash
+./run.sh
 ```
 
-To debug kernel, run
+To debug system, run
+```bash
+./debug.sh
 ```
-make debug
+
+To cleanup object files (if you are not using source watcher for some reason), run
+```bash
+./clean.sh
 ```
 
 ### What CPL-1 is licensed under?
