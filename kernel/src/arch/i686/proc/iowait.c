@@ -71,6 +71,7 @@ i686_iowait_add_handler(uint8_t irq, i686_iowait_handler_t int_handler,
 					 "Failed to allocate function object for IRQ handler");
 		}
 		i686_idt_install_isr(irq + 0x20, (uint32_t)interrupt_handler);
+		i686_pic_irq_enable(irq);
 	}
 	entry->id = INVALID_PROC_ID;
 	entry->next = i686_iowait_handler_lists[irq];

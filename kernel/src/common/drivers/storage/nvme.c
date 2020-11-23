@@ -379,9 +379,7 @@ static void nvme_write_acq_register(volatile uint32_t *bar0,
 	bar0[13] = (uint32_t)((*as_pointer >> 32ULL) & 0xFFFFFFFF);
 }
 
-static void nvme_enable_interrupts(volatile uint32_t *bar0) {
-	bar0[0x03] = 0xffffffff;
-}
+static void nvme_enable_interrupts(volatile uint32_t *bar0) { bar0[0x03] = 0; }
 
 static uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
 									   union nvme_sq_entry command) {
