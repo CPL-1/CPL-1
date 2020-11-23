@@ -8,7 +8,7 @@ static struct vfs_superblock_type rootfs_sb_type;
 #define ROOTFS_ROOT_INODE_CTX ((void *)1)
 #define ROOTFS_DEV_INODE_CTX ((void *)2)
 
-static int rootfs_get_child(struct vfs_inode *inode, const char *name) {
+static ino_t rootfs_get_child(struct vfs_inode *inode, const char *name) {
 	if (inode->ctx == ROOTFS_ROOT_INODE_CTX) {
 		if (streq(name, "dev")) {
 			return 2;
@@ -18,7 +18,7 @@ static int rootfs_get_child(struct vfs_inode *inode, const char *name) {
 }
 
 static bool rootfs_get_inode(unused struct vfs_superblock *sb,
-							 struct vfs_inode *inode, int id) {
+							 struct vfs_inode *inode, ino_t id) {
 	inode->stat.st_type = VFS_DT_DIR;
 	inode->stat.st_size = 0;
 	inode->stat.st_blksize = 0;

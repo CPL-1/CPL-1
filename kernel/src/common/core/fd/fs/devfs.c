@@ -24,13 +24,13 @@ static struct vfs_superblock *devfs_mount(unused const char *device_path) {
 }
 
 static bool devfs_get_inode(unused struct vfs_superblock *sb,
-							struct vfs_inode *buf, int id) {
+							struct vfs_inode *buf, ino_t id) {
 	mutex_lock(&devfs_mutex);
 	if (id == 1) {
 		mutex_unlock(&devfs_mutex);
 		memcpy(buf, &devfs_root_inode, sizeof(*buf));
 		return true;
-	} else if (id > 1 && id < (int)(2 + dynarray_len(devfs_root_entries))) {
+	} else if (id > 1 && id < (ino_t)(2 + dynarray_len(devfs_root_entries))) {
 		if (devfs_root_entries[id - 2].inode == NULL) {
 			mutex_unlock(&devfs_mutex);
 			return false;

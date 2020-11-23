@@ -15,6 +15,7 @@
 #include <arch/i686/proc/ring1.h>
 #include <arch/i686/proc/state.h>
 #include <common/core/fd/fs/devfs.h>
+#include <common/core/fd/fs/fat32.h>
 #include <common/core/fd/fs/rootfs.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
@@ -105,17 +106,16 @@ void kernel_init_process() {
 	kmsg_init_done("Virtual File System");
 	devfs_init();
 	kmsg_init_done("Device File System");
+	fat32_init();
+	kmsg_init_done("FAT32 File System");
 	vfs_mount_user("/dev/", NULL, "devfs");
 	kmsg_log("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
 	i686_iowait_enable_used_irq();
 	kmsg_log("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	detect_hardware();
 	kmsg_init_done("i686 Hardware Autodetection Routine");
-	struct fd *devfs_root = vfs_open("/dev/", 0);
-	struct fd_dirent dirent;
-	while (fd_readdir(devfs_root, &dirent, 1) != 0) {
-		printf("name: %s\n", dirent.dt_name);
-	}
+	vfs_mount_user("/", "/dev/nvme0n1p1", "fat32");
+	kmsg_log("i686 Kernel Init", "Mounted FAT32 Filesystem on /");
 	while (true)
 		;
 }

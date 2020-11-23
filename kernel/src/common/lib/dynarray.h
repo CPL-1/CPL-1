@@ -24,15 +24,16 @@ struct dynarray_metadata {
 
 #define dynarray_grow(d, new_capacity)                                         \
 	({                                                                         \
-		auto d_copy = (d);                                                     \
-		auto capacity_copy = (new_capacity);                                   \
-		struct dynarray_metadata *old_dynarray = dynarray_get_metadata(d);     \
-		size_t element_size = sizeof(*d_copy);                                 \
+		typeof(d) dg_copy = (d);                                               \
+		typeof(new_capacity) capacity_copy = (new_capacity);                   \
+		struct dynarray_metadata *old_dynarray =                               \
+			dynarray_get_metadata(dg_copy);                                    \
+		size_t element_size = sizeof(*dg_copy);                                \
 		size_t array_size = element_size * capacity_copy;                      \
 		size_t dynarray_alloc_size =                                           \
 			array_size + sizeof(struct dynarray_metadata);                     \
 		struct dynarray_metadata *new_dynarray =                               \
-			heap_alloc(dynarray_alloc_size);                                   \
+			(struct dynarray_metadata *)heap_alloc(dynarray_alloc_size);       \
 		if (new_dynarray != NULL) {                                            \
 			new_dynarray->count = old_dynarray->count;                         \
 			new_dynarray->capacity = old_dynarray->capacity;                   \
@@ -44,39 +45,40 @@ struct dynarray_metadata {
 
 #define dynarray_dispose(d)                                                    \
 	({                                                                         \
-		auto d_copy = d;                                                       \
-		struct dynarray_metadata *dynarray = dynarray_get_metadata(d_copy);    \
-		heap_free(dynarray, (sizeof(*d_copy) * dynarray->count +               \
+		typeof(d) di_copy = (d);                                               \
+		struct dynarray_metadata *dynarray = dynarray_get_metadata(di_copy);   \
+		heap_free(dynarray, (sizeof(*di_copy) * dynarray->capacity +           \
 							 sizeof(struct dynarray_metadata)));               \
 	})
 
 #define dynarray_push(d, e)                                                    \
 	({                                                                         \
-		auto d_copy = (d);                                                     \
-		struct dynarray_metadata *dynarray = dynarray_get_metadata(d_copy);    \
+		typeof(d) dp_copy = (d);                                               \
+		struct dynarray_metadata *dynarray = dynarray_get_metadata(dp_copy);   \
 		if (dynarray->count >= dynarray->capacity) {                           \
-			struct dynarray_metadata *new_dynarray = dynarray_grow(            \
-				d_copy,                                                        \
-				dynarray->capacity == 0 ? 1 : (2 * dynarray->capacity));       \
+			size_t new_capacity =                                              \
+				(dynarray->capacity == 0 ? 1 : (2 * dynarray->capacity));      \
+			struct dynarray_metadata *new_dynarray =                           \
+				dynarray_grow(dp_copy, new_capacity);                          \
 			if (new_dynarray != NULL) {                                        \
-				dynarray_dispose(d_copy);                                      \
-				auto data = (typeof(d_copy))(new_dynarray->data);              \
+				dynarray_dispose(dp_copy);                                     \
+				typeof(dp_copy) data = (typeof(dp_copy))(new_dynarray->data);  \
 				data[new_dynarray->count] = (e);                               \
 				new_dynarray->count++;                                         \
 			}                                                                  \
 			dynarray = new_dynarray;                                           \
 		} else {                                                               \
-			auto data = (typeof(d_copy))(dynarray->data);                      \
+			typeof(dp_copy) data = (typeof(dp_copy))(dynarray->data);          \
 			data[dynarray->count] = (e);                                       \
 			dynarray->count++;                                                 \
 		}                                                                      \
-		(dynarray == NULL ? NULL : (typeof(d_copy))(dynarray + 1));            \
+		(dynarray == NULL ? NULL : (typeof(dp_copy))(dynarray + 1));           \
 	})
 
 #define dynarray_len(d)                                                        \
 	({                                                                         \
-		auto d_copy = (d);                                                     \
-		struct dynarray_metadata *dynarray = dynarray_get_metadata(d_copy);    \
+		typeof(d) dl_copy = (d);                                               \
+		struct dynarray_metadata *dynarray = dynarray_get_metadata(dl_copy);   \
 		dynarray->count;                                                       \
 	})
 

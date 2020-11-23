@@ -13,7 +13,7 @@ struct vfs_inode *vfs_get_inode(struct vfs_superblock *sb, int id) {
 		return NULL;
 	}
 	mutex_lock(&(sb->mutex));
-	int modulo = id % VFS_ICACHE_MODULO;
+	ino_t modulo = id % VFS_ICACHE_MODULO;
 	struct vfs_inode *current = sb->inode_lists[modulo];
 	while (current != NULL) {
 		if (current->id == id) {
@@ -51,7 +51,7 @@ struct vfs_inode *vfs_get_inode(struct vfs_superblock *sb, int id) {
 
 void vfs_drop_inode(struct vfs_superblock *sb, struct vfs_inode *inode) {
 	mutex_lock(&(sb->mutex));
-	int modulo = inode->id % VFS_ICACHE_MODULO;
+	ino_t modulo = inode->id % VFS_ICACHE_MODULO;
 	if (inode->ref_count == 0) {
 		kmsg_err(
 			"Virtual File System",
@@ -68,7 +68,7 @@ void vfs_drop_inode(struct vfs_superblock *sb, struct vfs_inode *inode) {
 			inode->next_in_cache->prev_in_cache = NULL;
 		}
 		if (sb->type->drop_inode != NULL) {
-			sb->type->drop_inode(sb, inode->id);
+			sb->type->drop_inode(sb, inode, inode->id);
 		}
 		FREE_OBJ(inode);
 	}
@@ -78,7 +78,7 @@ void vfs_drop_inode(struct vfs_superblock *sb, struct vfs_inode *inode) {
 struct vfs_inode *vfs_sb_next_inode(struct vfs_superblock *sb,
 									struct vfs_inode *inode) {
 	if (inode == NULL) {
-		for (int i = 0; i < VFS_ICACHE_MODULO; ++i) {
+		for (ino_t i = 0; i < VFS_ICACHE_MODULO; ++i) {
 			if (sb->inode_lists[i] != NULL) {
 				return sb->inode_lists[i];
 			}
@@ -87,16 +87,16 @@ struct vfs_inode *vfs_sb_next_inode(struct vfs_superblock *sb,
 		if (inode->next_in_cache != NULL) {
 			return inode->next_in_cache;
 		}
-		int modulo = inode->id % VFS_ICACHE_MODULO;
-		for (int i = modulo; i < VFS_ICACHE_MODULO; ++i) {
+		ino_t modulo = inode->id % VFS_ICACHE_MODULO;
+		for (ino_t i = modulo; i < VFS_ICACHE_MODULO; ++i) {
 			return sb->inode_lists[i];
 		}
 	}
 	return NULL;
 }
 
-bool vfs_is_inode_loaded(struct vfs_superblock *sb, int id) {
-	int modulo = id % VFS_ICACHE_MODULO;
+bool vfs_is_inode_loaded(struct vfs_superblock *sb, ino_t id) {
+	ino_t modulo = id % VFS_ICACHE_MODULO;
 	struct vfs_inode *current = sb->inode_lists[modulo];
 	while (current != NULL) {
 		if (current->id == id) {
@@ -215,7 +215,7 @@ struct vfs_dentry *vfs_dentry_load_child(struct vfs_dentry *dentry,
 	if (dentry->inode->ops->get_child == NULL) {
 		return NULL;
 	}
-	int id = dentry->inode->ops->get_child(dentry->inode, name);
+	ino_t id = dentry->inode->ops->get_child(dentry->inode, name);
 	if (id == 0) {
 		return NULL;
 	}
@@ -368,7 +368,7 @@ bool vfs_mount_initialized(const char *path, struct vfs_superblock *sb) {
 	}
 	dir->inode->mount = sb;
 	sb->mount_location = dir;
-	int root_id = 1;
+	ino_t root_id = 1;
 	if (sb->type->get_root_inode != NULL) {
 		root_id = sb->type->get_root_inode(sb->ctx);
 	}
@@ -420,6 +420,7 @@ struct vfs_superblock_type *vfs_get_type(const char *fs_type) {
 			}
 			return current;
 		}
+		current = current->next;
 	}
 	mutex_unlock(&vfs_mutex);
 	return NULL;
@@ -472,7 +473,7 @@ void vfs_init(struct vfs_superblock *sb) {
 	for (size_t i = 0; i < VFS_ICACHE_MODULO; ++i) {
 		sb->inode_lists[i] = NULL;
 	}
-	int root_inode = 1;
+	ino_t root_inode = 1;
 	if (sb->type->get_root_inode != NULL) {
 		root_inode = sb->type->get_root_inode(sb->ctx);
 	}

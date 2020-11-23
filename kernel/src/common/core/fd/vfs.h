@@ -28,10 +28,10 @@ struct vfs_dentry {
 };
 
 struct vfs_inode_ops {
-	int (*get_child)(struct vfs_inode *inode, const char *name);
+	ino_t (*get_child)(struct vfs_inode *inode, const char *name);
 	struct fd *(*open)(struct vfs_inode *inode, int perm);
 	int (*mkdir)(struct vfs_inode *inode, const char *name);
-	int (*link)(struct vfs_inode *inode, int id);
+	int (*link)(struct vfs_inode *inode, ino_t id);
 	int (*unlink)(struct vfs_inode *inode, const char *name);
 };
 
@@ -44,7 +44,7 @@ struct vfs_stat {
 
 struct vfs_inode {
 	bool dirty;
-	int id;
+	ino_t id;
 	void *ctx;
 	size_t ref_count;
 	struct vfs_inode *prev_in_cache, *next_in_cache;
@@ -59,11 +59,11 @@ struct vfs_superblock_type {
 	char fs_name[255];
 	size_t fs_name_hash;
 	struct vfs_superblock *(*mount)(const char *device_path);
-	bool (*get_inode)(struct vfs_superblock *sb, struct vfs_inode *buf, int id);
-	void (*drop_inode)(struct vfs_superblock *sb, int id);
+	bool (*get_inode)(struct vfs_superblock *sb, struct vfs_inode *buf, ino_t id);
+	void (*drop_inode)(struct vfs_superblock *sb, struct vfs_inode *buf, ino_t id);
 	void (*sync)(struct vfs_superblock *sb);
 	void (*umount)(struct vfs_superblock *sb);
-	int (*get_root_inode)(struct vfs_superblock *sb);
+	ino_t (*get_root_inode)(struct vfs_superblock *sb);
 	struct vfs_superblock_type *prev, *next;
 };
 
