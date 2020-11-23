@@ -9,7 +9,8 @@ struct hal_nvme_controller {
 	size_t size;
 	bool disable_cache;
 	void (*wait_for_event)(void *ctx);
-	bool (*event_init)(void *ctx);
+	bool (*event_init)(void *ctx, void (*event_callback)(void *),
+					   void *private_ctx);
 };
 
 #endif

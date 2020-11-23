@@ -6,9 +6,11 @@ struct i686_nvme_pci_controller {
 	struct i686_pci_address addr;
 	uint8_t irq;
 	struct i686_iowait_list_entry *entry;
+	void (*event_callback)(void *);
+	void *private_ctx;
 };
 
-unused static bool i686_nvme_check_interrupt(void *ctx) {
+static bool i686_nvme_check_interrupt(void *ctx) {
 	struct i686_nvme_pci_controller *controller =
 		(struct i686_nvme_pci_controller *)ctx;
 	struct i686_pci_address addr = controller->addr;
@@ -16,9 +18,17 @@ unused static bool i686_nvme_check_interrupt(void *ctx) {
 	return ((status & (1 << 3)) != 0);
 }
 
-static bool i686_nvme_event_init(unused void *ctx) {
-	return false;
-	/*
+static void i686_nvme_event_callback(void *ctx, unused char *state) {
+	struct i686_nvme_pci_controller *controller =
+		(struct i686_nvme_pci_controller *)ctx;
+	if (controller->event_callback != NULL) {
+		controller->event_callback(controller->private_ctx);
+	}
+}
+
+static bool i686_nvme_event_init(void *ctx, void (*event_callback)(void *),
+								 void *private_ctx) {
+	// return false;
 	struct i686_nvme_pci_controller *controller =
 		(struct i686_nvme_pci_controller *)ctx;
 	uint8_t irq = i686_pci_inb(controller->addr, I686_PCI_INT_LINE);
@@ -27,12 +37,15 @@ static bool i686_nvme_event_init(unused void *ctx) {
 		return false;
 	}
 	controller->irq = irq;
-	controller->entry = i686_iowait_add_handler(
-		controller->irq, NULL, i686_nvme_check_interrupt, (void *)controller);
+	controller->entry =
+		i686_iowait_add_handler(controller->irq, i686_nvme_event_callback,
+								i686_nvme_check_interrupt, (void *)controller);
 	if (controller->entry == NULL) {
 		return false;
 	}
-	return true;*/
+	controller->event_callback = event_callback;
+	controller->private_ctx = private_ctx;
+	return true;
 }
 
 static void i686_nvme_wait_for_event(void *ctx) {

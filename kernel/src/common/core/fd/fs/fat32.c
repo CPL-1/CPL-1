@@ -61,6 +61,8 @@ struct fat32_superblock {
 	struct fat32_bpb bpb;
 	struct fat32_ebp ebp;
 	struct fat32_fsinfo fsinfo;
+	dynarray(struct vfs_inode *) fat32_opened_inodes;
+	size_t cluster_size;
 };
 
 struct fat32_inode {
@@ -72,20 +74,21 @@ struct fat32_inode {
 static bool fat32_get_inode(struct vfs_superblock *sb, struct vfs_inode *buf,
 							ino_t id) {
 	struct fat32_superblock *fat32_sb = (struct fat32_superblock *)(sb->ctx);
-	struct fat32_inode *fat32_ino = ALLOC_OBJ(struct fat32_inode);
-	if (fat32_ino == NULL) {
-		return NULL;
-	}
 	if (id == 1) {
+		struct fat32_inode *fat32_ino = ALLOC_OBJ(struct fat32_inode);
+		if (fat32_ino == NULL) {
+			return NULL;
+		}
 		fat32_ino->is_root = true;
 		fat32_ino->disk_offset = fat32_sb->ebp.root_directory;
 		fat32_ino->sb = fat32_sb;
 		buf->ctx = (void *)fat32_ino;
-		// TODO: fill stat
+		buf->stat.st_blkcnt = 0;
+		buf->stat.st_blksize = fat32_sb->bpb.bytes_per_sector;
 		buf->ops = &fat32_inode_ops;
 		return true;
+	} else {
 	}
-	FREE_OBJ(fat32_ino);
 	return false;
 }
 
@@ -133,6 +136,8 @@ static struct vfs_superblock *fat32_mount(const char *device_path) {
 	} else if (fat32_sb->fsinfo.trail_signature != 0xAA550000) {
 		goto fail_close_device;
 	}
+	fat32_sb->cluster_size =
+		fat32_sb->bpb.bytes_per_sector * fat32_sb->bpb.sectors_per_cluster;
 	return result;
 fail_close_device:
 	fd_close(device);

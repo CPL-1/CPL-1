@@ -9,6 +9,7 @@
 #include <common/misc/utils.h>
 #include <hal/drivers/storage/nvme.h>
 #include <hal/memory/virt.h>
+#include <hal/proc/intlock.h>
 
 #define NVME_SUBMISSION_QUEUE_SIZE 2
 #define NVME_COMPLETITION_QUEUE_SIZE 2
@@ -381,6 +382,10 @@ static void nvme_write_acq_register(volatile uint32_t *bar0,
 
 static void nvme_enable_interrupts(volatile uint32_t *bar0) { bar0[0x03] = 0; }
 
+unused static void nvme_disable_interrupts(volatile uint32_t *bar0) {
+	bar0[0x03] = 0xffffffff;
+}
+
 static uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
 									   union nvme_sq_entry command) {
 	drive->admin_submission_queue[drive->admin_submission_queue_head] = command;
@@ -414,6 +419,16 @@ static uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
 	return drive->admin_completition_queue->status;
 }
 
+static void nvme_recieve_notify(struct nvme_drive *drive) {
+	drive->completition_queue_head++;
+	if (drive->completition_queue_head == NVME_COMPLETITION_QUEUE_SIZE) {
+		drive->completition_queue_head = 0;
+		drive->phase_bit = !(drive->phase_bit);
+	}
+
+	*(drive->completition_doorbell) = drive->completition_queue_head;
+}
+
 static uint16_t nvme_execute_io_cmd(struct nvme_drive *drive,
 									union nvme_sq_entry command) {
 	drive->submission_queue[drive->submission_queue_head] = command;
@@ -423,32 +438,32 @@ static uint16_t nvme_execute_io_cmd(struct nvme_drive *drive,
 	}
 	volatile struct nvme_cq_entry *completition_entry =
 		drive->completition_queue + drive->completition_queue_head;
-	completition_entry->phase_bit = drive->phase_bit;
 
-	*(drive->submission_doorbell) = drive->submission_queue_head;
+	struct nvme_csts_register csts;
 
 	if (!drive->fallback_to_polling) {
+		hal_intlock_lock();
+		completition_entry->phase_bit = drive->phase_bit;
+		*(drive->submission_doorbell) = drive->submission_queue_head;
 		drive->controller->wait_for_event(drive->controller->ctx);
-	}
-	while (completition_entry->phase_bit == drive->phase_bit) {
-		if (!drive->fallback_to_polling) {
-			drive->controller->wait_for_event(drive->controller->ctx);
-		}
-		struct nvme_csts_register csts;
 		csts = nvme_read_csts_register(drive->bar0);
 		if (csts.cfs == 1) {
 			kmsg_err("NVME Driver",
-					 "Fatal error occured while executing admin command\n");
+					 "Fatal error occured while executing IO command");
 		}
+	} else {
+		completition_entry->phase_bit = drive->phase_bit;
+		*(drive->submission_doorbell) = drive->submission_queue_head;
+		while (completition_entry->phase_bit == drive->phase_bit) {
+			struct nvme_csts_register csts;
+			csts = nvme_read_csts_register(drive->bar0);
+			if (csts.cfs == 1) {
+				kmsg_err("NVME Driver",
+						 "Fatal error occured while executing IO command");
+			}
+		}
+		nvme_recieve_notify(drive);
 	}
-
-	drive->completition_queue_head++;
-	if (drive->completition_queue_head == NVME_COMPLETITION_QUEUE_SIZE) {
-		drive->completition_queue_head = 0;
-		drive->phase_bit = !(drive->phase_bit);
-	}
-
-	*(drive->completition_doorbell) = drive->completition_queue_head;
 	return drive->completition_queue->status;
 }
 
@@ -521,6 +536,7 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	nvme_drive_info->submission_queue_head = 0;
 	nvme_drive_info->controller = controller;
 	nvme_drive_info->id = nvme_controllers_detected;
+	nvme_drive_info->fallback_to_polling = true;
 	nvme_controllers_detected++;
 	mutex_init(&(nvme_drive_info->mutex));
 
@@ -647,6 +663,8 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	}
 
 	kmsg_log("NVME Driver", "NVME Controller reenabled");
+	// nvme_disable_interrupts(bar0);
+
 	uintptr_t doorbell_size = 1 << (2 + cap.dstrd);
 	uintptr_t doorbells_base = (uint32_t)bar0 + 0x1000;
 	nvme_drive_info->admin_submission_doorbell =
@@ -729,11 +747,6 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	}
 
 	nvme_drive_info->prps = prps;
-	nvme_drive_info->fallback_to_polling =
-		!controller->event_init(controller->ctx);
-	if (!nvme_drive_info->fallback_to_polling) {
-		nvme_enable_interrupts(bar0);
-	}
 
 	for (size_t i = 0; i < namespaces_count; ++i) {
 		struct nvme_drive_namespace *namespace = namespaces + i;
@@ -784,5 +797,13 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 
 		printf("         Drive namespace %u initialized!\n", i + 1);
 	}
+
+	nvme_drive_info->fallback_to_polling = !controller->event_init(
+		controller->ctx, (void (*)(void *))nvme_recieve_notify,
+		(void *)nvme_drive_info);
+	if (!(nvme_drive_info->fallback_to_polling)) {
+		nvme_enable_interrupts(bar0);
+	}
+
 	return true;
 }

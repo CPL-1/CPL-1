@@ -82,4 +82,55 @@ struct dynarray_metadata {
 		dynarray->count;                                                       \
 	})
 
+#define dynarray_pop(d)                                                        \
+	({                                                                         \
+		typeof(d) dr_copy = (d);                                               \
+		struct dynarray_metadata *meta = dynarray_get_metadata(dr_copy);       \
+		meta->count--;                                                         \
+		dr_copy;                                                               \
+	})
+
+#define dynarray_search(d, e)                                                  \
+	({                                                                         \
+		typeof(d) ds_copy = (d);                                               \
+		typeof(e) e_copy = (e);                                                \
+		size_t result = dynarray_len(ds_copy);                                 \
+		for (size_t i = 0; i < dynarray_len(ds_copy); ++i) {                   \
+			if (ds_copy[i] == e) {                                             \
+				result = i;                                                    \
+				break;                                                         \
+			}                                                                  \
+		}                                                                      \
+		result;                                                                \
+	})
+
+#define pdynarray_insert_pointer(d, p, iref)                                   \
+	({                                                                         \
+		typeof(d) dpi_copy = (d);                                              \
+		typeof(p) pi_copy = (p);                                               \
+		typeof(iref) iref_copy = (iref);                                       \
+		size_t pos = dynarray_search(dpi_copy, NULL);                          \
+		typeof(d) result = dpi_copy;                                           \
+		if (pos != dynarray_len(dpi_copy)) {                                   \
+			dpi_copy[pos] = pi_copy;                                           \
+		} else {                                                               \
+			result = dynarray_push(dpi_copy, pi_copy);                         \
+		}                                                                      \
+		*iref_copy = pos;                                                      \
+		result;                                                                \
+	})
+
+#define pdynarray_remove_pointer(d, index)                                     \
+	({                                                                         \
+		typeof(d) pdri_copy = (d);                                             \
+		typeof(index) index_copy = (index);                                    \
+		typeof(d) result = pdri_copy;                                          \
+		if (index_copy == dynarray_len(pdri_copy)) {                           \
+			result = dynarray_pop(d);                                          \
+		} else {                                                               \
+			pdri_copy[index_copy] = NULL;                                      \
+		}                                                                      \
+		result;                                                                \
+	})
+
 #endif

@@ -36,6 +36,7 @@ void i686_pic_init() {
 	i686_cpu_io_wait();
 	outb(PIC1_DATA, pic1_mask);
 	outb(PIC2_DATA, pic2_mask);
+	i686_pic_irq_enable(2);
 }
 
 void i686_pic_irq_notify_on_term(uint8_t no) {
@@ -46,23 +47,23 @@ void i686_pic_irq_notify_on_term(uint8_t no) {
 }
 
 void i686_pic_irq_enable(uint8_t no) {
-	if (no > 8) {
+	if (no >= 8) {
 		no -= 8;
 		pic2_mask &= ~(1 << no);
+		outb(PIC2_DATA, pic2_mask);
 	} else {
 		pic1_mask &= ~(1 << no);
+		outb(PIC1_DATA, pic1_mask);
 	}
-	outb(PIC2_DATA, pic2_mask);
-	outb(PIC1_DATA, pic1_mask);
 }
 
 void i686_pic_irq_disable(uint8_t no) {
-	if (no > 8) {
+	if (no >= 8) {
 		no -= 8;
 		pic2_mask |= (1 << no);
+		outb(PIC2_DATA, pic2_mask);
 	} else {
 		pic1_mask |= (1 << no);
+		outb(PIC1_DATA, pic1_mask);
 	}
-	outb(PIC2_DATA, pic2_mask);
-	outb(PIC1_DATA, pic1_mask);
 }
