@@ -3,6 +3,10 @@
 ![Process Test image](screenshots/kernel_init.png)
 *CPL-1 kernel init log on i686 CPUs*
 
+### CPL-1 discord
+
+Invite: https://discord.gg/SXnE5aSfhN
+
 ### What is CPL-1
 
 CPL-1 Operating System is a hobby operating system project with the goal of creating lightweight and portable operating system that can build itself. It is called like that as the kernel for i686 target runs in ring 1 to avoid variable length interrupt frames (previously CPL-1 was only for i686 processors, so that was quite influential).
