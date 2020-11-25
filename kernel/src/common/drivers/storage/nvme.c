@@ -663,7 +663,6 @@ bool nvme_init(struct hal_nvme_controller *controller) {
 	}
 
 	kmsg_log("NVME Driver", "NVME Controller reenabled");
-	// nvme_disable_interrupts(bar0);
 
 	uintptr_t doorbell_size = 1 << (2 + cap.dstrd);
 	uintptr_t doorbells_base = (uint32_t)bar0 + 0x1000;

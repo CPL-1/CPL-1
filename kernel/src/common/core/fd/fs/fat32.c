@@ -56,17 +56,6 @@ struct fat32_fsinfo {
 	uint32_t trail_signature;
 } packed little_endian;
 
-enum {
-	ATTR_READ_ONLY = 0x01,
-	ATTR_HIDDEN = 0x02,
-	ATTR_SYSTEM = 0x04,
-	ATTR_VOLUME_ID = 0x08,
-	ATTR_DIRECTORY = 0x10,
-	ATTR_ARCHIVE = 0x20,
-	ATTR_LONG_NAME =
-		(ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID)
-};
-
 struct fat32_short_directory_entry {
 	char name[8];
 	char ext[3];
@@ -87,13 +76,19 @@ struct fat32_long_directory_entry {
 	uint8_t ordinal;
 	uint16_t ucs_chars[5];
 	uint8_t attributes;
-	uint8_t zero;
 	uint8_t type;
 	uint8_t checksum;
 	uint16_t ucs_chars2[6];
 	uint16_t zero2;
 	uint16_t ucs_chars3[2];
 } packed little_endian;
+
+struct fat32_directory_entry {
+	char name[255];
+	uint8_t attrib;
+	uint32_t first_cluster;
+	uint32_t file_size;
+};
 
 struct fat32_superblock {
 	struct fd *device;
@@ -118,6 +113,23 @@ struct fat32_inode {
 struct fat32_rw_stream {
 	uint32_t offset_in_cluster;
 	uint32_t current_cluster;
+};
+
+enum {
+	FAT32_ATTR_READ_ONLY = 0x01,
+	FAT32_ATTR_HIDDEN = 0x02,
+	FAT32_ATTR_SYSTEM = 0x04,
+	FAT32_ATTR_VOLUME_ID = 0x08,
+	FAT32_ATTR_DIRECTORY = 0x10,
+	FAT32_ATTR_ARCHIVE = 0x20,
+	FAT32_ATTR_LONG_NAME = (FAT32_ATTR_READ_ONLY | FAT32_ATTR_HIDDEN |
+							FAT32_ATTR_SYSTEM | FAT32_ATTR_VOLUME_ID)
+};
+
+enum { FAT32_END_OF_DIRECTORY = 0x00, FAT32_UNUSED_ENTRY = 0xe5 };
+
+enum {
+	FAT32_LAST_LFN_ENTRY_ORDINAL_MASK = 0x40,
 };
 
 static uint64_t fat32_get_cluster_offset(struct fat32_superblock *fat32_sb,
@@ -171,7 +183,6 @@ static size_t fat32_read_stream(struct fat32_superblock *fat32_sb,
 			chunk_size = remaining_in_chunk;
 		}
 		uint64_t stream_pos = fat32_get_stream_pos(fat32_sb, stream);
-		printf("Reading entry\n");
 		if (!fd_readat(fat32_sb->device, stream_pos, chunk_size,
 					   buf + result)) {
 			return result;
@@ -190,7 +201,7 @@ static char fat32_to_lowercase(char c) {
 	return c;
 }
 
-static size_t
+static void
 fat32_convert_short_filename(struct fat32_short_directory_entry *entry,
 							 char *buf) {
 	size_t size = 0;
@@ -208,20 +219,168 @@ fat32_convert_short_filename(struct fat32_short_directory_entry *entry,
 ext:
 	if (entry->ext[0] == ' ' || entry->ext[0] == '\0') {
 		buf[size] = '\0';
-		return size;
+		return;
 	}
 	buf[size] = '.';
 	++size;
 	for (size_t i = 0; i < 3; ++i) {
 		if (entry->ext[i] == ' ' || entry->ext[i] == '\0') {
 			buf[size] = '\0';
-			return size;
+			return;
 		}
 		buf[size] = fat32_to_lowercase(entry->ext[i]);
 		size++;
 	}
 	buf[size] = '\0';
-	return size;
+}
+
+// source: https://github.com/benkasminbullock/unicode-c/blob/master/unicode.c
+static int fat32_ucs2_to_utf8(uint16_t ucs2, char *buf, size_t limit) {
+	static size_t UNI_SUR_HIGH_START = 0xD800;
+	static size_t UNI_SUR_LOW_END = 0xDF88;
+	if (ucs2 < 0x80) {
+		if (limit < 1) {
+			return -1;
+		}
+		buf[0] = ucs2;
+		return 1;
+	}
+	if (ucs2 < 0x800) {
+		if (limit < 2) {
+			return -1;
+		}
+		buf[0] = (ucs2 >> 6) | 0xC0;
+		buf[1] = (ucs2 & 0x3F) | 0x80;
+		return 2;
+	}
+	if (ucs2 < 0xFFFF) {
+		if (limit < 3) {
+			return -1;
+		}
+		buf[0] = ((ucs2 >> 12)) | 0xE0;
+#include <common/lib/dynarray.h>
+		buf[1] = ((ucs2 >> 6) & 0x3F) | 0x80;
+		buf[2] = ((ucs2)&0x3F) | 0x80;
+		if (ucs2 >= UNI_SUR_HIGH_START && ucs2 <= UNI_SUR_LOW_END) {
+			return -1;
+		}
+		return 3;
+	}
+	return -1;
+}
+
+#define FAT32_LFN_FILL_FROM_ENTRY(name)                                        \
+	for (size_t j = 0; j < ARR_SIZE(entries[i].name); ++j) {                   \
+		if (entries[i].name[j] == 0) {                                         \
+			return true;                                                       \
+		}                                                                      \
+		int delta =                                                            \
+			fat32_ucs2_to_utf8(entries[i].name[j], buf + pos, size - pos);     \
+		if (delta == -1) {                                                     \
+			return false;                                                      \
+		}                                                                      \
+		pos += delta;                                                          \
+	}
+
+static bool
+fat32_convert_long_filename(dynarray(struct fat32_long_directory_entry) entries,
+							char *buf, size_t size) {
+	size_t pos = 0;
+	for (size_t i = 0; i < dynarray_len(entries); ++i) {
+		FAT32_LFN_FILL_FROM_ENTRY(ucs_chars);
+		FAT32_LFN_FILL_FROM_ENTRY(ucs_chars2);
+		FAT32_LFN_FILL_FROM_ENTRY(ucs_chars3);
+	}
+	return true;
+}
+
+#undef FAT32_LFN_FILL_FROM_ENTRY
+
+static enum {
+	FAT32_READ_ENTRY_READ,
+	FAT32_READ_ENTRY_SKIP,
+	FAT32_READ_ENTRY_END,
+	FAT32_READ_ENTRY_ERROR,
+} fat32_read_directory_entry(struct fat32_superblock *fat32_sb,
+							 struct fat32_directory_entry *entry,
+							 struct fat32_rw_stream *stream) {
+	char buf[sizeof(struct fat32_short_directory_entry)];
+	struct fat32_short_directory_entry *as_short =
+		(struct fat32_short_directory_entry *)&buf;
+	struct fat32_long_directory_entry *as_long =
+		(struct fat32_long_directory_entry *)&buf;
+	if (fat32_read_stream(fat32_sb, stream,
+						  sizeof(struct fat32_short_directory_entry),
+						  buf) != sizeof(struct fat32_short_directory_entry)) {
+		return FAT32_READ_ENTRY_END;
+	}
+	if ((uint8_t)(as_short->name[0]) == FAT32_UNUSED_ENTRY) {
+		return FAT32_READ_ENTRY_SKIP;
+	}
+	if ((uint8_t)(as_short->name[0]) == FAT32_END_OF_DIRECTORY) {
+		return FAT32_READ_ENTRY_END;
+	}
+	if (as_short->attrib == FAT32_ATTR_LONG_NAME) {
+		dynarray(struct fat32_long_directory_entry) long_entries =
+			dynarray_make(struct fat32_long_directory_entry);
+		if (long_entries == NULL) {
+			return FAT32_READ_ENTRY_ERROR;
+		}
+		dynarray(struct fat32_long_directory_entry) with_elem =
+			dynarray_push(long_entries, *as_long);
+		if (with_elem == NULL) {
+			dynarray_dispose(long_entries);
+			return FAT32_READ_ENTRY_ERROR;
+		}
+		long_entries = with_elem;
+		while (true) {
+			if (fat32_read_stream(fat32_sb, stream,
+								  sizeof(struct fat32_short_directory_entry),
+								  buf) !=
+				sizeof(struct fat32_short_directory_entry)) {
+				dynarray_dispose(long_entries);
+				return FAT32_READ_ENTRY_ERROR;
+			}
+			if (as_short->attrib != FAT32_ATTR_LONG_NAME) {
+				break;
+			}
+			dynarray(struct fat32_long_directory_entry) with_elem =
+				dynarray_push(long_entries, *as_long);
+			if (with_elem == NULL) {
+				dynarray_dispose(long_entries);
+				return FAT32_READ_ENTRY_ERROR;
+			}
+			long_entries = with_elem;
+		}
+		for (size_t i = 0; i < dynarray_len(long_entries) / 2; ++i) {
+			struct fat32_long_directory_entry tmp;
+			tmp = long_entries[dynarray_len(long_entries) - 1 - i];
+			long_entries[dynarray_len(long_entries) - 1 - i] = long_entries[i];
+			long_entries[i] = tmp;
+		}
+		for (size_t i = 0; i < dynarray_len(long_entries) - 1; ++i) {
+			if (long_entries[i].ordinal != i + 1) {
+				dynarray_dispose(long_entries);
+				return FAT32_READ_ENTRY_ERROR;
+			}
+		}
+		if (long_entries[dynarray_len(long_entries) - 1].ordinal !=
+			(dynarray_len(long_entries) | FAT32_LAST_LFN_ENTRY_ORDINAL_MASK)) {
+			dynarray_dispose(long_entries);
+			return FAT32_READ_ENTRY_ERROR;
+		}
+		if (!fat32_convert_long_filename(long_entries, entry->name, 255)) {
+			dynarray_dispose(long_entries);
+			return FAT32_READ_ENTRY_ERROR;
+		}
+	} else {
+		fat32_convert_short_filename(as_short, entry->name);
+	}
+	entry->attrib = as_short->attrib;
+	entry->file_size = as_short->file_size;
+	entry->first_cluster =
+		(as_short->first_cluster_hi) << 16U | as_short->first_cluster_lo;
+	return FAT32_READ_ENTRY_READ;
 }
 
 static bool fat32_get_inode(struct vfs_superblock *sb, struct vfs_inode *buf,
@@ -323,27 +482,18 @@ static struct vfs_superblock *fat32_mount(const char *device_path) {
 	}
 	mutex_init(&(fat32_sb->mutex));
 
-	// try reading root directory as a test
 	struct fat32_rw_stream stream;
 	stream.current_cluster = fat32_sb->ebp.root_directory;
 	stream.offset_in_cluster = 0;
-	struct fat32_short_directory_entry entry;
+	struct fat32_directory_entry entry;
 	printf("Enumerating root directory\n");
 	while (true) {
-		if (fat32_read_stream(
-				fat32_sb, &stream, sizeof(struct fat32_short_directory_entry),
-				(char *)&entry) != sizeof(struct fat32_short_directory_entry)) {
+		int status = fat32_read_directory_entry(fat32_sb, &entry, &stream);
+		if (status == FAT32_READ_ENTRY_ERROR ||
+			status == FAT32_READ_ENTRY_END) {
 			break;
 		}
-		if ((uint8_t)(entry.name[0]) == 0xe5) {
-			continue;
-		}
-		if (entry.name[0] == 0) {
-			break;
-		}
-		char buf[13];
-		fat32_convert_short_filename(&entry, buf);
-		printf("entry: \"%s\"\n", buf);
+		printf("entry: \"%s\"\n", entry.name);
 	}
 	return result;
 fail_free_fat:
