@@ -75,8 +75,8 @@ bool devfs_register_inode(const char *name, struct vfs_inode *inode) {
 	return true;
 }
 
-static int devfs_root_get_child(unused struct vfs_inode *inode,
-								const char *name) {
+static ino_t devfs_root_get_child(unused struct vfs_inode *inode,
+								  const char *name) {
 	size_t hash = strhash(name);
 	mutex_lock(&devfs_mutex);
 	for (size_t i = 0; i < dynarray_len(devfs_root_entries); ++i) {

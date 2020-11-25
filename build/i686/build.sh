@@ -35,7 +35,7 @@ echo 'Mounting FAT32 partition with system data...'
 sudo mount -tvfat /dev/loop5757p1 /mnt/34cf72b97a0bf2fdc4beb2b8aba703f9 || exit
 
 echo 'Copying files from /root directory to mounted partition...'
-sudo cp -R fsroot/ /mnt/34cf72b97a0bf2fdc4beb2b8aba703f9 || exit
+sudo cp -R fsroot/* /mnt/34cf72b97a0bf2fdc4beb2b8aba703f9 || exit
 
 echo 'Unmounting loopback device...'
 sudo umount /dev/loop5757p1 || exit

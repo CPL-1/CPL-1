@@ -28,11 +28,10 @@ static void i686_nvme_event_callback(void *ctx, unused char *state) {
 
 static bool i686_nvme_event_init(void *ctx, void (*event_callback)(void *),
 								 void *private_ctx) {
-	// return false;
+	return false;
 	struct i686_nvme_pci_controller *controller =
 		(struct i686_nvme_pci_controller *)ctx;
 	uint8_t irq = i686_pci_inb(controller->addr, I686_PCI_INT_LINE);
-	printf("NVME uses irq %u\n", (uint32_t)irq);
 	if (irq > 15) {
 		return false;
 	}

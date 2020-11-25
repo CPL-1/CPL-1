@@ -99,7 +99,7 @@ static bool storage_rw_range(struct storage_dev *storage, uint64_t lba,
 	uint64_t current_offset = lba;
 	while (current_offset < lba + count) {
 		size_t buffer_offset = (current_offset - lba) * storage->sector_size;
-		uint64_t remaining = lba - current_offset;
+		uint64_t remaining = lba + count - current_offset;
 		if (remaining > storage->max_rw_sectors_count) {
 			remaining = storage->max_rw_sectors_count;
 		}

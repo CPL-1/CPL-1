@@ -8,7 +8,7 @@ static struct vfs_superblock *vfs_root;
 static struct vfs_superblock *vfs_sb_list;
 static struct vfs_superblock_type *vfs_sb_types;
 
-struct vfs_inode *vfs_get_inode(struct vfs_superblock *sb, int id) {
+struct vfs_inode *vfs_get_inode(struct vfs_superblock *sb, ino_t id) {
 	if (sb->type->get_inode == NULL) {
 		return NULL;
 	}

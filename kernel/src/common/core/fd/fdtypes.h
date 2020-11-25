@@ -3,7 +3,7 @@
 
 #include <common/misc/utils.h>
 
-typedef int ino_t;
+typedef uint32_t ino_t;
 typedef int64_t off_t;
 typedef int64_t blksize_t;
 typedef int64_t blkcnt_t;
