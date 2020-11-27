@@ -48,7 +48,7 @@ bool virt_map_at(struct virt_address_space *space, uintptr_t addr, size_t size,
 		return false;
 	}
 	if (lock) {
-		mutex_lock(&(space->mutex));
+		mutex_unlock(&(space->mutex));
 	}
 	if (space == current_space) {
 		hal_virt_flush();
@@ -71,7 +71,7 @@ void virt_unmap_at(struct virt_address_space *space, uintptr_t addr,
 		hal_phys_user_free_frame(page);
 	}
 	if (lock) {
-		mutex_lock(&(space->mutex));
+		mutex_unlock(&(space->mutex));
 	}
 	if (space == current_space) {
 		hal_virt_flush();

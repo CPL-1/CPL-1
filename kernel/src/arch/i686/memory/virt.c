@@ -175,13 +175,13 @@ uintptr_t hal_virt_unmap_page_at(uintptr_t root, uintptr_t vaddr) {
 	}
 	uintptr_t result = i686_virt_walk_to_next(page_table_phys, pt_index);
 	page_table->entries[pt_index].addr = 0;
-	page_dir->entries[pd_index].addr = 0;
 	if (i686_virt_page_refcounts[page_table_phys / hal_virt_page_size] == 0) {
 		kmsg_err(I686_VIRT_MOD_NAME,
 				 "Attempt to decrement reference count which is already zero");
 	}
 	--i686_virt_page_refcounts[page_table_phys / hal_virt_page_size];
 	if (i686_virt_page_refcounts[page_table_phys / hal_virt_page_size] == 0) {
+		page_dir->entries[pd_index].addr = 0;
 		i686_phys_krnl_free_frame(page_table_phys);
 	}
 	return result;

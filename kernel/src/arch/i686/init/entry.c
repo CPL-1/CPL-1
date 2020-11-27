@@ -147,8 +147,8 @@ void kernel_init_process() {
 	fd_close(fd);
 	kmsg_log("i686 Kernel Init", "Testing User Virtual Memory Manager");
 	virt_map_at(NULL, 0x40000000, 0x100000,
-				HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_WRITABLE,
-				false);
+				HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_WRITABLE, true);
+	virt_unmap_at(NULL, 0x40000000, 0x100000, true);
 	kmsg_log("i686 Kernel Init", "Thats it for now =(");
 	while (true)
 		;
