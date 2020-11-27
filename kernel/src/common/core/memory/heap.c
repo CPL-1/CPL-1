@@ -24,6 +24,17 @@ static size_t heap_get_size_class(size_t size) {
 	return HEAP_SIZE_CLASSES_COUNT;
 }
 
+bool heap_validate_slub_lists() {
+	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
+		struct heap_slub_obj_hdr *hdr = slubs[i];
+		while (hdr != NULL) {
+			hdr = hdr->next;
+		}
+		asm volatile("nop");
+	}
+	return true;
+}
+
 static bool heap_add_objects_to_slubs(size_t index) {
 	size_t size = heap_size_classes[index];
 	size_t objects_count = BLOCK_SIZE / size;

@@ -116,6 +116,30 @@ void kernel_init_process() {
 	kmsg_init_done("i686 Hardware Autodetection Routine");
 	vfs_mount_user("/", "/dev/nvme0n1p1", "fat32");
 	kmsg_log("i686 Kernel Init", "Mounted FAT32 Filesystem on /");
+	struct fd *fd = vfs_open("/", VFS_O_RDONLY);
+	struct fd_dirent dirent;
+	while (fd_readdir(fd, &dirent, 1) == 1) {
+		printf("Reading entry: %s\n", dirent.dt_name);
+	}
+	fd_close(fd);
+	fd =
+		vfs_open("/folder_lmao/another_folder/yet_another_folder/test_file.txt",
+				 VFS_O_RDONLY);
+	char buf[167];
+	fd_lseek(fd, 1024, SEEK_SET);
+	while (true) {
+		int read = fd_read(fd, 166, buf);
+		if (read == -1) {
+			break;
+		}
+		buf[read] = '\0';
+		printf("%s", buf);
+		if (read != 166) {
+			break;
+		}
+	}
+	fd_close(fd);
+	printf("Will I make it out alive?\n");
 	while (true)
 		;
 }

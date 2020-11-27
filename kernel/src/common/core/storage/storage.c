@@ -139,6 +139,7 @@ bool storage_rw(struct storage_dev *storage, uint64_t offset, size_t size,
 		mutex_unlock(&(storage->mutex));
 		return result;
 	} else {
+		size_t large_zone_offset = 0;
 		if (start_lba_offset != 0) {
 			if (!storage_rw_one_sector(storage, start_lba, start_lba_offset,
 									   sector_size, buf, write)) {
@@ -146,6 +147,7 @@ bool storage_rw(struct storage_dev *storage, uint64_t offset, size_t size,
 				return false;
 			}
 			start_lba += 1;
+			large_zone_offset = start_lba_offset;
 		}
 		if (ending_lba_offset != 0) {
 			if (!storage_rw_one_sector(storage, end_lba, 0, ending_lba_offset,
@@ -155,9 +157,8 @@ bool storage_rw(struct storage_dev *storage, uint64_t offset, size_t size,
 				return false;
 			}
 		}
-		bool result =
-			storage_rw_range(storage, start_lba, end_lba - start_lba,
-							 buf + (sector_size - start_lba_offset), write);
+		bool result = storage_rw_range(storage, start_lba, end_lba - start_lba,
+									   buf + large_zone_offset, write);
 		mutex_unlock(&(storage->mutex));
 		return result;
 	}
