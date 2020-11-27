@@ -16,8 +16,9 @@ static uint32_t i686_phys_low_arena_lo =
 static const uint32_t i686_phys_low_arena_hi =
 	I686_PHYS_LOW_LIMIT / I686_PAGE_SIZE;
 static uint32_t i686_phys_high_arena_lo = i686_phys_low_arena_hi;
-static const uint32_t i686_phys_high_arena_hi = 0x5000;
+static const uint32_t i686_phys_high_arena_hi = 0xa0000;
 static struct mutex i686_phys_mutex;
+uint32_t i686_phys_limit;
 
 static void i686_phys_bit_set(uint32_t index) {
 	i686_phys_bitmap[index / 32] |= (1 << (index % 32));
@@ -47,7 +48,7 @@ static bool i686_phys_bit_get(uint32_t index) {
 	return (i686_phys_bitmap[index / 32] & (1 << (index % 32))) != 0;
 }
 
-uintptr_t i686_phys_krnl_alloc_frame() {
+uint32_t i686_phys_krnl_alloc_frame() {
 	mutex_lock(&i686_phys_mutex);
 	for (; i686_phys_low_arena_lo < i686_phys_low_arena_hi;
 		 ++i686_phys_low_arena_lo) {
@@ -72,7 +73,7 @@ uintptr_t hal_phys_user_alloc_frame() {
 		}
 	}
 	mutex_unlock(&i686_phys_mutex);
-	return 0;
+	return i686_phys_krnl_alloc_frame();
 }
 
 uintptr_t hal_phys_krnl_alloc_area(size_t size) {
@@ -137,6 +138,7 @@ void i686_phys_init() {
 	if (!i686_multiboot_get_mmap(&mmap_buf)) {
 		kmsg_err(PHYS_MOD_NAME, "No memory map present");
 	}
+	uint32_t max = 0;
 	for (uint32_t i = 0; i < mmap_buf.entries_count; ++i) {
 		uint32_t entry_type = mmap_buf.entries[i].type;
 		if (entry_type == AVAILABLE) {
@@ -151,9 +153,15 @@ void i686_phys_init() {
 			}
 			uint32_t len = (uint32_t)(mmap_buf.entries[i].len);
 			uint32_t addr = (uint32_t)(mmap_buf.entries[i].addr);
+			if (len + addr > max) {
+				max = len + addr;
+			}
 			i686_phys_bitmap_clear_range(addr, len);
 		}
 	}
 	i686_phys_bitmap_set_range(
 		0, ALIGN_UP((uint32_t)&i686_phys_kernel_end, I686_PAGE_SIZE));
+	i686_phys_limit = max;
 }
+
+uint32_t i686_phys_get_mem_size() { return i686_phys_limit; }

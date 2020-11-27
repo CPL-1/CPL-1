@@ -607,7 +607,6 @@ static bool fat32_get_inode(struct vfs_superblock *sb, struct vfs_inode *buf,
 
 static void fat32_drop_inode(unused struct vfs_superblock *sb,
 							 struct vfs_inode *ino, unused ino_t id) {
-	printf("Freeing %u\n", id);
 	fat32_clean_inode(ino);
 	if (id == 1) {
 		return;

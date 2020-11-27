@@ -19,6 +19,7 @@
 #include <common/core/fd/fs/rootfs.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
+#include <common/core/memory/virt.h>
 #include <common/core/proc/proc.h>
 #include <common/core/proc/proclayout.h>
 #include <common/lib/dynarray.h>
@@ -95,6 +96,10 @@ void i686_kernel_main(uint32_t mb_offset) {
 	init_state->eip = (uint32_t)kernel_init_process;
 	init_state->esp = init_data->kernel_stack + PROC_KERNEL_STACK_SIZE;
 	init_state->eflags = (1 << 9) | (1 << 12);
+	init_data->address_space = virt_new_address_space();
+	if (init_data->address_space == NULL) {
+		kmsg_err("i686 Kernel Init", "Failed to allocate address space object");
+	}
 	proc_continue(init_id);
 	urm_thread();
 }
@@ -116,30 +121,35 @@ void kernel_init_process() {
 	kmsg_init_done("i686 Hardware Autodetection Routine");
 	vfs_mount_user("/", "/dev/nvme0n1p1", "fat32");
 	kmsg_log("i686 Kernel Init", "Mounted FAT32 Filesystem on /");
+	kmsg_log("i686 Kernel Init", "Testing FAT32 directory iteration...");
 	struct fd *fd = vfs_open("/", VFS_O_RDONLY);
 	struct fd_dirent dirent;
 	while (fd_readdir(fd, &dirent, 1) == 1) {
-		printf("Reading entry: %s\n", dirent.dt_name);
+		printf("         * %s\n", dirent.dt_name);
 	}
 	fd_close(fd);
+	kmsg_log("i686 Kernel Init", "Testing FAT32 file reading routines...");
 	fd =
 		vfs_open("/folder_lmao/another_folder/yet_another_folder/test_file.txt",
 				 VFS_O_RDONLY);
-	char buf[167];
-	fd_lseek(fd, 1024, SEEK_SET);
+	char buf[513];
 	while (true) {
-		int read = fd_read(fd, 166, buf);
+		int read = fd_read(fd, 512, buf);
 		if (read == -1) {
 			break;
 		}
 		buf[read] = '\0';
 		printf("%s", buf);
-		if (read != 166) {
+		if (read != 512) {
 			break;
 		}
 	}
 	fd_close(fd);
-	printf("Will I make it out alive?\n");
+	kmsg_log("i686 Kernel Init", "Testing User Virtual Memory Manager");
+	virt_map_at(NULL, 0x40000000, 0x100000,
+				HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_WRITABLE,
+				false);
+	kmsg_log("i686 Kernel Init", "Thats it for now =(");
 	while (true)
 		;
 }

@@ -7,5 +7,6 @@ void i686_phys_init();
 
 uint32_t i686_phys_krnl_alloc_frame();
 void i686_phys_krnl_free_frame(uint32_t frame);
+uint32_t i686_phys_get_mem_size();
 
 #endif

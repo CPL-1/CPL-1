@@ -12,7 +12,7 @@ struct proc_process {
 	struct proc_process *wait_queue_tail;
 	struct proc_process *next_in_queue;
 	char *process_state;
-	uintptr_t virt_root;
+	struct virt_address_space *address_space;
 	uintptr_t kernel_stack;
 	int return_code;
 	enum { SLEEPING, RUNNING, WAITING_FOR_CHILD_TERM, ZOMBIE } state;

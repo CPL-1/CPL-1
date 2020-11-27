@@ -1,4 +1,5 @@
 #include <common/core/memory/heap.h>
+#include <common/core/memory/virt.h>
 #include <common/core/proc/proc.h>
 #include <common/core/proc/proclayout.h>
 #include <common/lib/kmsg.h>
@@ -65,13 +66,9 @@ struct proc_id proc_new_process(struct proc_id parent) {
 	if (process == NULL) {
 		goto fail;
 	}
-	uintptr_t new_virt_root = hal_virt_new_root();
-	if (new_virt_root == 0) {
-		goto free_process_obj;
-	}
 	uintptr_t stack = (uintptr_t)heap_alloc(PROC_KERNEL_STACK_SIZE);
 	if (stack == 0) {
-		goto free_cr3;
+		goto free_process_obj;
 	}
 	char *process_state = (char *)(heap_alloc(HAL_PROCESS_STATE_SIZE));
 	if (process_state == NULL) {
@@ -86,18 +83,16 @@ struct proc_id proc_new_process(struct proc_id parent) {
 		process->wait_queue_tail = process->next_in_queue = NULL;
 	process->ppid = parent;
 	process->pid = new_id;
-	process->virt_root = new_virt_root;
 	process->process_state = process_state;
 	process->kernel_stack = stack;
 	process->return_code = 0;
 	process->state = SLEEPING;
+	process->address_space = NULL;
 	return new_id;
 free_process_state:
 	heap_free(process_state, HAL_PROCESS_STATE_SIZE);
 free_stack:
 	heap_free((void *)stack, PROC_KERNEL_STACK_SIZE);
-free_cr3:
-	hal_virt_free_root(new_virt_root);
 free_process_obj:
 	FREE_OBJ(process);
 fail:;
@@ -226,7 +221,7 @@ void proc_preempt(unused void *ctx, char *frame) {
 	memcpy(proc_current_process->process_state, frame, HAL_PROCESS_STATE_SIZE);
 	proc_current_process = proc_current_process->next;
 	memcpy(frame, proc_current_process->process_state, HAL_PROCESS_STATE_SIZE);
-	hal_virt_set_root(proc_current_process->virt_root);
+	virt_switch_to_address_space(proc_current_process->address_space);
 	hal_stack_syscall_set(proc_current_process->kernel_stack +
 						  PROC_KERNEL_STACK_SIZE);
 }
@@ -255,7 +250,12 @@ void proc_init() {
 	if (kernel_process_data->process_state == NULL) {
 		kmsg_err(PROC_MOD_NAME, "Failed to allocate kernel process state");
 	}
-	kernel_process_data->virt_root = hal_virt_get_root();
+	kernel_process_data->address_space =
+		virt_make_address_space_from_root(hal_virt_get_root());
+	if (kernel_process_data->address_space == NULL) {
+		kmsg_err(PROC_MOD_NAME,
+				 "Failed to allocate process address space object");
+	}
 	proc_dealloc_queue_head = NULL;
 	hal_stack_isr_set((uintptr_t)(proc_scheduler_stack) +
 					  PROC_SCHEDULER_STACK_SIZE);
@@ -275,8 +275,8 @@ bool proc_dispose_queue_poll() {
 	kmsg_log("User Request Monitor", "Disposing process...");
 	proc_dealloc_queue_head = process->next_in_queue;
 	hal_intlock_unlock();
-	if (process->virt_root != 0) {
-		hal_virt_free_root(process->virt_root);
+	if (process->address_space != 0) {
+		virt_drop_address_space(process->address_space);
 	}
 	if (process->kernel_stack != 0) {
 		heap_free((void *)(process->kernel_stack), PROC_KERNEL_STACK_SIZE);
