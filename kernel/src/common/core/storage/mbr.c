@@ -24,7 +24,7 @@ struct mbr_entry {
 	uint32_t end_sector : 6;
 	uint32_t starting_lba : 32;
 	uint32_t lba_size : 32;
-} packed little_endian;
+} packed little_endian noalign;
 
 bool mbr_enumerate_partitions(struct storage_dev *dev) {
 	struct mbr_entry entries[4];
