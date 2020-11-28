@@ -816,6 +816,13 @@ fail_free_result:
 	return NULL;
 }
 
+void fat32_umount(struct vfs_superblock *sb) {
+	struct fat32_superblock *fat32_sb = (struct fat32_superblock *)(sb->ctx);
+	fd_close(fat32_sb->device);
+	dynarray_dispose(fat32_sb->opened_inodes);
+	heap_free(fat32_sb->fat, fat32_sb->fat_length * 4);
+}
+
 void fat32_init() {
 	fat32_dir_file_ops.close = fat32_close_file;
 	fat32_dir_file_ops.flush = NULL;
