@@ -1,21 +1,25 @@
 #ifndef __RB_TREE_H_INCLUDED__
 #define __RB_TREE_H_INCLUDED__
 
-#include <stdbool.h>
-#include <stdlib.h>
-
-struct rb_root {
-	struct rb_node *root;
-};
+#include <common/misc/utils.h>
 
 struct rb_node {
 	bool is_black;
 	struct rb_node *parent;
 	struct rb_node *desc[2];
+	struct rb_node *iter[2];
 };
 
-typedef int rb_cmp_t(const struct rb_node *left, const struct rb_node *right,
-					 const void *opaque);
+typedef int (*rb_cmp_t)(struct rb_node *left, struct rb_node *right,
+						const void *opaque);
+typedef void (*rb_augment_callback_t)(struct rb_node *parent);
+typedef void (*rb_cleanup_callback_t)(struct rb_node *node);
+
+struct rb_root {
+	struct rb_node *root;
+	struct rb_node *ends[2];
+	rb_augment_callback_t augment_callback;
+};
 
 static bool rb_insert(struct rb_root *root, struct rb_node *node,
 					  rb_cmp_t comparator, void *ctx);
@@ -119,7 +123,9 @@ static bool rb_insert(struct rb_root *root, struct rb_node *node,
 		node->is_black = true;
 		root->root = node;
 		node->parent = NULL;
-		return false;
+		root->ends[0] = root->ends[1] = node;
+		node->iter[0] = node->iter[1] = NULL;
+		return true;
 	}
 	struct rb_node *prev = NULL;
 	struct rb_node *current = root->root;
@@ -135,7 +141,19 @@ static bool rb_insert(struct rb_root *root, struct rb_node *node,
 	}
 	prev->desc[direction] = node;
 	node->parent = prev;
+	struct rb_node *neighbour = prev->iter[direction];
+	if (neighbour != NULL) {
+		neighbour->iter[1 - direction] = node;
+	} else {
+		root->ends[direction] = node;
+	}
+	prev->iter[direction] = node;
+	node->iter[direction] = neighbour;
+	node->iter[1 - direction] = prev;
 	rb_fix_insertion(root, node);
+	if (root->augment_callback != NULL) {
+		root->augment_callback(prev);
+	}
 	return true;
 }
 
@@ -191,6 +209,45 @@ static inline void rb_swap(struct rb_node *node, struct rb_node *replacement,
 		if (replacement_child != NULL) {
 			replacement_child->parent = node;
 		}
+	}
+	struct rb_node *node_iters[2] = {node->iter[0], node->iter[1]};
+	struct rb_node *replacement_iters[2] = {replacement->iter[0],
+											replacement->iter[1]};
+	if (node_iters[0] == replacement) {
+		node_iters[0] = node;
+	}
+	if (node_iters[1] == replacement) {
+		node_iters[1] = node;
+	}
+	if (replacement_iters[0] == node) {
+		replacement_iters[0] = replacement;
+	}
+	if (replacement_iters[1] == node) {
+		replacement_iters[1] = replacement;
+	}
+	node->iter[0] = replacement_iters[0];
+	node->iter[1] = replacement_iters[1];
+	replacement->iter[0] = node_iters[0];
+	replacement->iter[1] = node_iters[1];
+	if (replacement_iters[0] == NULL) {
+		root->ends[0] = node;
+	} else {
+		replacement_iters[0]->iter[1] = node;
+	}
+	if (replacement_iters[1] == NULL) {
+		root->ends[1] = node;
+	} else {
+		replacement_iters[1]->iter[0] = node;
+	}
+	if (node_iters[0] == NULL) {
+		root->ends[0] = replacement;
+	} else {
+		node_iters[0]->iter[1] = replacement;
+	}
+	if (node_iters[1] == NULL) {
+		root->ends[1] = replacement;
+	} else {
+		node_iters[1]->iter[0] = replacement;
 	}
 }
 
@@ -275,6 +332,25 @@ static void rb_fix_double_black(struct rb_root *root, struct rb_node *node) {
 	}
 }
 
+static void rb_cut_from_iter_list(struct rb_root *root, struct rb_node *node) {
+	if (node->iter[0] != NULL) {
+		node->iter[0]->iter[1] = node->iter[1];
+	} else {
+		root->ends[0] = node->iter[1];
+		if (node->iter[1] != NULL) {
+			root->ends[0]->iter[0] = NULL;
+		}
+	}
+	if (node->iter[1] != NULL) {
+		node->iter[1]->iter[0] = node->iter[0];
+	} else {
+		root->ends[1] = node->iter[0];
+		if (node->iter[0] != NULL) {
+			root->ends[1]->iter[1] = NULL;
+		}
+	}
+}
+
 static void rb_delete(struct rb_root *root, struct rb_node *node) {
 	rb_remove_internal_nodes(node, root);
 	struct rb_node *node_child = node->desc[0];
@@ -291,20 +367,43 @@ static void rb_delete(struct rb_root *root, struct rb_node *node) {
 		} else {
 			node_parent->desc[node_pos] = node_child;
 			node_child->parent = node_parent;
+			if (root->augment_callback != NULL) {
+				root->augment_callback(node_parent);
+			}
 		}
 		rb_set_is_black(node_child, true);
+		rb_cut_from_iter_list(root, node);
 		return;
 	}
 	if (!rb_is_black(node)) {
 		node_parent->desc[node_pos] = NULL;
+		rb_cut_from_iter_list(root, node);
+		if (root->augment_callback != NULL) {
+			root->augment_callback(node_parent);
+		}
 		return;
 	}
 	rb_fix_double_black(root, node);
 	if (node_parent == NULL) {
 		root->root = NULL;
+		rb_cut_from_iter_list(root, node);
 	} else {
 		node_parent->desc[node_pos] = NULL;
+		rb_cut_from_iter_list(root, node);
+		if (root->augment_callback != NULL) {
+			root->augment_callback(node_parent);
+		}
 	}
+}
+
+static void rb_clear(struct rb_root *root, rb_cleanup_callback_t callback) {
+	struct rb_node *current = root->ends[0];
+	while (current != NULL) {
+		struct rb_node *next = current->iter[1];
+		callback(current);
+		current = next;
+	}
+	root->root = root->ends[0] = root->ends[1] = NULL;
 }
 
 #endif
