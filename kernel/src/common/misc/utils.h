@@ -79,7 +79,7 @@ static inline size_t strhash(const char *str) {
 	({                                                                         \
 		__auto_type _spaceship_x_copy = (x);                                   \
 		__auto_type _spaceship_y_copy = (y);                                   \
-		int result = 1;                                                        \
+		int result = -1;                                                       \
 		if (_spaceship_x_copy < _spaceship_y_copy) {                           \
 			result = -1;                                                       \
 		} else if (_spaceship_x_copy > _spaceship_y_copy) {                    \

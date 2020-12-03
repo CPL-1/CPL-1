@@ -1,11 +1,15 @@
-ENTRY(i686_mb1_start)
+ENTRY(i686_stivale_start)
 
 SECTIONS
 {
     . = 1M;
+    .stivalehdr : ALIGN(4K) 
+    {
+        *(.stivalehdr)
+    }
+    
     .inittext : ALIGN(4K)
     {
-        *(.multiboot)
         *(.inittext)
     }
 

@@ -7,7 +7,7 @@
 #include <arch/i686/drivers/pit.h>
 #include <arch/i686/drivers/tty.h>
 #include <arch/i686/init/detect.h>
-#include <arch/i686/init/multiboot.h>
+#include <arch/i686/init/stivale.h>
 #include <arch/i686/memory/phys.h>
 #include <arch/i686/memory/virt.h>
 #include <arch/i686/proc/iowait.h>
@@ -62,8 +62,8 @@ void i686_kernel_main(uint32_t mb_offset) {
 	kmsg_init_done("i686 GDT Loader");
 	i686_tss_init();
 	kmsg_init_done("i686 TSS Loader");
-	i686_multiboot_init(mb_offset);
-	kmsg_init_done("i686 Multiboot v1.0 Tables Parser");
+	i686_stivale_init(mb_offset);
+	kmsg_init_done("i686 Stivale v1.0 Tables Parser");
 	i686_phys_init();
 	kmsg_init_done("i686 Physical Memory Allocator");
 	i686_virt_kernel_mapping_init();

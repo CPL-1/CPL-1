@@ -1,4 +1,4 @@
-#include <arch/i686/init/multiboot.h>
+#include <arch/i686/init/stivale.h>
 #include <arch/i686/memory/config.h>
 #include <arch/i686/memory/phys.h>
 #include <common/core/proc/mutex.h>
@@ -134,25 +134,25 @@ void hal_phys_krnl_free_area(uintptr_t area, size_t size) {
 void i686_phys_init() {
 	mutex_init(&i686_phys_mutex);
 	memset(&i686_phys_bitmap, 0xff, sizeof(i686_phys_bitmap));
-	struct i686_multiboot_mmap mmap_buf;
-	if (!i686_multiboot_get_mmap(&mmap_buf)) {
+	struct i686_stivale_mmap mmap_buf;
+	if (!i686_stivale_get_mmap(&mmap_buf)) {
 		kmsg_err(PHYS_MOD_NAME, "No memory map present");
 	}
 	uint32_t max = 0;
 	for (uint32_t i = 0; i < mmap_buf.entries_count; ++i) {
 		uint32_t entry_type = mmap_buf.entries[i].type;
 		if (entry_type == AVAILABLE) {
-			if (mmap_buf.entries[i].len + mmap_buf.entries[i].addr >
+			if (mmap_buf.entries[i].length + mmap_buf.entries[i].base >
 					0x100000000ULL ||
-				mmap_buf.entries[i].len > 0xffffffffULL ||
-				mmap_buf.entries[i].addr > 0xffffffffULL) {
+				mmap_buf.entries[i].length > 0xffffffffULL ||
+				mmap_buf.entries[i].base > 0xffffffffULL) {
 				kmsg_warn(PHYS_MOD_NAME,
 						  "area that is not visible in protected mode was "
 						  "found. This area will be ignored\n");
 				continue;
 			}
-			uint32_t len = (uint32_t)(mmap_buf.entries[i].len);
-			uint32_t addr = (uint32_t)(mmap_buf.entries[i].addr);
+			uint32_t len = (uint32_t)(mmap_buf.entries[i].length);
+			uint32_t addr = (uint32_t)(mmap_buf.entries[i].base);
 			if (len + addr > max) {
 				max = len + addr;
 			}

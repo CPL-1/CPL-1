@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.inc": "c",
+        "any": "c",
+        "internet": "c"
+    }
+}
