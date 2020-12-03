@@ -1,7 +1,7 @@
 #ifndef __RB_TREE_H_INCLUDED__
 #define __RB_TREE_H_INCLUDED__
 
-#include <common/misc/utils.h>
+#include <common/lib/rbtree.h>
 
 struct rb_node {
 	bool is_black;
@@ -11,7 +11,7 @@ struct rb_node {
 };
 
 typedef int (*rb_cmp_t)(struct rb_node *left, struct rb_node *right,
-						const void *opaque);
+						void *opaque);
 typedef void (*rb_augment_callback_t)(struct rb_node *parent);
 typedef void (*rb_cleanup_callback_t)(struct rb_node *node);
 
@@ -48,7 +48,7 @@ static void rb_set_is_black(struct rb_node *node, bool is_black) {
 	}
 }
 
-int rb_get_direction(struct rb_node *node) {
+static int rb_get_direction(struct rb_node *node) {
 	if (node->parent == 0) {
 		return 0;
 	}
@@ -90,6 +90,7 @@ static void rb_rotate(struct rb_root *root, struct rb_node *node,
 
 static void rb_fix_insertion(struct rb_root *root, struct rb_node *node) {
 	while (!rb_is_black(rb_get_parent(node))) {
+		node->is_black = false;
 		struct rb_node *parent = rb_get_parent(node);
 		struct rb_node *uncle = rb_get_sibling(parent);
 		struct rb_node *greatparent = rb_get_parent(parent);
@@ -99,8 +100,8 @@ static void rb_fix_insertion(struct rb_root *root, struct rb_node *node) {
 				rb_rotate(root, greatparent, 1 - node_pos);
 				rb_set_is_black(parent, true);
 			} else {
-				rb_rotate(root, parent, node_pos);
-				rb_rotate(root, greatparent, 1 - node_pos);
+				rb_rotate(root, parent, 1 - node_pos);
+				rb_rotate(root, greatparent, node_pos);
 				rb_set_is_black(node, true);
 			}
 			rb_set_is_black(greatparent, false);
@@ -115,8 +116,8 @@ static void rb_fix_insertion(struct rb_root *root, struct rb_node *node) {
 	root->root->is_black = true;
 }
 
-static bool rb_insert(struct rb_root *root, struct rb_node *node,
-					  rb_cmp_t comparator, void *ctx) {
+unused static bool rb_insert(struct rb_root *root, struct rb_node *node,
+							 rb_cmp_t comparator, void *ctx) {
 	node->desc[0] = node->desc[1] = node->parent = NULL;
 	node->is_black = false;
 	if (root->root == NULL) {
@@ -251,9 +252,10 @@ static inline void rb_swap(struct rb_node *node, struct rb_node *replacement,
 	}
 }
 
-static struct rb_node *rb_query(struct rb_root *root, struct rb_node *node,
-								rb_cmp_t comparator, void *ctx,
-								bool require_match) {
+unused static struct rb_node *rb_query(struct rb_root *root,
+									   struct rb_node *node,
+									   rb_cmp_t comparator, void *ctx,
+									   bool require_match) {
 	if (root->root == NULL) {
 		return NULL;
 	}
@@ -351,7 +353,7 @@ static void rb_cut_from_iter_list(struct rb_root *root, struct rb_node *node) {
 	}
 }
 
-static void rb_delete(struct rb_root *root, struct rb_node *node) {
+unused static void rb_delete(struct rb_root *root, struct rb_node *node) {
 	rb_remove_internal_nodes(node, root);
 	struct rb_node *node_child = node->desc[0];
 	struct rb_node *node_parent = node->parent;
@@ -396,7 +398,8 @@ static void rb_delete(struct rb_root *root, struct rb_node *node) {
 	}
 }
 
-static void rb_clear(struct rb_root *root, rb_cleanup_callback_t callback) {
+unused static void rb_clear(struct rb_root *root,
+							rb_cleanup_callback_t callback) {
 	struct rb_node *current = root->ends[0];
 	while (current != NULL) {
 		struct rb_node *next = current->iter[1];
@@ -404,6 +407,160 @@ static void rb_clear(struct rb_root *root, rb_cleanup_callback_t callback) {
 		current = next;
 	}
 	root->root = root->ends[0] = root->ends[1] = NULL;
+}
+
+static int rb_check_black_property(struct rb_node *node) {
+	if (node == NULL) {
+		return 0;
+	}
+	int left_height = rb_check_black_property(node->desc[0]);
+	int right_height = rb_check_black_property(node->desc[1]);
+	if (left_height == -1 || right_height == -1) {
+		return -1;
+	}
+	if (right_height != left_height) {
+		return -1;
+	}
+	return left_height + (node->is_black ? 1 : 0);
+}
+
+static bool rb_check_parents(struct rb_node *node) {
+	if (node == NULL) {
+		return true;
+	}
+	bool left_ok = rb_check_parents(node->desc[0]);
+	bool right_ok = rb_check_parents(node->desc[1]);
+	if (!(left_ok && right_ok)) {
+		return false;
+	}
+	if (node->desc[0] != NULL && node->desc[0]->parent != node) {
+		return false;
+	}
+	if (node->desc[1] != NULL && node->desc[1]->parent != node) {
+		return false;
+	}
+	return true;
+}
+
+static bool rb_check_double_red_absence(struct rb_node *node) {
+	if (rb_is_black(node)) {
+		return true;
+	}
+	bool left_ok = rb_check_parents(node->desc[0]);
+	bool right_ok = rb_check_parents(node->desc[1]);
+	if (!(left_ok && right_ok)) {
+		return false;
+	}
+	if (!rb_is_black(node->desc[0]) || !rb_is_black(node->desc[1]) ||
+		!rb_is_black(node->parent)) {
+		return false;
+	}
+	return true;
+}
+
+static bool rb_verify_iterators(struct rb_root *root, rb_cmp_t cmp,
+								void *opaque, bool require_neg_one) {
+	struct rb_node *current = root->ends[0];
+	while (current != NULL) {
+		struct rb_node *next = current->iter[1];
+		if (next != NULL) {
+			if (next->iter[0] != current) {
+				return false;
+			}
+		} else {
+			current = next;
+			continue;
+		}
+		if (cmp == NULL) {
+			continue;
+		}
+		int cmp_result = cmp(current, next, opaque);
+		if (require_neg_one) {
+			if (cmp_result != -1) {
+				return false;
+			}
+		} else {
+			if (cmp_result == 1) {
+				return false;
+			}
+		}
+		current = next;
+	}
+	return true;
+}
+
+static bool rb_verify_bst_correctness(struct rb_node *node, rb_cmp_t cmp,
+									  void *opaque, bool require_neg_one) {
+	if (node == NULL) {
+		return true;
+	}
+	bool left_ok =
+		rb_verify_bst_correctness(node->desc[0], cmp, opaque, require_neg_one);
+	bool right_ok =
+		rb_verify_bst_correctness(node->desc[1], cmp, opaque, require_neg_one);
+	if (!(left_ok && right_ok)) {
+		return false;
+	}
+	if (node->desc[0] != NULL) {
+		int cmp_result = cmp(node->desc[0], node, opaque);
+		if (require_neg_one) {
+			if (cmp_result != -1) {
+				return false;
+			}
+		} else {
+			if (cmp_result == 1) {
+				return false;
+			}
+		}
+	}
+	if (node->desc[1] != NULL) {
+		int cmp_result = cmp(node, node->desc[1], opaque);
+		if (require_neg_one) {
+			if (cmp_result != -1) {
+				return false;
+			}
+		} else {
+			if (cmp_result == 1) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+unused static bool rb_verify_invariants(struct rb_root *root, rb_cmp_t cmp,
+										void *opaque, bool require_neg_one) {
+	if (rb_check_black_property(root->root) == -1) {
+		return false;
+	}
+	if (!rb_check_parents(root->root)) {
+		return false;
+	}
+	if (root->root != NULL) {
+		if (root->root->parent != NULL) {
+			return false;
+		}
+		if (!(root->root->is_black)) {
+			return false;
+		}
+	}
+	if ((root->ends[0] != NULL && root->ends[0]->iter[0] != NULL) ||
+		(root->ends[1] != NULL && root->ends[1]->iter[1] != NULL)) {
+		return false;
+	}
+	if (!rb_check_double_red_absence(root->root)) {
+		return false;
+	}
+	if (!rb_verify_iterators(root, cmp, opaque, require_neg_one)) {
+		return false;
+	}
+	if (cmp != NULL) {
+		if (!rb_verify_bst_correctness(root->root, cmp, opaque,
+									   require_neg_one)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 #endif

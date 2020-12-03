@@ -146,10 +146,15 @@ void kernel_init_process() {
 	}
 	fd_close(fd);
 	kmsg_log("i686 Kernel Init", "Testing User Virtual Memory Manager");
-	virt_map_at(NULL, 0x40000000, 0x100000,
-				HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_WRITABLE, true);
-	virt_unmap_at(NULL, 0x40000000, 0x100000, true);
-	kmsg_log("i686 Kernel Init", "Thats it for now =(");
+	uintptr_t result = virt_map_at(
+		NULL, 0, 0x100000,
+		HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_WRITABLE, true);
+	virt_map_at(NULL, 0, 0x100000, HAL_VIRT_FLAGS_USER_ACCESSIBLE, true);
+	virt_map_at(NULL, 0x300000, 0x100000, HAL_VIRT_FLAGS_WRITABLE, true);
+	virt_unmap_at(NULL, 0x350000, 0x25000, true);
+	virt_unmap_at(NULL, result, 0x100000, true);
+	kmsg_log("i686 Kernel Init",
+			 "Thats it for now =(. Open QEMU monitor to check page mappings.");
 	while (true)
 		;
 }

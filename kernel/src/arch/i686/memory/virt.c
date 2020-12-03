@@ -31,6 +31,9 @@ struct i686_virt_page_table {
 
 uintptr_t hal_virt_kernel_mapping_base = I686_KERNEL_MAPPING_BASE;
 size_t hal_virt_page_size = I686_PAGE_SIZE;
+uintptr_t hal_virt_user_area_start = I686_USER_AREA_START;
+uintptr_t hal_virt_user_area_end = I686_USER_AREA_END;
+
 uint16_t *i686_virt_page_refcounts = NULL;
 
 static inline uint16_t i686_virt_pd_index(uint32_t vaddr) {
@@ -134,6 +137,7 @@ bool hal_virt_map_page_at(uintptr_t root, uintptr_t vaddr, uintptr_t paddr,
 		page_dir->entries[pd_index].addr = addr;
 		page_dir->entries[pd_index].present = true;
 		page_dir->entries[pd_index].writable = true;
+		page_dir->entries[pd_index].user = true;
 		i686_virt_page_refcounts[addr / hal_virt_page_size] = 0;
 		memset((void *)(addr + hal_virt_kernel_mapping_base), 0, 0x1000);
 	}

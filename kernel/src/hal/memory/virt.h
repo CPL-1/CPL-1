@@ -11,6 +11,8 @@ enum {
 };
 
 extern uintptr_t hal_virt_kernel_mapping_base;
+extern uintptr_t hal_virt_user_area_start;
+extern uintptr_t hal_virt_user_area_end;
 extern size_t hal_virt_page_size;
 
 uintptr_t hal_virt_new_root();

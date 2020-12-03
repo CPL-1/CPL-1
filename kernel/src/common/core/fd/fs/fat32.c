@@ -134,7 +134,7 @@ enum {
 							FAT32_ATTR_SYSTEM | FAT32_ATTR_VOLUME_ID)
 };
 
-enum { FAT32_END_OF_DIRECTORY = 0x00, FAT32_UNUSED_ENTRY = 0xe5 };
+enum { FAT32_END_OF_DIRECTORY = 0x00, FAT32_unused_ENTRY = 0xe5 };
 
 enum {
 	FAT32_LAST_LFN_ENTRY_ORDINAL_MASK = 0x40,
@@ -349,7 +349,7 @@ static enum {
 						  buf) != sizeof(struct fat32_short_directory_entry)) {
 		return FAT32_READ_ENTRY_END;
 	}
-	if ((uint8_t)(as_short->name[0]) == FAT32_UNUSED_ENTRY) {
+	if ((uint8_t)(as_short->name[0]) == FAT32_unused_ENTRY) {
 		return FAT32_READ_ENTRY_SKIP;
 	}
 	if ((uint8_t)(as_short->name[0]) == FAT32_END_OF_DIRECTORY) {

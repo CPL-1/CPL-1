@@ -62,4 +62,30 @@ static inline size_t strhash(const char *str) {
 #define ALIGN_DOWN(val, align) (((val) / (align)) * (align))
 #define ARR_SIZE(val) (sizeof(val) / sizeof(*(val)))
 
+#define SPACESHIP(x, y)                                                        \
+	({                                                                         \
+		__auto_type _spaceship_x_copy = (x);                                   \
+		__auto_type _spaceship_y_copy = (y);                                   \
+		int result = 0;                                                        \
+		if (_spaceship_x_copy < _spaceship_y_copy) {                           \
+			result = -1;                                                       \
+		} else if (_spaceship_x_copy > _spaceship_y_copy) {                    \
+			result = 1;                                                        \
+		}                                                                      \
+		result;                                                                \
+	})
+
+#define SPACESHIP_NO_ZERO(x, y)                                                \
+	({                                                                         \
+		__auto_type _spaceship_x_copy = (x);                                   \
+		__auto_type _spaceship_y_copy = (y);                                   \
+		int result = 1;                                                        \
+		if (_spaceship_x_copy < _spaceship_y_copy) {                           \
+			result = -1;                                                       \
+		} else if (_spaceship_x_copy > _spaceship_y_copy) {                    \
+			result = 1;                                                        \
+		}                                                                      \
+		result;                                                                \
+	})
+
 #endif
