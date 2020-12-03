@@ -1,0 +1,3 @@
+[submodule "build/x86/limine"]
+	path = build/x86/limine
+	url = https://github.com/limine-bootloader/limine
