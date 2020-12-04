@@ -3,5 +3,8 @@
         "*.inc": "c",
         "any": "c",
         "internet": "c"
+    },
+    "files.exclude": {
+        "build/x86/limine": true,
     }
 }

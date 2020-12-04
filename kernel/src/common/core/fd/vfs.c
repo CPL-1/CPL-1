@@ -171,7 +171,6 @@ bool vfs_drop_dentry(struct vfs_dentry *dentry) {
 	}
 	vfs_dentry_cut(dentry);
 	vfs_drop_inode(dentry->inode->sb, dentry->inode);
-	ATOMIC_DECREMENT(&(dentry->parent->ref_count));
 	mutex_unlock(&(dentry->mutex));
 	FREE_OBJ(dentry);
 	return true;
@@ -195,6 +194,7 @@ struct vfs_dentry *vfs_dentry_lookup(struct vfs_dentry *dentry,
 	struct vfs_dentry *current = dentry->head;
 	while (current != NULL) {
 		if (current->hash != hash) {
+			current = current->next;
 			continue;
 		}
 		if (streq(current->name, name)) {

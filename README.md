@@ -24,21 +24,16 @@ Currently there is only support for i686 CPUS with PIC 8259 interrupt controller
 
 The following dependencies should be met to build CPL-1 for i686 target
 ```
-bash # All scripts use BASH to run
-i686-elf-gcc # GNU C cross compiler for i686 target, build instructions here: https://wiki.osdev.org/GCC_Cross-Compiler
-nasm # Netwide Assembler - assembler with intel syntax.
-chronic # from moreutils, displays output only if error occured
-make # GNU Make build system
-losetup # Used to modify kernel image
-fdisk # Partitioning program, used to make OS image
-mkfs.fat # from dosfstools, used to format partitions on kernel image as FAT32 
-python3 # CPython 3 interpreter. Used to run source watcher. Optional
-qemu-system-i386 # QEMU emulator for i386 target. Used for testing purposes. Optional
+
 ```
 
 Additionally, you might need python3 to run inotify helper, but that is optional.
 
 ### How I build CPL-1?
+
+### Cloning limine
+
+CPL-1 uses limine bootloader ("https://github.com/limine-bootloader/limine")
 
 #### Source watcher
 
@@ -55,24 +50,39 @@ Go to ```./build/i686/```
 
 To build system, run
 ```bash
-./build.sh
+make
+```
+
+To build system without cleaning up, run
+```
+make build
 ```
 
 To run system, run
 ```bash
-./run.sh
+make run
 ```
 
 To debug system, run
 ```bash
-./debug.sh
+make debug
 ```
 
 To cleanup object files (if you are not using source watcher for some reason), run
 ```bash
-./clean.sh
+make clean
 ```
 
-### What CPL-1 is licensed under?
+To do ```make``` and ```make run`` in a single command, run
+```bash
+make testrun
+```
+
+To do ```make`` and ```make debug``` in a single command, run
+```bash
+make testdebug
+```
+
+### Licensing
 
 CPL-1 uses MIT license. In short, it means that you need to cite this codebase if you are planning to use code from this repository. Don't quote me on this though.

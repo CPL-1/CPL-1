@@ -103,7 +103,6 @@ struct fat32_superblock {
 	size_t fat_length;
 	uint64_t fat_offset;
 	uint64_t clusters_offset;
-	uint32_t *fat;
 };
 
 struct fat32_inode {
@@ -148,7 +147,14 @@ static uint64_t fat32_get_cluster_offset(struct fat32_superblock *fat32_sb,
 
 static uint32_t fat32_next_cluster_id(struct fat32_superblock *fat32_sb,
 									  uint32_t cluster_id) {
-	return fat32_sb->fat[cluster_id] & 0x0FFFFFFF;
+	uint32_t fat_offset = fat32_sb->fat_offset + cluster_id * 4;
+	struct {
+		uint32_t entry;
+	} packed little_endian noalign buf;
+	if (!fd_readat(fat32_sb->device, fat_offset, 4, (char *)&buf)) {
+		return 0x0FFFFFF7;
+	}
+	return buf.entry & 0x0FFFFFFF;
 }
 
 static bool fat32_is_end_of_cluster_chain(uint32_t cluster_id) {
@@ -787,26 +793,16 @@ static struct vfs_superblock *fat32_mount(const char *device_path) {
 		fat32_sb->bpb.bytes_per_sector * fat32_sb->bpb.sectors_per_cluster;
 	fat32_sb->fat_offset =
 		fat32_sb->bpb.reserved_sectors * fat32_sb->bpb.bytes_per_sector;
-	fat32_sb->fat = (uint32_t *)heap_alloc(fat32_sb->fat_length * 4);
 	fat32_sb->clusters_offset =
 		fat32_sb->fat_offset + fat32_sb->ebp.sectors_per_fat *
 								   fat32_sb->bpb.bytes_per_sector *
 								   fat32_sb->bpb.fat_count;
-	if (fat32_sb->fat == NULL) {
-		goto fail_close_device;
-	}
-	if (!fd_readat(device, fat32_sb->fat_offset, fat32_sb->fat_length * 4,
-				   (char *)(fat32_sb->fat))) {
-		goto fail_free_fat;
-	}
 	fat32_sb->opened_inodes = dynarray_make(struct vfs_inode *);
 	if (fat32_sb->opened_inodes == NULL) {
-		goto fail_free_fat;
+		goto fail_close_device;
 	}
 	mutex_init(&(fat32_sb->mutex));
 	return result;
-fail_free_fat:
-	FREE_OBJ(fat32_sb->fat);
 fail_close_device:
 	fd_close(device);
 fail_free_sb:
@@ -820,7 +816,6 @@ void fat32_umount(struct vfs_superblock *sb) {
 	struct fat32_superblock *fat32_sb = (struct fat32_superblock *)(sb->ctx);
 	fd_close(fat32_sb->device);
 	dynarray_dispose(fat32_sb->opened_inodes);
-	heap_free(fat32_sb->fat, fat32_sb->fat_length * 4);
 }
 
 void fat32_init() {
