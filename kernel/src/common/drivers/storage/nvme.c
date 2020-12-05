@@ -380,7 +380,7 @@ static void NVME_EnableInterrupts(volatile uint32_t *bar0) {
 	bar0[0x03] = 0;
 }
 
-UNUSED static void NVME_DisableInterrupts(volatile uint32_t *bar0) {
+MAYBE_UNUSED static void NVME_DisableInterrupts(volatile uint32_t *bar0) {
 	bar0[0x03] = 0xffffffff;
 }
 
@@ -463,7 +463,7 @@ static bool nvme_rw_lba(struct NVMEDrive *drive, size_t ns, void *buf, uint64_t 
 	size_t block_size = namespace->block_size;
 	uintptr_t page_offset = (uintptr_t)buf & (HAL_VirtualMM_PageSize - 1);
 
-	UNUSED union NVME_SQEntry rw_command;
+	MAYBE_UNUSED union NVME_SQEntry rw_command;
 	rw_command.rw.opcode = write ? NVME_CMD_WRITE : NVME_CMD_READ;
 	rw_command.rw.flags = 0;
 	rw_command.rw.control = 0;

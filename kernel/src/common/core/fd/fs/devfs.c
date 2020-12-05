@@ -16,14 +16,14 @@ static struct VFS_InodeOperations m_rootInodeOperations;
 static struct Mutex m_mutex;
 static struct VFS_Superblock_type m_superblockType;
 
-static struct VFS_Superblock *devfs_mount(UNUSED const char *device_path) {
+static struct VFS_Superblock *devfs_mount(MAYBE_UNUSED const char *device_path) {
 	struct VFS_Superblock *sb = ALLOC_OBJ(struct VFS_Superblock);
 	sb->ctx = NULL;
 	sb->type = &m_superblockType;
 	return sb;
 }
 
-static bool DevFS_GetInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id) {
+static bool DevFS_GetInode(MAYBE_UNUSED struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id) {
 	Mutex_Lock(&m_mutex);
 	if (id == 1) {
 		Mutex_Unlock(&m_mutex);
@@ -73,7 +73,7 @@ bool DevFS_RegisterInode(const char *name, struct VFS_Inode *inode) {
 	return true;
 }
 
-static ino_t DevFS_GetRootChild(UNUSED struct VFS_Inode *inode, const char *name) {
+static ino_t DevFS_GetRootChild(MAYBE_UNUSED struct VFS_Inode *inode, const char *name) {
 	size_t hash = GetStringHash(name);
 	Mutex_Lock(&m_mutex);
 	for (size_t i = 0; i < DYNARRAY_LENGTH(m_rootEntries); ++i) {
@@ -90,7 +90,7 @@ static ino_t DevFS_GetRootChild(UNUSED struct VFS_Inode *inode, const char *name
 	return 0;
 }
 
-static struct File *DeVFS_OpenRoot(UNUSED struct VFS_Inode *inode, UNUSED int perm) {
+static struct File *DeVFS_OpenRoot(MAYBE_UNUSED struct VFS_Inode *inode, MAYBE_UNUSED int perm) {
 	struct File *newFile = ALLOC_OBJ(struct File);
 	if (newFile == NULL) {
 		return NULL;

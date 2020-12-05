@@ -112,6 +112,9 @@ void i686_VirtualMM_InitializeKernelMap() {
 }
 
 bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, int flags) {
+	if ((flags & HAL_VIRT_FLAGS_READABLE) == 0 && (flags & HAL_VIRT_FLAGS_WRITABLE) == 0) {
+		return true;
+	}
 	struct i686_VirtualMM_PageTable *pageDir = (struct i686_VirtualMM_PageTable *)(root + I686_KERNEL_MAPPING_BASE);
 	uint16_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
@@ -146,14 +149,13 @@ uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr) {
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
 	uint32_t pageTablePhys = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);
 	if (pageTablePhys == 0) {
-		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Trying to unmap virtual page page "
-											   "table for which is not mapped");
+		return 0;
 	}
 	struct i686_VirtualMM_PageTable *pageDir = (struct i686_VirtualMM_PageTable *)(root + I686_KERNEL_MAPPING_BASE);
 	struct i686_VirtualMM_PageTable *pageTable =
 		(struct i686_VirtualMM_PageTable *)(pageTablePhys + I686_KERNEL_MAPPING_BASE);
 	if (!(pageTable->entries[ptIndex].present)) {
-		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Trying to unmap virtual page page which is not mapped");
+		return 0;
 	}
 	uintptr_t result = i686_VirtualMM_WalkToNextPageTable(pageTablePhys, ptIndex);
 	pageTable->entries[ptIndex].addr = 0;
@@ -169,6 +171,9 @@ uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr) {
 }
 
 void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int flags) {
+	if ((flags & HAL_VIRT_FLAGS_READABLE) == 0 && (flags & HAL_VIRT_FLAGS_WRITABLE) == 0) {
+		HAL_VirtualMM_UnmapPageAt(root, vaddr);
+	}
 	uint16_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
 	uint32_t pageTablePhys = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);

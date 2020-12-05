@@ -86,4 +86,6 @@ static INLINE size_t GetStringHash(const char *str) {
 		result;                                                                                                        \
 	})
 
+#define INT_MAX +2147483647
+
 #endif

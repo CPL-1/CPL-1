@@ -74,7 +74,7 @@ static struct FileOperations m_partDevFileOperations = {
 	.close = partdev_fd_callback_close,
 };
 
-static struct File *partdev_callback_open(struct VFS_Inode *inode, UNUSED int perm) {
+static struct File *partdev_callback_open(struct VFS_Inode *inode, MAYBE_UNUSED int perm) {
 	struct File *fd = ALLOC_OBJ(struct File);
 	if (fd == NULL) {
 		return NULL;

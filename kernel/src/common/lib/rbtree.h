@@ -11,13 +11,14 @@ struct RedBlackTree_Node {
 };
 
 typedef int (*RedBlackTree_Comparator)(struct RedBlackTree_Node *left, struct RedBlackTree_Node *right, void *opaque);
-typedef void (*RedBlackTree_AugmentCallback)(struct RedBlackTree_Node *parent);
-typedef void (*RedBlackTree_CleanupCallback)(struct RedBlackTree_Node *node);
+typedef void (*RedBlackTree_AugmentCallback)(struct RedBlackTree_Node *parent, void *opaque);
+typedef void (*RedBlackTree_CleanupCallback)(struct RedBlackTree_Node *node, void *opaque);
 
 struct RedBlackTree_Tree {
 	struct RedBlackTree_Node *root;
 	struct RedBlackTree_Node *ends[2];
 	RedBlackTree_AugmentCallback augmentCallback;
+	void *augmentOpaque;
 };
 
 static bool RedBlackTree_Insert(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node,
@@ -113,8 +114,8 @@ static void RedBlackTree_FixInsertion(struct RedBlackTree_Tree *root, struct Red
 	root->root->is_black = true;
 }
 
-UNUSED static bool RedBlackTree_Insert(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node,
-									   RedBlackTree_Comparator comparator, void *ctx) {
+MAYBE_UNUSED static bool RedBlackTree_Insert(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node,
+											 RedBlackTree_Comparator comparator, void *ctx) {
 	node->desc[0] = node->desc[1] = node->parent = NULL;
 	node->is_black = false;
 	if (root->root == NULL) {
@@ -150,7 +151,7 @@ UNUSED static bool RedBlackTree_Insert(struct RedBlackTree_Tree *root, struct Re
 	node->iter[1 - direction] = prev;
 	RedBlackTree_FixInsertion(root, node);
 	if (root->augmentCallback != NULL) {
-		root->augmentCallback(prev);
+		root->augmentCallback(prev, root->augmentOpaque);
 	}
 	return true;
 }
@@ -248,10 +249,10 @@ static INLINE void RedBlackTree_SwapNodes(struct RedBlackTree_Node *node, struct
 	}
 }
 
-UNUSED static struct RedBlackTree_Node *RedBlackTree_Query(struct RedBlackTree_Tree *root,
-														   struct RedBlackTree_Node *node,
-														   RedBlackTree_Comparator comparator, void *ctx,
-														   bool require_match) {
+MAYBE_UNUSED static struct RedBlackTree_Node *RedBlackTree_Query(struct RedBlackTree_Tree *root,
+																 struct RedBlackTree_Node *node,
+																 RedBlackTree_Comparator comparator, void *ctx,
+																 bool require_match) {
 	if (root->root == NULL) {
 		return NULL;
 	}
@@ -347,7 +348,7 @@ static void RedBlackTree_CutFromIterList(struct RedBlackTree_Tree *root, struct 
 	}
 }
 
-UNUSED static void RedBlackTree_Remove(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node) {
+MAYBE_UNUSED static void RedBlackTree_Remove(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node) {
 	RedBlackTree_RemoveInternalNodes(node, root);
 	struct RedBlackTree_Node *node_child = node->desc[0];
 	struct RedBlackTree_Node *node_parent = node->parent;
@@ -364,7 +365,7 @@ UNUSED static void RedBlackTree_Remove(struct RedBlackTree_Tree *root, struct Re
 			node_parent->desc[node_pos] = node_child;
 			node_child->parent = node_parent;
 			if (root->augmentCallback != NULL) {
-				root->augmentCallback(node_parent);
+				root->augmentCallback(node_parent, root->augmentOpaque);
 			}
 		}
 		RedBlackTree_SetIsBlack(node_child, true);
@@ -375,7 +376,7 @@ UNUSED static void RedBlackTree_Remove(struct RedBlackTree_Tree *root, struct Re
 		node_parent->desc[node_pos] = NULL;
 		RedBlackTree_CutFromIterList(root, node);
 		if (root->augmentCallback != NULL) {
-			root->augmentCallback(node_parent);
+			root->augmentCallback(node_parent, root->augmentOpaque);
 		}
 		return;
 	}
@@ -387,16 +388,17 @@ UNUSED static void RedBlackTree_Remove(struct RedBlackTree_Tree *root, struct Re
 		node_parent->desc[node_pos] = NULL;
 		RedBlackTree_CutFromIterList(root, node);
 		if (root->augmentCallback != NULL) {
-			root->augmentCallback(node_parent);
+			root->augmentCallback(node_parent, root->augmentOpaque);
 		}
 	}
 }
 
-UNUSED static void RedBlackTree_Clear(struct RedBlackTree_Tree *root, RedBlackTree_CleanupCallback callback) {
+MAYBE_UNUSED static void RedBlackTree_Clear(struct RedBlackTree_Tree *root, RedBlackTree_CleanupCallback callback,
+											void *callbackOpaque) {
 	struct RedBlackTree_Node *current = root->ends[0];
 	while (current != NULL) {
 		struct RedBlackTree_Node *next = current->iter[1];
-		callback(current);
+		callback(current, callbackOpaque);
 		current = next;
 	}
 	root->root = root->ends[0] = root->ends[1] = NULL;
@@ -519,8 +521,8 @@ static bool RedBlackTree_VerifyBSTProperty(struct RedBlackTree_Node *node, RedBl
 	return true;
 }
 
-UNUSED static bool RedBlackTree_VerifyInvariants(struct RedBlackTree_Tree *root, RedBlackTree_Comparator cmp,
-												 void *opaque, bool require_neg_one) {
+MAYBE_UNUSED static bool RedBlackTree_VerifyInvariants(struct RedBlackTree_Tree *root, RedBlackTree_Comparator cmp,
+													   void *opaque, bool require_neg_one) {
 	if (RedBlackTree_CheckBlackCountsProperty(root->root) == -1) {
 		return false;
 	}

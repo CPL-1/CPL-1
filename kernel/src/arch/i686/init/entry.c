@@ -10,6 +10,7 @@
 #include <arch/i686/init/stivale.h>
 #include <arch/i686/memory/phys.h>
 #include <arch/i686/memory/virt.h>
+#include <arch/i686/proc/elf32.h>
 #include <arch/i686/proc/iowait.h>
 #include <arch/i686/proc/priv.h>
 #include <arch/i686/proc/ring1.h>
@@ -20,6 +21,7 @@
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/memory/virt.h>
+#include <common/core/proc/elf32.h>
 #include <common/core/proc/proc.h>
 #include <common/core/proc/proclayout.h>
 #include <common/lib/dynarray.h>
@@ -30,7 +32,7 @@
 #include <hal/proc/intlock.h>
 #include <hal/proc/isrhandler.h>
 
-void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_PCI_ID id, UNUSED void *context) {
+void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_PCI_ID id, MAYBE_UNUSED void *context) {
 	KernelLog_Print("PCI device found at bus: %d, slot: %d, function: %d, "
 					"vendor_id: %d, device_id: %d",
 					addr.bus, addr.slot, addr.function, id.vendor_id, id.device_id);
@@ -83,14 +85,16 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 	KernelLog_InfoMsg("i686 Kernel Init", "Starting Init Process...");
 	struct Proc_ProcessID initID = Proc_MakeNewProcess(Proc_GetProcessID());
 	struct Proc_Process *initData = Proc_GetProcessData(initID);
+	struct Proc_ProcessID selfID = Proc_GetProcessID();
+	struct Proc_Process *selfData = Proc_GetProcessData(selfID);
 	struct i686_CPUState *initState = (struct i686_CPUState *)(initData->processState);
 	initState->ds = initState->es = initState->gs = initState->fs = initState->ss = 0x21;
 	initState->cs = 0x19;
 	initState->eip = (uint32_t)i686_KernelInit_ExecuteInitProcess;
 	initState->esp = initData->kernelStack + PROC_KERNEL_STACK_SIZE;
 	initState->eflags = (1 << 9) | (1 << 12);
-	initData->address_space = VirtualMM_MakeNewAddressSpace();
-	if (initData->address_space == NULL) {
+	initData->addressSpace = VirtualMM_ReferenceAddressSpace(selfData->addressSpace);
+	if (initData->addressSpace == NULL) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate address space object");
 	}
 	Proc_Resume(initID);
@@ -106,19 +110,37 @@ void i686_KernelInit_ExecuteInitProcess() {
 	KernelLog_InitDoneMsg("Device File System");
 	FAT32_Initialize();
 	KernelLog_InitDoneMsg("FAT32 File System");
-	VFS_UserMount("/dev/", NULL, "devfs");
+	if (!VFS_UserMount("/dev/", NULL, "devfs")) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount Device Filesystem on /dev/");
+	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
 	i686_IOWait_UnmaskUsedIRQ();
 	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	i686_DetectHardware();
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");
-	VFS_UserMount("/", "/dev/nvme0n1p1", "fat32");
+	if (!VFS_UserMount("/", "/dev/nvme0n1p1", "fat32")) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount FAT32 Filesystem on /");
+	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Mounted FAT32 Filesystem on /");
-	VFS_UserMount("/dev/", NULL, "devfs");
+	if (!VFS_UserMount("/dev/", NULL, "devfs")) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to remount Device Filesystem on /dev/");
+	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Remounted Device Filesystem on /dev/");
-	KernelLog_InfoMsg("i686 Kernel Init", "Testing VirtualMM_MemoryRetype");
-	uintptr_t result = VirtualMM_MemoryMap(NULL, 0, 0x100000, HAL_VIRT_FLAGS_WRITABLE, true);
-	VirtualMM_MemoryRetype(NULL, result, 0x100000, HAL_VIRT_FLAGS_EXECUTABLE | HAL_VIRT_FLAGS_USER_ACCESSIBLE, true);
-	while (true)
-		;
+	KernelLog_InfoMsg("i686 Kernel Init", "Testing loading Elf32 binaries");
+	struct File *file = VFS_Open("/test", VFS_O_RDONLY);
+	if (file == NULL) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open init binary file");
+	}
+	struct Elf32 *elf = Elf32_Parse(file, i686_Elf32_HeaderVerifyCallback);
+	if (elf == NULL) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load test Elf32 file");
+	}
+	KernelLog_InfoMsg("i686 Kernel Init", "Read test ELF32 file. Entrypoint at 0x%p", elf->entryPoint);
+	if (!Elf32_LoadProgramHeaders(file, elf)) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load program headers");
+	}
+	KernelLog_InfoMsg("i686 Kernel Init", "Test Binary is loaded");
+	while (true) {
+		asm volatile("nop");
+	}
 }

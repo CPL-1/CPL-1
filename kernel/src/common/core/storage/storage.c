@@ -149,7 +149,7 @@ bool Storage_ReadWrite(struct Storage_Device *storage, uint64_t offset, size_t s
 	}
 }
 
-void Storage_Flush(UNUSED struct Storage_Device *storage) {
+void Storage_Flush(MAYBE_UNUSED struct Storage_Device *storage) {
 }
 
 int storageFDCallbackRW(struct File *file, int size, char *buf, bool write) {
@@ -214,7 +214,7 @@ static struct FileOperations m_StorageFileOperations = {.read = storageFDCallbac
 														.flush = Storage_FDCallbackFlush,
 														.close = Storage_FDCallbackClose};
 
-struct File *Storage_FileOpen(struct VFS_Inode *inode, UNUSED int perm) {
+struct File *Storage_FileOpen(struct VFS_Inode *inode, MAYBE_UNUSED int perm) {
 	struct File *fd = ALLOC_OBJ(struct File);
 	if (fd == NULL) {
 		return NULL;

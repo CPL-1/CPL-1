@@ -136,7 +136,7 @@ enum
 enum
 {
 	FAT32_END_OF_DIRECTORY = 0x00,
-	FAT32_UNUSED_ENTRY = 0xe5
+	FAT32_MAYBE_UNUSED_ENTRY = 0xe5
 };
 
 enum
@@ -151,7 +151,7 @@ static uint32_t FAT32_GetNextClusterID(struct FAT32_Superblock *fat32Superblock,
 	struct {
 		uint32_t entry;
 	} PACKED LITTLE_ENDIAN NOALIGN buf;
-	if (!File_Readat(fat32Superblock->device, fatOffset, 4, (char *)&buf)) {
+	if (!File_ReadAt(fat32Superblock->device, fatOffset, 4, (char *)&buf)) {
 		return 0x0FFFFFF7;
 	}
 	return buf.entry & 0x0FFFFFFF;
@@ -191,7 +191,7 @@ static size_t FAT32_ReadFromStream(struct FAT32_Superblock *fat32Superblock, str
 			chunkSize = remainingInChunk;
 		}
 		uint64_t streamPos = FAT32_GetStreamDrivePos(fat32Superblock, stream);
-		if (!File_Readat(fat32Superblock->device, streamPos, chunkSize, buf + result)) {
+		if (!File_ReadAt(fat32Superblock->device, streamPos, chunkSize, buf + result)) {
 			return result;
 		}
 		count -= chunkSize;
@@ -338,7 +338,7 @@ static enum
 		sizeof(struct FAT32_ShortDirectoryEntry)) {
 		return FAT32_READ_ENTRY_END;
 	}
-	if ((uint8_t)(asShort->name[0]) == FAT32_UNUSED_ENTRY) {
+	if ((uint8_t)(asShort->name[0]) == FAT32_MAYBE_UNUSED_ENTRY) {
 		return FAT32_READ_ENTRY_SKIP;
 	}
 	if ((uint8_t)(asShort->name[0]) == FAT32_END_OF_DIRECTORY) {
@@ -574,7 +574,7 @@ static bool FAT32_GetInode(struct VFS_Superblock *sb, struct VFS_Inode *buf, ino
 	return false;
 }
 
-static void FAT32_DropInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *ino, UNUSED ino_t id) {
+static void FAT32_DropInode(MAYBE_UNUSED struct VFS_Superblock *sb, struct VFS_Inode *ino, MAYBE_UNUSED ino_t id) {
 	FAT32_CleanInode(ino);
 	if (id == 1) {
 		return;
@@ -625,7 +625,7 @@ static struct File *FAT32_OpenRegularFile(struct VFS_Inode *inode, int perm) {
 	return fd;
 }
 
-static struct File *FAT32_OpenDirectory(UNUSED struct VFS_Inode *inode, int perm) {
+static struct File *FAT32_OpenDirectory(MAYBE_UNUSED struct VFS_Inode *inode, int perm) {
 	if (((perm & VFS_O_RDWR) != 0) || ((perm & VFS_O_WRONLY) != 0)) {
 		return NULL;
 	}
@@ -720,15 +720,15 @@ static struct VFS_Superblock *FAT32_Mount(const char *device_path) {
 		goto failFreeSuperblock;
 	}
 	fat32Superblock->device = device;
-	if (!File_Readat(device, 0, sizeof(struct FAT32_BIOSBootRecord), (char *)&(fat32Superblock->bpb))) {
+	if (!File_ReadAt(device, 0, sizeof(struct FAT32_BIOSBootRecord), (char *)&(fat32Superblock->bpb))) {
 		goto failCloseDevice;
 	}
-	if (!File_Readat(device, sizeof(struct FAT32_BIOSBootRecord), sizeof(struct FAT32_ExtendedBootRecord),
+	if (!File_ReadAt(device, sizeof(struct FAT32_BIOSBootRecord), sizeof(struct FAT32_ExtendedBootRecord),
 					 (char *)&(fat32Superblock->ebp))) {
 		goto failCloseDevice;
 	}
 	uint64_t fsinfo_offset = fat32Superblock->bpb.bytesPerSector * fat32Superblock->ebp.fsInfoSector;
-	if (!File_Readat(device, fsinfo_offset, sizeof(struct FAT32_FSInfo), (char *)&(fat32Superblock->fsinfo))) {
+	if (!File_ReadAt(device, fsinfo_offset, sizeof(struct FAT32_FSInfo), (char *)&(fat32Superblock->fsinfo))) {
 		goto failCloseDevice;
 	}
 	if (fat32Superblock->ebp.bootableSignature != 0xaa55) {

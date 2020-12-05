@@ -34,12 +34,17 @@ struct FileOperations {
 
 int File_Read(struct File *file, int count, char *buf);
 int File_Write(struct File *file, int count, const char *buf);
+int File_ReadUser(struct File *file, int count, char *buf);
+int File_WriteUser(struct File *file, int count, const char *buf);
+
 int File_Readdir(struct File *file, struct DirectoryEntry *buf, int count);
 off_t File_Lseek(struct File *file, off_t offset, int whence);
 void File_Flush(struct File *file);
 void File_Close(struct File *file);
 
-int File_Readat(struct File *file, off_t pos, int count, char *buf);
-int File_Writeat(struct File *file, off_t pos, int count, const char *buf);
+int File_ReadAt(struct File *file, off_t pos, int count, char *buf);
+int File_WriteAt(struct File *file, off_t pos, int count, const char *buf);
+int File_ReadAtUser(struct File *file, off_t pos, int count, char *buf);
+int File_WriteAtUser(struct File *file, off_t pos, int count, const char *buf);
 
 #endif

@@ -88,7 +88,7 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	process->kernelStack = stack;
 	process->returnCode = 0;
 	process->state = SLEEPING;
-	process->address_space = NULL;
+	process->addressSpace = NULL;
 	return new_id;
 free_process_state:
 	Heap_FreeMemory(process_state, HAL_PROCESS_STATE_SIZE);
@@ -217,11 +217,11 @@ void Proc_Yield() {
 	HAL_Timer_TriggerInterrupt();
 }
 
-void Proc_PreemptCallback(UNUSED void *ctx, char *frame) {
+void Proc_PreemptCallback(MAYBE_UNUSED void *ctx, char *frame) {
 	memcpy(m_CurrentProcess->processState, frame, HAL_PROCESS_STATE_SIZE);
 	m_CurrentProcess = m_CurrentProcess->next;
 	memcpy(frame, m_CurrentProcess->processState, HAL_PROCESS_STATE_SIZE);
-	VirtualMM_SwitchToAddressSpace(m_CurrentProcess->address_space);
+	VirtualMM_SwitchToAddressSpace(m_CurrentProcess->addressSpace);
 	HAL_ISRStacks_SetSyscallsStack(m_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
 }
 
@@ -246,8 +246,8 @@ void Proc_Initialize() {
 	if (kernelProcessData->processState == NULL) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to allocate kernel process state");
 	}
-	kernelProcessData->address_space = VirtualMM_MakeAddressSpaceFromRoot(HAL_VirtualMM_GetCurrentAddressSpace());
-	if (kernelProcessData->address_space == NULL) {
+	kernelProcessData->addressSpace = VirtualMM_MakeAddressSpaceFromRoot(HAL_VirtualMM_GetCurrentAddressSpace());
+	if (kernelProcessData->addressSpace == NULL) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to allocate process address space object");
 	}
 	m_deallocQueueHead = NULL;
@@ -268,8 +268,8 @@ bool Proc_PollDisposeQueue() {
 	KernelLog_InfoMsg("User Request Monitor", "Disposing process...");
 	m_deallocQueueHead = process->nextInQueue;
 	HAL_InterruptLock_Unlock();
-	if (process->address_space != 0) {
-		VirtualMM_DropAddressSpace(process->address_space);
+	if (process->addressSpace != 0) {
+		VirtualMM_DropAddressSpace(process->addressSpace);
 	}
 	if (process->kernelStack != 0) {
 		Heap_FreeMemory((void *)(process->kernelStack), PROC_KERNEL_STACK_SIZE);

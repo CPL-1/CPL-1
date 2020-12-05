@@ -22,12 +22,9 @@ Currently there is only support for i686 CPUS with PIC 8259 interrupt controller
 
 ### What I need to build CPL-1?
 
-The following dependencies should be met to build CPL-1 for i686 target
-```
+To build CPL-1 kernel for i686 target, you need to build GCC cross-compiler for ```i686-elf``` target (don't forget to add to PATH) and install NASM. Additionally, GNU Make, parted, mkdosfs, partprobe should be present and loopback devices should be enabled in the kernel.
 
-```
-
-Additionally, you might need python3 to run inotify helper, but that is optional.
+Also, you might want python3 to run inotify helper, but that is optional, as kernel compile times are quite low atm.
 
 ### How I build CPL-1?
 

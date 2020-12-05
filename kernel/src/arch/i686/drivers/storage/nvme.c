@@ -17,7 +17,7 @@ static bool i686_NVME_CheckInterrupt(void *ctx) {
 	return ((status & (1 << 3)) != 0);
 }
 
-static void i686_NVME_EventCallback(void *ctx, UNUSED char *state) {
+static void i686_NVME_EventCallback(void *ctx, MAYBE_UNUSED char *state) {
 	struct i686_NVME_PCIController *controller = (struct i686_NVME_PCIController *)ctx;
 	if (controller->eventCallback != NULL) {
 		controller->eventCallback(controller->privateCtx);

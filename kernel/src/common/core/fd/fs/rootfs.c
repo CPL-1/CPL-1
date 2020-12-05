@@ -17,7 +17,7 @@ static ino_t RootFS_GetChild(struct VFS_Inode *inode, const char *name) {
 	return 0;
 }
 
-static bool RootFS_GetInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *inode, ino_t id) {
+static bool RootFS_GetInode(MAYBE_UNUSED struct VFS_Superblock *sb, struct VFS_Inode *inode, ino_t id) {
 	inode->stat.stType = VFS_DT_DIR;
 	inode->stat.stSize = 0;
 	inode->stat.stBlksize = 0;
