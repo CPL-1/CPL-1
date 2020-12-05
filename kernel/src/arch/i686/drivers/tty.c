@@ -15,6 +15,10 @@ static bool i686_TTY_isFramebufferInitialized = false;
 static uint32_t i686_TTY_Color;
 static uint32_t i686_TTY_TabSize = 4;
 
+static uint32_t i686_TTY_VGA2RGB[] = {0x00000000, 0x00000080, 0x00008000, 0x00008080, 0x00800000, 0x00800080,
+									  0x00808000, 0x00c0c0c0, 0x00808080, 0x000000ff, 0x0000ff00, 0x0000ffff,
+									  0x00ff0000, 0x00ff00ff, 0x00ffff00, 0x00ffffff};
+
 static void i686_TTY_ReportFramebufferError(const char *msg, size_t size) {
 	memset((void *)(HAL_VirtualMM_KernelMappingBase + 0xb8000), 0, 4000);
 	for (size_t i = 0; i < size; ++i) {
@@ -140,5 +144,6 @@ void HAL_TTY_PrintCharacter(char c) {
 	i686_Ports_WriteByte(0xe9, c);
 }
 
-void HAL_TTY_SetColor(UNUSED uint8_t color) {
+void HAL_TTY_SetColor(uint8_t color) {
+	i686_TTY_Color = i686_TTY_VGA2RGB[color];
 }
