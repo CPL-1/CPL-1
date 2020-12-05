@@ -20,15 +20,10 @@ uintptr_t HAL_VirtualMM_MakeNewAddressSpace();
 void HAL_VirtualMM_FreeAddressSpace(uintptr_t root);
 void HAL_VirtualMM_SwitchToAddressSpace(uintptr_t root);
 uintptr_t HAL_VirtualMM_GetCurrentAddressSpace();
-
 bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, int flags);
-
 uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr);
-
 void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int flags);
-
 uintptr_t HAL_VirtualMM_GetIOMapping(uintptr_t paddr, size_t size, bool cacheDisabled);
-
 void HAL_VirtualMM_Flush();
 
 #endif

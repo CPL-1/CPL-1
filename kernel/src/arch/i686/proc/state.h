@@ -3,7 +3,7 @@
 
 #include <common/misc/utils.h>
 
-struct i686_cpu_state {
+struct i686_CPUState {
 	uint32_t ds, gs, fs, es;
 	uint32_t edi, esi, ebp;
 	uint32_t : 32;

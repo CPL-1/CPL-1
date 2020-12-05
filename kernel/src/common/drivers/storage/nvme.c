@@ -16,7 +16,7 @@
 #define NVME_MAX_MDTS 8
 #define NVME_QUEUE_PHYS_CONTIG (1 << 0) | (1 << 1)
 
-static uint32_t NVME_ControllersDetected = 0;
+static uint32_t m_controllersDetected = 0;
 
 struct NVME_CAPRegister {
 	uint32_t mqes : 16;
@@ -278,7 +278,7 @@ struct NVME_NamespaceInfo {
 } PACKED LITTLE_ENDIAN;
 
 struct NVMEDrive {
-	struct hal_nvme_controller *controller;
+	struct HAL_NVMEController *controller;
 	volatile uint32_t *bar0;
 	union NVME_SQEntry *adminSubmissionQueue;
 	volatile struct NVME_CQEntry *adminCompletitionQueue;
@@ -504,7 +504,7 @@ static bool nvme_namespace_rw_lba(void *ctx, char *buf, uint64_t lba, size_t cou
 	return nvme_rw_lba(namespace->drive, namespace->namespaceID, buf, lba, count, write);
 }
 
-bool NVME_Initialize(struct hal_nvme_controller *controller) {
+bool NVME_Initialize(struct HAL_NVMEController *controller) {
 	struct NVMEDrive *nvmeDriveInfo = ALLOC_OBJ(struct NVMEDrive);
 	if (nvmeDriveInfo == NULL) {
 		return false;
@@ -514,9 +514,9 @@ bool NVME_Initialize(struct hal_nvme_controller *controller) {
 	nvmeDriveInfo->completitionQueueHead = 0;
 	nvmeDriveInfo->submissionQueueHead = 0;
 	nvmeDriveInfo->controller = controller;
-	nvmeDriveInfo->id = NVME_ControllersDetected;
+	nvmeDriveInfo->id = m_controllersDetected;
 	nvmeDriveInfo->fallbackToPolling = true;
-	NVME_ControllersDetected++;
+	m_controllersDetected++;
 	Mutex_Initialize(&(nvmeDriveInfo->mutex));
 
 	uintptr_t mappingPaddr = ALIGN_DOWN(controller->offset, HAL_VirtualMM_PageSize);

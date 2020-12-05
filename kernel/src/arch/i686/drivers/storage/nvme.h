@@ -5,6 +5,6 @@
 #include <hal/drivers/storage/nvme.h>
 #include <hal/proc/isrhandler.h>
 
-bool i686_NVME_DetectFromPCIBus(struct i686_PCI_Address addr, struct hal_nvme_controller *buf);
+bool i686_NVME_DetectFromPCIBus(struct i686_PCI_Address addr, struct HAL_NVMEController *buf);
 
 #endif

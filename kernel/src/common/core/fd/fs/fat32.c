@@ -6,11 +6,11 @@
 #include <common/lib/dynarray.h>
 #include <common/lib/kmsg.h>
 
-static struct VFS_Superblock_type FAT32_SuperblockType;
-static struct VFS_InodeOperations FAT32_FileInodeOperations;
-static struct VFS_InodeOperations FAT32_DirectoryInodeOperations;
-UNUSED static struct FileOperations FAT32_RegularFileOperations;
-UNUSED static struct FileOperations FAT32_DirectoryFileOperations;
+static struct VFS_Superblock_type m_superblockType;
+static struct VFS_InodeOperations m_fileInodeOperations;
+static struct VFS_InodeOperations m_dirInodeOperations;
+static struct FileOperations m_regularFileOperations;
+static struct FileOperations m_directoryFileOperations;
 
 struct FAT32_BIOSBootRecord {
 	char volumeID[3];
@@ -456,7 +456,7 @@ static bool FAT32_MakeDirectoryInode(struct FAT32_Superblock *fat32Superblock, s
 	inodeContext->fileSize = entry->fileSize;
 	inodeContext->entries = entries;
 	inode->ctx = (void *)inodeContext;
-	inode->ops = &FAT32_DirectoryInodeOperations;
+	inode->ops = &m_dirInodeOperations;
 	inode->stat.stBlkcnt = entry->fileSize / fat32Superblock->clusterSize;
 	inode->stat.stBlksize = fat32Superblock->clusterSize;
 	inode->stat.stSize = entry->fileSize;
@@ -520,7 +520,7 @@ static ino_t FAT32_AddFileInode(struct FAT32_Superblock *fat32Superblock, struct
 	inodeContext->fileSize = entry->fileSize;
 	inodeContext->firstCluster = entry->firstCluster;
 	inodeContext->sb = fat32Superblock;
-	inode->ops = &FAT32_FileInodeOperations;
+	inode->ops = &m_fileInodeOperations;
 	inode->stat.stBlkcnt = entry->fileSize / fat32Superblock->clusterSize;
 	inode->stat.stBlksize = fat32Superblock->clusterSize;
 	inode->stat.stSize = entry->fileSize;
@@ -612,7 +612,7 @@ static struct File *FAT32_OpenRegularFile(struct VFS_Inode *inode, int perm) {
 	if (fd == NULL) {
 		return NULL;
 	}
-	fd->ops = &FAT32_RegularFileOperations;
+	fd->ops = &m_regularFileOperations;
 	struct FAT32_RegularFileContext *regFileContext = ALLOC_OBJ(struct FAT32_RegularFileContext);
 	if (regFileContext == NULL) {
 		FREE_OBJ(fd);
@@ -633,7 +633,7 @@ static struct File *FAT32_OpenDirectory(UNUSED struct VFS_Inode *inode, int perm
 	if (fd == NULL) {
 		return NULL;
 	}
-	fd->ops = &FAT32_DirectoryFileOperations;
+	fd->ops = &m_directoryFileOperations;
 	fd->offset = 0;
 	return fd;
 }
@@ -713,7 +713,7 @@ static struct VFS_Superblock *FAT32_Mount(const char *device_path) {
 	if (fat32Superblock == NULL) {
 		goto failFreeResult;
 	}
-	result->type = &FAT32_SuperblockType;
+	result->type = &m_superblockType;
 	result->ctx = (void *)fat32Superblock;
 	struct File *device = VFS_Open(device_path, VFS_O_RDWR);
 	if (device == NULL) {
@@ -768,39 +768,39 @@ void FAT32_Unmount(struct VFS_Superblock *sb) {
 }
 
 void FAT32_Initialize() {
-	FAT32_DirectoryFileOperations.close = FAT32_CloseFile;
-	FAT32_DirectoryFileOperations.flush = NULL;
-	FAT32_DirectoryFileOperations.lseek = NULL;
-	FAT32_DirectoryFileOperations.write = NULL;
-	FAT32_DirectoryFileOperations.readdir = FAT32_ReadDirectoryEntries;
+	m_directoryFileOperations.close = FAT32_CloseFile;
+	m_directoryFileOperations.flush = NULL;
+	m_directoryFileOperations.lseek = NULL;
+	m_directoryFileOperations.write = NULL;
+	m_directoryFileOperations.readdir = FAT32_ReadDirectoryEntries;
 
-	FAT32_RegularFileOperations.close = FAT32_CloseFile;
-	FAT32_DirectoryFileOperations.flush = NULL;
-	FAT32_RegularFileOperations.write = NULL;
-	FAT32_RegularFileOperations.lseek = FAT32_LseekInRegularFile;
-	FAT32_RegularFileOperations.read = FAT32_RegularFileRead;
+	m_regularFileOperations.close = FAT32_CloseFile;
+	m_directoryFileOperations.flush = NULL;
+	m_regularFileOperations.write = NULL;
+	m_regularFileOperations.lseek = FAT32_LseekInRegularFile;
+	m_regularFileOperations.read = FAT32_RegularFileRead;
 
-	FAT32_DirectoryInodeOperations.getChild = FAT32_GetDirectoryChild;
-	FAT32_DirectoryInodeOperations.link = NULL;
-	FAT32_DirectoryInodeOperations.mkdir = NULL;
-	FAT32_DirectoryInodeOperations.open = FAT32_OpenDirectory;
-	FAT32_DirectoryInodeOperations.unlink = NULL;
+	m_dirInodeOperations.getChild = FAT32_GetDirectoryChild;
+	m_dirInodeOperations.link = NULL;
+	m_dirInodeOperations.mkdir = NULL;
+	m_dirInodeOperations.open = FAT32_OpenDirectory;
+	m_dirInodeOperations.unlink = NULL;
 
-	FAT32_FileInodeOperations.getChild = NULL;
-	FAT32_FileInodeOperations.link = NULL;
-	FAT32_FileInodeOperations.mkdir = NULL;
-	FAT32_FileInodeOperations.open = FAT32_OpenRegularFile;
-	FAT32_FileInodeOperations.unlink = NULL;
+	m_fileInodeOperations.getChild = NULL;
+	m_fileInodeOperations.link = NULL;
+	m_fileInodeOperations.mkdir = NULL;
+	m_fileInodeOperations.open = FAT32_OpenRegularFile;
+	m_fileInodeOperations.unlink = NULL;
 
-	FAT32_SuperblockType.dropInode = NULL;
-	memset(FAT32_SuperblockType.fsName, 0, VFS_MAX_NAME_LENGTH);
-	memcpy(FAT32_SuperblockType.fsName, "fat32", 6);
-	FAT32_SuperblockType.fsNameHash = GetStringHash("fat32");
-	FAT32_SuperblockType.getInode = FAT32_GetInode;
-	FAT32_SuperblockType.getRootInode = NULL;
-	FAT32_SuperblockType.sync = NULL;
-	FAT32_SuperblockType.dropInode = FAT32_DropInode;
-	FAT32_SuperblockType.umount = NULL;
-	FAT32_SuperblockType.mount = FAT32_Mount;
-	VFS_RegisterFilesystem(&FAT32_SuperblockType);
+	m_superblockType.dropInode = NULL;
+	memset(m_superblockType.fsName, 0, VFS_MAX_NAME_LENGTH);
+	memcpy(m_superblockType.fsName, "fat32", 6);
+	m_superblockType.fsNameHash = GetStringHash("fat32");
+	m_superblockType.getInode = FAT32_GetInode;
+	m_superblockType.getRootInode = NULL;
+	m_superblockType.sync = NULL;
+	m_superblockType.dropInode = FAT32_DropInode;
+	m_superblockType.umount = NULL;
+	m_superblockType.mount = FAT32_Mount;
+	VFS_RegisterFilesystem(&m_superblockType);
 };

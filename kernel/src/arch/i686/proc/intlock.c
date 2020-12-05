@@ -1,24 +1,24 @@
 #include <common/misc/utils.h>
 #include <hal/proc/intlock.h>
 
-static size_t i686_InterruptLock_LocksCount = 0;
+static size_t m_locksCount = 0;
 
 void HAL_InterruptLock_Lock() {
 	ASM volatile("cli");
-	++i686_InterruptLock_LocksCount;
+	++m_locksCount;
 }
 
 void HAL_InterruptLock_Unlock() {
-	if (i686_InterruptLock_LocksCount == 0) {
+	if (m_locksCount == 0) {
 		return;
 	}
-	--i686_InterruptLock_LocksCount;
-	if (i686_InterruptLock_LocksCount == 0) {
+	--m_locksCount;
+	if (m_locksCount == 0) {
 		ASM volatile("sti");
 	}
 }
 
 void HAL_InterruptLock_Flush() {
-	i686_InterruptLock_LocksCount = 0;
+	m_locksCount = 0;
 	ASM volatile("sti");
 }

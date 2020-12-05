@@ -65,7 +65,7 @@ static void partdev_fd_callback_close(struct File *file) {
 	VFS_FinalizeFile(file);
 }
 
-static struct FileOperations partdev_fd_ops = {
+static struct FileOperations m_partDevFileOperations = {
 	.read = partdev_fd_callback_read,
 	.write = partdev_fd_callback_write,
 	.readdir = NULL,
@@ -86,7 +86,7 @@ static struct File *partdev_callback_open(struct VFS_Inode *inode, UNUSED int pe
 		return NULL;
 	}
 	fd->ctx = (void *)ino_data;
-	fd->ops = &partdev_fd_ops;
+	fd->ops = &m_partDevFileOperations;
 	fd->offset = 0;
 	return fd;
 }

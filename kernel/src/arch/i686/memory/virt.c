@@ -33,7 +33,7 @@ uintptr_t HAL_VirtualMM_KernelMappingBase = I686_KERNEL_MAPPING_BASE;
 size_t HAL_VirtualMM_PageSize = I686_PAGE_SIZE;
 uintptr_t HAL_VirtualMM_UserAreaStart = I686_USER_AREA_START;
 uintptr_t HAL_VirtualMM_UserAreaEnd = I686_USER_AREA_END;
-uint16_t *i686_VirtualMM_PageRefcounts = NULL;
+uint16_t *m_pageRefcounts = NULL;
 
 static INLINE uint16_t i686_VirtualMM_GetPageDirectoryIndex(uint32_t vaddr) {
 	return (vaddr >> 22) & (0b1111111111);
@@ -100,13 +100,13 @@ void i686_VirtualMM_InitializeKernelMap() {
 	if (refcounts == 0) {
 		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Failed to allocate frame refcount array");
 	}
-	i686_VirtualMM_PageRefcounts = (uint16_t *)(refcounts + HAL_VirtualMM_KernelMappingBase);
-	memset(i686_VirtualMM_PageRefcounts, 0, refcountsSize);
+	m_pageRefcounts = (uint16_t *)(refcounts + HAL_VirtualMM_KernelMappingBase);
+	memset(m_pageRefcounts, 0, refcountsSize);
 	for (uint16_t i = 0; i < 1024; ++i) {
 		if (pageDir->entries[i].present) {
 			uint32_t next = i686_VirtualMM_WalkToNextPageTable(cr3, i);
 			uint16_t refcount = i686_VirtualMM_GetPageTableReferenceCount(next);
-			i686_VirtualMM_PageRefcounts[next / HAL_VirtualMM_PageSize] = refcount;
+			m_pageRefcounts[next / HAL_VirtualMM_PageSize] = refcount;
 		}
 	}
 }
@@ -124,7 +124,7 @@ bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, i
 		pageDir->entries[pdIndex].present = true;
 		pageDir->entries[pdIndex].writable = true;
 		pageDir->entries[pdIndex].user = true;
-		i686_VirtualMM_PageRefcounts[addr / HAL_VirtualMM_PageSize] = 0;
+		m_pageRefcounts[addr / HAL_VirtualMM_PageSize] = 0;
 		memset((void *)(addr + HAL_VirtualMM_KernelMappingBase), 0, 0x1000);
 	}
 	uint32_t next = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);
@@ -137,7 +137,7 @@ bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, i
 	pageTable->entries[ptIndex].writable = (flags & HAL_VIRT_FLAGS_WRITABLE) != 0;
 	pageTable->entries[ptIndex].cacheDisabled = (flags & HAL_VIRT_FLAGS_DISABLE_CACHE) != 0;
 	pageTable->entries[ptIndex].user = (flags & HAL_VIRT_FLAGS_USER_ACCESSIBLE) != 0;
-	i686_VirtualMM_PageRefcounts[next / HAL_VirtualMM_PageSize]++;
+	m_pageRefcounts[next / HAL_VirtualMM_PageSize]++;
 	return true;
 }
 
@@ -157,11 +157,11 @@ uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr) {
 	}
 	uintptr_t result = i686_VirtualMM_WalkToNextPageTable(pageTablePhys, ptIndex);
 	pageTable->entries[ptIndex].addr = 0;
-	if (i686_VirtualMM_PageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
+	if (m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
 		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Attempt to decrement reference count which is already zero");
 	}
-	--i686_VirtualMM_PageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize];
-	if (i686_VirtualMM_PageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
+	--m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize];
+	if (m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
 		pageDir->entries[pdIndex].addr = 0;
 		HAL_PhysicalMM_KernelFreeFrame(pageTablePhys);
 	}

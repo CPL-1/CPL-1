@@ -2,8 +2,8 @@
 #include <common/core/memory/heap.h>
 #include <common/lib/kmsg.h>
 
-static struct VFS_InodeOperations RootFS_InodeOperations;
-static struct VFS_Superblock_type RootFS_SuperblockType;
+static struct VFS_InodeOperations m_inodeOperations;
+static struct VFS_Superblock_type m_superblockType;
 
 #define ROOTFS_ROOT_INODE_CTX ((void *)1)
 #define ROOTFS_DEV_INODE_CTX ((void *)2)
@@ -22,7 +22,7 @@ static bool RootFS_GetInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *
 	inode->stat.stSize = 0;
 	inode->stat.stBlksize = 0;
 	inode->stat.stBlkcnt = 0;
-	inode->ops = &RootFS_InodeOperations;
+	inode->ops = &m_inodeOperations;
 	if (id == 1) {
 		inode->ctx = ROOTFS_ROOT_INODE_CTX;
 		return true;
@@ -34,26 +34,26 @@ static bool RootFS_GetInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *
 }
 
 struct VFS_Superblock *RootFS_MakeSuperblock() {
-	memcpy(&(RootFS_SuperblockType.fsName), "rootfs", 7);
-	RootFS_SuperblockType.fsNameHash = GetStringHash("rootfs");
-	RootFS_SuperblockType.mount = NULL;
-	RootFS_SuperblockType.umount = NULL;
-	RootFS_SuperblockType.getInode = RootFS_GetInode;
-	RootFS_SuperblockType.getRootInode = NULL;
-	RootFS_SuperblockType.dropInode = NULL;
-	RootFS_SuperblockType.sync = NULL;
+	memcpy(&(m_superblockType.fsName), "rootfs", 7);
+	m_superblockType.fsNameHash = GetStringHash("rootfs");
+	m_superblockType.mount = NULL;
+	m_superblockType.umount = NULL;
+	m_superblockType.getInode = RootFS_GetInode;
+	m_superblockType.getRootInode = NULL;
+	m_superblockType.dropInode = NULL;
+	m_superblockType.sync = NULL;
 
-	RootFS_InodeOperations.getChild = RootFS_GetChild;
-	RootFS_InodeOperations.open = NULL;
-	RootFS_InodeOperations.mkdir = NULL;
-	RootFS_InodeOperations.link = NULL;
-	RootFS_InodeOperations.unlink = NULL;
+	m_inodeOperations.getChild = RootFS_GetChild;
+	m_inodeOperations.open = NULL;
+	m_inodeOperations.mkdir = NULL;
+	m_inodeOperations.link = NULL;
+	m_inodeOperations.unlink = NULL;
 
 	struct VFS_Superblock *sb = ALLOC_OBJ(struct VFS_Superblock);
 	if (sb == NULL) {
 		KernelLog_ErrorMsg("Root Filesystem (rootfs)", "Failed to allocate space for rootfs superblock");
 	}
-	sb->type = &RootFS_SuperblockType;
+	sb->type = &m_superblockType;
 	sb->ctx = NULL;
 	return sb;
 }

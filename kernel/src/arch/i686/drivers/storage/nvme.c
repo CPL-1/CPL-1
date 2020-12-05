@@ -47,7 +47,7 @@ static void i686_NVME_WaitForEvent(void *ctx) {
 	i686_IOWait_WaitForIRQ(controller->entry);
 }
 
-bool i686_NVME_DetectFromPCIBus(struct i686_PCI_Address addr, struct hal_nvme_controller *buf) {
+bool i686_NVME_DetectFromPCIBus(struct i686_PCI_Address addr, struct HAL_NVMEController *buf) {
 	struct i686_NVME_PCIController *controller = ALLOC_OBJ(struct i686_NVME_PCIController);
 	if (controller == NULL) {
 		return false;

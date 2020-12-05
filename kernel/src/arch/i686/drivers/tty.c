@@ -7,17 +7,17 @@
 #include <hal/drivers/tty.h>
 #include <hal/memory/virt.h>
 
-static uint16_t i686_TTY_Y, i686_TTY_X;
-static uint16_t i686_TTY_YSize, i686_TTY_XSize;
-static uint32_t i686_TTY_framebuffer, i686_TTY_copyFramebuffer;
-static struct i686_Stivale_FramebufferInfo i686_TTY_fbInfo;
-static bool i686_TTY_isFramebufferInitialized = false;
-static uint32_t i686_TTY_Color;
-static uint32_t i686_TTY_TabSize = 4;
+static uint16_t m_ttyX, m_ttyY;
+static uint16_t m_ttyYSize, m_ttyXSize;
+static uint32_t m_framebuffer, m_backbuffer;
+static struct i686_Stivale_FramebufferInfo m_fbInfo;
+static bool m_isFramebufferInitialized = false;
+static uint32_t m_ttyColor;
+static uint32_t m_ttyTabSize = 4;
 
-static uint32_t i686_TTY_VGA2RGB[] = {0x00000000, 0x00000080, 0x00008000, 0x00008080, 0x00800000, 0x00800080,
-									  0x00808000, 0x00c0c0c0, 0x00808080, 0x000000ff, 0x0000ff00, 0x0000ffff,
-									  0x00ff0000, 0x00ff00ff, 0x00ffff00, 0x00ffffff};
+static uint32_t m_VGA2RGB[] = {0x00000000, 0x00000080, 0x00008000, 0x00008080, 0x00800000, 0x00800080,
+							   0x00808000, 0x00c0c0c0, 0x00808080, 0x000000ff, 0x0000ff00, 0x0000ffff,
+							   0x00ff0000, 0x00ff00ff, 0x00ffff00, 0x00ffffff};
 
 static void i686_TTY_ReportFramebufferError(const char *msg, size_t size) {
 	memset((void *)(HAL_VirtualMM_KernelMappingBase + 0xb8000), 0, 4000);
@@ -42,10 +42,8 @@ static void i686_TTY_PutCharacterAt(uint16_t x, uint16_t y, uint32_t color, char
 			if (drawPixel) {
 				uint16_t screenX = x * FONT_fontWidth + charX;
 				uint16_t screenY = y * FONT_fontHeight + charY;
-				uint32_t framebufferAddr =
-					i686_TTY_framebuffer + screenY * i686_TTY_fbInfo.framebufferPitch + screenX * 4;
-				uint32_t copyFramebufferAddr =
-					i686_TTY_copyFramebuffer + screenY * i686_TTY_fbInfo.framebufferPitch + screenX * 4;
+				uint32_t framebufferAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch + screenX * 4;
+				uint32_t copyFramebufferAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch + screenX * 4;
 				*(uint32_t *)framebufferAddr = *(uint32_t *)copyFramebufferAddr = color;
 			}
 		}
@@ -53,48 +51,46 @@ static void i686_TTY_PutCharacterAt(uint16_t x, uint16_t y, uint32_t color, char
 }
 
 static void i686_TTY_Scroll() {
-	for (size_t y = 0; y < i686_TTY_YSize - 1U; ++y) {
+	for (size_t y = 0; y < m_ttyYSize - 1U; ++y) {
 		for (size_t screenY = y * FONT_fontHeight; screenY < (y + 1) * FONT_fontHeight; ++screenY) {
-			uint32_t scanlineAddr = i686_TTY_framebuffer + screenY * i686_TTY_fbInfo.framebufferPitch;
-			uint32_t copyFramebufferNewAddr = i686_TTY_copyFramebuffer + screenY * i686_TTY_fbInfo.framebufferPitch;
-			uint32_t copyFramebufferAddr =
-				i686_TTY_copyFramebuffer + (screenY + FONT_fontHeight) * i686_TTY_fbInfo.framebufferPitch;
-			memcpy((void *)scanlineAddr, (void *)copyFramebufferAddr, i686_TTY_fbInfo.framebufferPitch);
-			memcpy((void *)copyFramebufferNewAddr, (void *)copyFramebufferAddr, i686_TTY_fbInfo.framebufferPitch);
+			uint32_t scanlineAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch;
+			uint32_t copyFramebufferNewAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch;
+			uint32_t copyFramebufferAddr = m_backbuffer + (screenY + FONT_fontHeight) * m_fbInfo.framebufferPitch;
+			memcpy((void *)scanlineAddr, (void *)copyFramebufferAddr, m_fbInfo.framebufferPitch);
+			memcpy((void *)copyFramebufferNewAddr, (void *)copyFramebufferAddr, m_fbInfo.framebufferPitch);
 		}
 	}
-	for (size_t screenY = (i686_TTY_YSize - 1) * FONT_fontHeight; screenY < i686_TTY_YSize * FONT_fontHeight;
-		 ++screenY) {
-		uint32_t copyFramebufferNewAddr = i686_TTY_copyFramebuffer + screenY * i686_TTY_fbInfo.framebufferPitch;
-		uint32_t scanlineAddr = i686_TTY_framebuffer + screenY * i686_TTY_fbInfo.framebufferPitch;
-		memset((void *)scanlineAddr, 0, i686_TTY_fbInfo.framebufferPitch);
-		memset((void *)copyFramebufferNewAddr, 0, i686_TTY_fbInfo.framebufferPitch);
+	for (size_t screenY = (m_ttyYSize - 1) * FONT_fontHeight; screenY < m_ttyYSize * FONT_fontHeight; ++screenY) {
+		uint32_t copyFramebufferNewAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch;
+		uint32_t scanlineAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch;
+		memset((void *)scanlineAddr, 0, m_fbInfo.framebufferPitch);
+		memset((void *)copyFramebufferNewAddr, 0, m_fbInfo.framebufferPitch);
 	}
-	i686_TTY_X = 0;
-	i686_TTY_Y = i686_TTY_YSize - 1;
+	m_ttyY = 0;
+	m_ttyX = m_ttyYSize - 1;
 }
 
 static void i686_TTY_PutCharacterRaw(char c) {
-	i686_TTY_PutCharacterAt(i686_TTY_X++, i686_TTY_Y, i686_TTY_Color, c);
-	if (i686_TTY_X == i686_TTY_XSize) {
-		i686_TTY_X = 0;
-		i686_TTY_Y++;
+	i686_TTY_PutCharacterAt(m_ttyY++, m_ttyX, m_ttyColor, c);
+	if (m_ttyY == m_ttyXSize) {
+		m_ttyY = 0;
+		m_ttyX++;
 	}
 }
 
 static void i686_TTY_PutCharacter(char c) {
-	if (i686_TTY_Y == i686_TTY_YSize) {
+	if (m_ttyX == m_ttyYSize) {
 		i686_TTY_Scroll();
 	}
 	if (c == '\n') {
-		i686_TTY_Y++;
-		i686_TTY_X = 0;
+		m_ttyX++;
+		m_ttyY = 0;
 	} else if (c == '\t') {
-		i686_TTY_X += 1;
-		i686_TTY_X += i686_TTY_TabSize - (i686_TTY_X % i686_TTY_TabSize);
-		if (i686_TTY_X >= i686_TTY_XSize) {
-			i686_TTY_X -= i686_TTY_XSize;
-			i686_TTY_Y++;
+		m_ttyY += 1;
+		m_ttyY += m_ttyTabSize - (m_ttyY % m_ttyTabSize);
+		if (m_ttyY >= m_ttyXSize) {
+			m_ttyY -= m_ttyXSize;
+			m_ttyX++;
 		}
 	} else {
 		i686_TTY_PutCharacterRaw(c);
@@ -102,48 +98,48 @@ static void i686_TTY_PutCharacter(char c) {
 }
 
 void i686_TTY_Initialize() {
-	i686_TTY_X = 0;
-	i686_TTY_Y = 0;
-	if (!i686_Stivale_GetFramebufferInfo(&i686_TTY_fbInfo)) {
+	m_ttyY = 0;
+	m_ttyX = 0;
+	if (!i686_Stivale_GetFramebufferInfo(&m_fbInfo)) {
 		const char msg[] = "[ FAIL ] i686 Kernel Init: Failed to find framebuffer. Please "
 						   "make sure that VBE mode is supported, as it is "
 						   "required to for CPL-1 kernel to boot";
 		i686_TTY_ReportFramebufferError(msg, ARR_SIZE(msg));
 	}
-	i686_TTY_XSize = i686_TTY_fbInfo.framebufferWidth / FONT_fontWidth;
-	i686_TTY_YSize = i686_TTY_fbInfo.framebufferHeight / FONT_fontHeight;
-	size_t framebufferSize = i686_TTY_fbInfo.framebufferPitch * i686_TTY_fbInfo.framebufferHeight;
-	i686_TTY_copyFramebuffer = (uint32_t)Heap_AllocateMemory(framebufferSize);
-	if (i686_TTY_copyFramebuffer == 0) {
+	m_ttyXSize = m_fbInfo.framebufferWidth / FONT_fontWidth;
+	m_ttyYSize = m_fbInfo.framebufferHeight / FONT_fontHeight;
+	size_t framebufferSize = m_fbInfo.framebufferPitch * m_fbInfo.framebufferHeight;
+	m_backbuffer = (uint32_t)Heap_AllocateMemory(framebufferSize);
+	if (m_backbuffer == 0) {
 		// This will only be printed in e9 log
 		KernelLog_ErrorMsg("i686 Terminal", "Failed to create second buffer to use in double buffering");
 	}
-	uint32_t framebufferPageOffset = (uint32_t)i686_TTY_fbInfo.framebufferAddr -
-									 ALIGN_DOWN((uint32_t)i686_TTY_fbInfo.framebufferAddr, HAL_VirtualMM_PageSize);
-	uint32_t framebufferPagesStart = ALIGN_DOWN((uint32_t)i686_TTY_fbInfo.framebufferAddr, HAL_VirtualMM_PageSize);
+	uint32_t framebufferPageOffset =
+		(uint32_t)m_fbInfo.framebufferAddr - ALIGN_DOWN((uint32_t)m_fbInfo.framebufferAddr, HAL_VirtualMM_PageSize);
+	uint32_t framebufferPagesStart = ALIGN_DOWN((uint32_t)m_fbInfo.framebufferAddr, HAL_VirtualMM_PageSize);
 	uint32_t framebufferPagesEnd =
-		ALIGN_UP((uint32_t)i686_TTY_fbInfo.framebufferAddr + framebufferSize, HAL_VirtualMM_PageSize);
+		ALIGN_UP((uint32_t)m_fbInfo.framebufferAddr + framebufferSize, HAL_VirtualMM_PageSize);
 	uintptr_t framebufferMapping =
 		HAL_VirtualMM_GetIOMapping(framebufferPagesStart, framebufferPagesEnd - framebufferPagesStart, false);
 	if (framebufferMapping == 0) {
 		// This will only be printed in e9 log
 		KernelLog_ErrorMsg("i686 Terminal", "Failed to map framebuffer");
 	}
-	i686_TTY_framebuffer = framebufferMapping + framebufferPageOffset;
-	i686_TTY_Color = 0xbbbbbbbb;
-	i686_TTY_isFramebufferInitialized = true;
+	m_framebuffer = framebufferMapping + framebufferPageOffset;
+	m_ttyColor = 0xbbbbbbbb;
+	m_isFramebufferInitialized = true;
 }
 
 void HAL_TTY_Flush() {
 }
 
 void HAL_TTY_PrintCharacter(char c) {
-	if (i686_TTY_isFramebufferInitialized) {
+	if (m_isFramebufferInitialized) {
 		i686_TTY_PutCharacter(c);
 	}
 	i686_Ports_WriteByte(0xe9, c);
 }
 
 void HAL_TTY_SetColor(uint8_t color) {
-	i686_TTY_Color = i686_TTY_VGA2RGB[color];
+	m_ttyColor = m_VGA2RGB[color];
 }

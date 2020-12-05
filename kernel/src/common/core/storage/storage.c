@@ -207,12 +207,12 @@ static void Storage_FDCallbackClose(struct File *file) {
 	VFS_FinalizeFile(file);
 }
 
-static struct FileOperations storage_fd_ops = {.read = storageFDCallbackRead,
-											   .write = storageFDCallbackWrite,
-											   .readdir = NULL,
-											   .lseek = Storage_FDCallbackLseek,
-											   .flush = Storage_FDCallbackFlush,
-											   .close = Storage_FDCallbackClose};
+static struct FileOperations m_StorageFileOperations = {.read = storageFDCallbackRead,
+														.write = storageFDCallbackWrite,
+														.readdir = NULL,
+														.lseek = Storage_FDCallbackLseek,
+														.flush = Storage_FDCallbackFlush,
+														.close = Storage_FDCallbackClose};
 
 struct File *storageFileOpen(struct VFS_Inode *inode, UNUSED int perm) {
 	struct File *fd = ALLOC_OBJ(struct File);
@@ -225,7 +225,7 @@ struct File *storageFileOpen(struct VFS_Inode *inode, UNUSED int perm) {
 		return NULL;
 	}
 	fd->ctx = inode->ctx;
-	fd->ops = &storage_fd_ops;
+	fd->ops = &m_StorageFileOperations;
 	fd->offset = 0;
 	return fd;
 }

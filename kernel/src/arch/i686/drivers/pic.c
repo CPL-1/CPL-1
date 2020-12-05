@@ -14,8 +14,8 @@
 #define ICW1_INIT 0x10
 #define ICW4_8086 0x01
 
-static uint8_t i686_PIC8259_PrimaryMask = 0xff;
-static uint8_t i686_PIC8259_SecondaryMask = 0xff;
+static uint8_t m_primaryPICMask = 0xff;
+static uint8_t m_secondaryPICMask = 0xff;
 
 void i686_PIC8259_Initialize() {
 	i686_Ports_WriteByte(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
@@ -34,8 +34,8 @@ void i686_PIC8259_Initialize() {
 	i686_CPU_WaitForIOCompletition();
 	i686_Ports_WriteByte(PIC2_DATA, ICW4_8086);
 	i686_CPU_WaitForIOCompletition();
-	i686_Ports_WriteByte(PIC1_DATA, i686_PIC8259_PrimaryMask);
-	i686_Ports_WriteByte(PIC2_DATA, i686_PIC8259_SecondaryMask);
+	i686_Ports_WriteByte(PIC1_DATA, m_primaryPICMask);
+	i686_Ports_WriteByte(PIC2_DATA, m_secondaryPICMask);
 	i686_PIC8259_EnableIRQ(2);
 }
 
@@ -49,21 +49,21 @@ void i686_PIC8259_NotifyOnIRQTerm(uint8_t no) {
 void i686_PIC8259_EnableIRQ(uint8_t no) {
 	if (no >= 8) {
 		no -= 8;
-		i686_PIC8259_SecondaryMask &= ~(1 << no);
-		i686_Ports_WriteByte(PIC2_DATA, i686_PIC8259_SecondaryMask);
+		m_secondaryPICMask &= ~(1 << no);
+		i686_Ports_WriteByte(PIC2_DATA, m_secondaryPICMask);
 	} else {
-		i686_PIC8259_PrimaryMask &= ~(1 << no);
-		i686_Ports_WriteByte(PIC1_DATA, i686_PIC8259_PrimaryMask);
+		m_primaryPICMask &= ~(1 << no);
+		i686_Ports_WriteByte(PIC1_DATA, m_primaryPICMask);
 	}
 }
 
 void i686_PIC8259_DisableIRQ(uint8_t no) {
 	if (no >= 8) {
 		no -= 8;
-		i686_PIC8259_SecondaryMask |= (1 << no);
-		i686_Ports_WriteByte(PIC2_DATA, i686_PIC8259_SecondaryMask);
+		m_secondaryPICMask |= (1 << no);
+		i686_Ports_WriteByte(PIC2_DATA, m_secondaryPICMask);
 	} else {
-		i686_PIC8259_PrimaryMask |= (1 << no);
-		i686_Ports_WriteByte(PIC1_DATA, i686_PIC8259_PrimaryMask);
+		m_primaryPICMask |= (1 << no);
+		i686_Ports_WriteByte(PIC1_DATA, m_primaryPICMask);
 	}
 }

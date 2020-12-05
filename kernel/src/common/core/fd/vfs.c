@@ -3,10 +3,10 @@
 #include <common/lib/kmsg.h>
 #include <common/lib/pathsplit.h>
 
-static struct Mutex VFS_Mutex;
-static struct VFS_Superblock *VFS_Root;
-static struct VFS_Superblock *VFS_SuperblockList;
-static struct VFS_Superblock_type *VFS_SuperblockTypes;
+static struct Mutex m_mutex;
+static struct VFS_Superblock *m_root;
+static struct VFS_Superblock *m_superblockList;
+static struct VFS_Superblock_type *m_superblockTypes;
 
 struct VFS_Inode *VFS_GetInode(struct VFS_Superblock *sb, ino_t id) {
 	if (sb->type->getInode == NULL) {
@@ -118,16 +118,16 @@ bool VFS_DropMount(struct VFS_Dentry *dentry) {
 	if (sb->type->umount != NULL) {
 		sb->type->umount(sb->ctx);
 	}
-	Mutex_Lock(&VFS_Mutex);
+	Mutex_Lock(&m_mutex);
 	if (sb->nextMounted != NULL) {
 		sb->nextMounted->prevMounted = sb->prevMounted;
 	}
 	if (sb->prevMounted != NULL) {
 		sb->prevMounted->nextMounted = sb->nextMounted;
 	} else {
-		VFS_SuperblockList = sb->nextMounted;
+		m_superblockList = sb->nextMounted;
 	}
-	Mutex_Unlock(&VFS_Mutex);
+	Mutex_Unlock(&m_mutex);
 	FREE_OBJ(sb);
 	return true;
 }
@@ -328,7 +328,7 @@ struct VFS_Dentry *VFS_Dentry_WalkFromRoot(const char *path) {
 	if (!PathSplitter_Init(path, &splitter)) {
 		return NULL;
 	}
-	struct VFS_Dentry *fsRoot = VFS_Root->root;
+	struct VFS_Dentry *fsRoot = m_root->root;
 	if (fsRoot == NULL) {
 		KernelLog_ErrorMsg("Virtual File System", "Filesystem root should never be NULL");
 	}
@@ -387,24 +387,24 @@ bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) 
 	dentry->inode = inode;
 	Mutex_Initialize(&(dentry->mutex));
 	sb->root = dentry;
-	Mutex_Lock(&VFS_Mutex);
-	sb->nextMounted = VFS_SuperblockList;
-	if (VFS_SuperblockList != NULL) {
-		VFS_SuperblockList->prevMounted = sb;
+	Mutex_Lock(&m_mutex);
+	sb->nextMounted = m_superblockList;
+	if (m_superblockList != NULL) {
+		m_superblockList->prevMounted = sb;
 	}
 	sb->prevMounted = NULL;
-	VFS_SuperblockList = sb;
-	Mutex_Unlock(&VFS_Mutex);
+	m_superblockList = sb;
+	Mutex_Unlock(&m_mutex);
 	Mutex_Unlock(&(dir->mutex));
 	return true;
 }
 
 struct VFS_Superblock_type *VFS_Dentry_GetFSTypeDescriptor(const char *fsType) {
-	Mutex_Lock(&VFS_Mutex);
-	struct VFS_Superblock_type *current = VFS_SuperblockTypes;
+	Mutex_Lock(&m_mutex);
+	struct VFS_Superblock_type *current = m_superblockTypes;
 	while (current != NULL) {
 		if (StringsEqual(current->fsName, fsType)) {
-			Mutex_Unlock(&VFS_Mutex);
+			Mutex_Unlock(&m_mutex);
 			if (current->mount == NULL) {
 				return NULL;
 			}
@@ -412,7 +412,7 @@ struct VFS_Superblock_type *VFS_Dentry_GetFSTypeDescriptor(const char *fsType) {
 		}
 		current = current->next;
 	}
-	Mutex_Unlock(&VFS_Mutex);
+	Mutex_Unlock(&m_mutex);
 	return NULL;
 }
 
@@ -484,22 +484,22 @@ void VFS_Initialize(struct VFS_Superblock *sb) {
 	sb->root = dentry;
 	sb->mountLocation = NULL;
 	sb->nextMounted = sb->prevMounted;
-	VFS_SuperblockList = sb;
-	VFS_Root = sb;
-	Mutex_Initialize(&VFS_Mutex);
+	m_superblockList = sb;
+	m_root = sb;
+	Mutex_Initialize(&m_mutex);
 	Mutex_Initialize(&(dentry->mutex));
 }
 
 void VFS_RegisterFilesystem(struct VFS_Superblock_type *type) {
-	Mutex_Lock(&VFS_Mutex);
-	struct VFS_Superblock_type *current = VFS_SuperblockTypes;
+	Mutex_Lock(&m_mutex);
+	struct VFS_Superblock_type *current = m_superblockTypes;
 	type->next = current;
 	if (current != NULL) {
 		current->prev = type;
 	}
 	type->prev = NULL;
-	VFS_SuperblockTypes = type;
-	Mutex_Unlock(&VFS_Mutex);
+	m_superblockTypes = type;
+	Mutex_Unlock(&m_mutex);
 }
 
 struct File *VFS_Open(const char *path, int perm) {

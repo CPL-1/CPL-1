@@ -12,7 +12,7 @@ void i686_DetectHardware_EnumerateCallback(struct i686_PCI_Address addr, UNUSED 
 	switch (type) {
 	case NVME_I686_PCI_TYPE: {
 		KernelLog_InfoMsg("i686 Hardware Autodetection Routine", "Found NVME controller on PCI bus");
-		struct hal_nvme_controller *controller = ALLOC_OBJ(struct hal_nvme_controller);
+		struct HAL_NVMEController *controller = ALLOC_OBJ(struct HAL_NVMEController);
 		if (controller == NULL) {
 			KernelLog_WarnMsg("i686 Hardware Autodetection Routine",
 							  "Failed to allocate NVME HAL controller object. Skipping "

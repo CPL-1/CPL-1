@@ -9,36 +9,36 @@ struct DevFS_RootDirectoryEntry {
 	struct VFS_Inode *inode;
 };
 
-static Dynarray(struct DevFS_RootDirectoryEntry) DevFS_RootEntries;
-static struct VFS_Inode DevFS_RootInode;
-static struct FileOperations DevFS_RootIteratorOperations;
-static struct VFS_InodeOperations DevFS_RootInodeOperations;
-static struct Mutex DevFS_Mutex;
-static struct VFS_Superblock_type DevFS_SuperblockType;
+static Dynarray(struct DevFS_RootDirectoryEntry) m_rootEntries;
+static struct VFS_Inode m_rootInode;
+static struct FileOperations m_rootIteratorOperations;
+static struct VFS_InodeOperations m_rootInodeOperations;
+static struct Mutex m_mutex;
+static struct VFS_Superblock_type m_superblockType;
 
 static struct VFS_Superblock *devfs_mount(UNUSED const char *device_path) {
 	struct VFS_Superblock *sb = ALLOC_OBJ(struct VFS_Superblock);
 	sb->ctx = NULL;
-	sb->type = &DevFS_SuperblockType;
+	sb->type = &m_superblockType;
 	return sb;
 }
 
 static bool DevFS_GetInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id) {
-	Mutex_Lock(&DevFS_Mutex);
+	Mutex_Lock(&m_mutex);
 	if (id == 1) {
-		Mutex_Unlock(&DevFS_Mutex);
-		memcpy(buf, &DevFS_RootInode, sizeof(*buf));
+		Mutex_Unlock(&m_mutex);
+		memcpy(buf, &m_rootInode, sizeof(*buf));
 		return true;
-	} else if (id > 1 && id < (ino_t)(2 + DYNARRAY_LENGTH(DevFS_RootEntries))) {
-		if (DevFS_RootEntries[id - 2].inode == NULL) {
-			Mutex_Unlock(&DevFS_Mutex);
+	} else if (id > 1 && id < (ino_t)(2 + DYNARRAY_LENGTH(m_rootEntries))) {
+		if (m_rootEntries[id - 2].inode == NULL) {
+			Mutex_Unlock(&m_mutex);
 			return false;
 		}
-		memcpy(buf, DevFS_RootEntries[id - 2].inode, sizeof(*buf));
-		Mutex_Unlock(&DevFS_Mutex);
+		memcpy(buf, m_rootEntries[id - 2].inode, sizeof(*buf));
+		Mutex_Unlock(&m_mutex);
 		return true;
 	}
-	Mutex_Unlock(&DevFS_Mutex);
+	Mutex_Unlock(&m_mutex);
 	return false;
 }
 
@@ -58,35 +58,35 @@ bool DevFS_RegisterInode(const char *name, struct VFS_Inode *inode) {
 	entry.name = (const char *)copy;
 	entry.hash = GetStringHash(entry.name);
 	entry.inode = inode;
-	Mutex_Lock(&DevFS_Mutex);
+	Mutex_Lock(&m_mutex);
 
-	Dynarray(struct DevFS_RootDirectoryEntry) newDynarray = DYNARRAY_PUSH(DevFS_RootEntries, entry);
+	Dynarray(struct DevFS_RootDirectoryEntry) newDynarray = DYNARRAY_PUSH(m_rootEntries, entry);
 
 	if (newDynarray == NULL) {
 		Heap_FreeMemory(copy, nameLen + 1);
-		Mutex_Unlock(&DevFS_Mutex);
+		Mutex_Unlock(&m_mutex);
 		return false;
 	}
-	DevFS_RootEntries = newDynarray;
-	DevFS_RootInode.stat.stSize = DYNARRAY_LENGTH(DevFS_RootEntries);
-	Mutex_Unlock(&DevFS_Mutex);
+	m_rootEntries = newDynarray;
+	m_rootInode.stat.stSize = DYNARRAY_LENGTH(m_rootEntries);
+	Mutex_Unlock(&m_mutex);
 	return true;
 }
 
 static ino_t DevFS_GetRootChild(UNUSED struct VFS_Inode *inode, const char *name) {
 	size_t hash = GetStringHash(name);
-	Mutex_Lock(&DevFS_Mutex);
-	for (size_t i = 0; i < DYNARRAY_LENGTH(DevFS_RootEntries); ++i) {
-		if (DevFS_RootEntries[i].hash != hash) {
+	Mutex_Lock(&m_mutex);
+	for (size_t i = 0; i < DYNARRAY_LENGTH(m_rootEntries); ++i) {
+		if (m_rootEntries[i].hash != hash) {
 			continue;
 		}
-		if (!StringsEqual(DevFS_RootEntries[i].name, name)) {
+		if (!StringsEqual(m_rootEntries[i].name, name)) {
 			continue;
 		}
-		Mutex_Unlock(&DevFS_Mutex);
+		Mutex_Unlock(&m_mutex);
 		return i + 2;
 	}
-	Mutex_Unlock(&DevFS_Mutex);
+	Mutex_Unlock(&m_mutex);
 	return 0;
 }
 
@@ -97,21 +97,21 @@ static struct File *DeVFS_OpenRoot(UNUSED struct VFS_Inode *inode, UNUSED int pe
 	}
 	newFile->offset = 0;
 	newFile->ctx = NULL;
-	newFile->ops = &DevFS_RootIteratorOperations;
+	newFile->ops = &m_rootIteratorOperations;
 	return newFile;
 }
 
 static int DevFS_ReadRootDirectory(struct File *file, struct DirectoryEntry *buf) {
-	Mutex_Lock(&DevFS_Mutex);
+	Mutex_Lock(&m_mutex);
 	off_t index = file->offset;
-	if (index >= DYNARRAY_LENGTH(DevFS_RootEntries)) {
-		Mutex_Unlock(&DevFS_Mutex);
+	if (index >= DYNARRAY_LENGTH(m_rootEntries)) {
+		Mutex_Unlock(&m_mutex);
 		return 0;
 	};
 	buf->dtIno = index + 2;
-	memcpy(buf->dtName, DevFS_RootEntries[index].name, strlen(DevFS_RootEntries[index].name));
+	memcpy(buf->dtName, m_rootEntries[index].name, strlen(m_rootEntries[index].name));
 	file->offset++;
-	Mutex_Unlock(&DevFS_Mutex);
+	Mutex_Unlock(&m_mutex);
 	return 1;
 }
 
@@ -120,40 +120,40 @@ static void DevFS_CloseRootDirectoryIterator(struct File *file) {
 }
 
 void DevFS_Initialize() {
-	DevFS_RootEntries = DYNARRAY_NEW(struct DevFS_RootDirectoryEntry);
-	if (DevFS_RootEntries == NULL) {
+	m_rootEntries = DYNARRAY_NEW(struct DevFS_RootDirectoryEntry);
+	if (m_rootEntries == NULL) {
 		KernelLog_ErrorMsg("Device Filesystem (devfs)", "Failed to allocate dynarrays for devfs usage");
 	}
-	Mutex_Initialize(&DevFS_Mutex);
+	Mutex_Initialize(&m_mutex);
 
-	memcpy(&(DevFS_SuperblockType.fsName), "devfs", 6);
-	DevFS_SuperblockType.fsNameHash = GetStringHash("devfs");
-	DevFS_SuperblockType.getInode = DevFS_GetInode;
-	DevFS_SuperblockType.dropInode = NULL;
-	DevFS_SuperblockType.sync = NULL;
-	DevFS_SuperblockType.mount = devfs_mount;
-	DevFS_SuperblockType.umount = NULL;
-	DevFS_SuperblockType.getRootInode = NULL;
+	memcpy(&(m_superblockType.fsName), "devfs", 6);
+	m_superblockType.fsNameHash = GetStringHash("devfs");
+	m_superblockType.getInode = DevFS_GetInode;
+	m_superblockType.dropInode = NULL;
+	m_superblockType.sync = NULL;
+	m_superblockType.mount = devfs_mount;
+	m_superblockType.umount = NULL;
+	m_superblockType.getRootInode = NULL;
 
-	DevFS_RootInode.ctx = NULL;
-	DevFS_RootInode.stat.stSize = 0;
-	DevFS_RootInode.stat.stType = VFS_DT_DIR;
-	DevFS_RootInode.stat.stBlksize = 0;
-	DevFS_RootInode.stat.stBlkcnt = 0;
-	DevFS_RootInode.ops = &DevFS_RootInodeOperations;
+	m_rootInode.ctx = NULL;
+	m_rootInode.stat.stSize = 0;
+	m_rootInode.stat.stType = VFS_DT_DIR;
+	m_rootInode.stat.stBlksize = 0;
+	m_rootInode.stat.stBlkcnt = 0;
+	m_rootInode.ops = &m_rootInodeOperations;
 
-	DevFS_RootInodeOperations.getChild = DevFS_GetRootChild;
-	DevFS_RootInodeOperations.open = DeVFS_OpenRoot;
-	DevFS_RootInodeOperations.mkdir = NULL;
-	DevFS_RootInodeOperations.link = NULL;
-	DevFS_RootInodeOperations.unlink = NULL;
+	m_rootInodeOperations.getChild = DevFS_GetRootChild;
+	m_rootInodeOperations.open = DeVFS_OpenRoot;
+	m_rootInodeOperations.mkdir = NULL;
+	m_rootInodeOperations.link = NULL;
+	m_rootInodeOperations.unlink = NULL;
 
-	DevFS_RootIteratorOperations.read = NULL;
-	DevFS_RootIteratorOperations.write = NULL;
-	DevFS_RootIteratorOperations.lseek = NULL;
-	DevFS_RootIteratorOperations.flush = NULL;
-	DevFS_RootIteratorOperations.close = DevFS_CloseRootDirectoryIterator;
-	DevFS_RootIteratorOperations.readdir = DevFS_ReadRootDirectory;
+	m_rootIteratorOperations.read = NULL;
+	m_rootIteratorOperations.write = NULL;
+	m_rootIteratorOperations.lseek = NULL;
+	m_rootIteratorOperations.flush = NULL;
+	m_rootIteratorOperations.close = DevFS_CloseRootDirectoryIterator;
+	m_rootIteratorOperations.readdir = DevFS_ReadRootDirectory;
 
-	VFS_RegisterFilesystem(&DevFS_SuperblockType);
+	VFS_RegisterFilesystem(&m_superblockType);
 }

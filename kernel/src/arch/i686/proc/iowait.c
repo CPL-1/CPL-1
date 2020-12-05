@@ -20,20 +20,20 @@ struct i686_IOWait_IRQMeta {
 	uint8_t irq;
 };
 
-struct i686_IOWait_ListEntry *i686_IOWait_HandlerLists[16];
-struct i686_IOWait_IRQMeta i686_IOWait_IRQContexts[16];
+struct i686_IOWait_ListEntry *m_handlerLists[16];
+struct i686_IOWait_IRQMeta m_irqContexts[16];
 
 void i686_IOWait_Initialize() {
 	for (uint8_t i = 0; i < 16; ++i) {
-		i686_IOWait_HandlerLists[i] = NULL;
-		i686_IOWait_IRQContexts[i].irq = i;
+		m_handlerLists[i] = NULL;
+		m_irqContexts[i].irq = i;
 	}
 }
 
 void i686_IOWait_HandleIRQ(void *ctx, void *frame) {
 	struct i686_IOWait_IRQMeta *meta = (struct i686_IOWait_IRQMeta *)ctx;
 	uint8_t irq = meta->irq;
-	struct i686_IOWait_ListEntry *head = i686_IOWait_HandlerLists[irq];
+	struct i686_IOWait_ListEntry *head = m_handlerLists[irq];
 	while (head != NULL) {
 		if (head->check_wakeup_handler == NULL || head->check_wakeup_handler(head->ctx)) {
 			if (head->int_handler != NULL) {
@@ -58,9 +58,9 @@ struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_iowait_ha
 	entry->int_handler = int_handler;
 	entry->check_wakeup_handler = check_hander;
 	entry->ctx = ctx;
-	if (i686_IOWait_HandlerLists[irq] == NULL) {
+	if (m_handlerLists[irq] == NULL) {
 		void *interrupt_handler =
-			i686_ISR_MakeNewISRHandler((HAL_ISR_Handler)i686_IOWait_HandleIRQ, i686_IOWait_IRQContexts + irq);
+			i686_ISR_MakeNewISRHandler((HAL_ISR_Handler)i686_IOWait_HandleIRQ, m_irqContexts + irq);
 		if (interrupt_handler == NULL) {
 			KernelLog_ErrorMsg("i686 IO wait subsystem", "Failed to allocate function object for IRQ handler");
 		}
@@ -68,8 +68,8 @@ struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_iowait_ha
 		i686_PIC8259_EnableIRQ(irq);
 	}
 	entry->id = PROC_INVALID_PROC_ID;
-	entry->next = i686_IOWait_HandlerLists[irq];
-	i686_IOWait_HandlerLists[irq] = entry;
+	entry->next = m_handlerLists[irq];
+	m_handlerLists[irq] = entry;
 	return entry;
 }
 
@@ -82,7 +82,7 @@ void i686_IOWait_WaitForIRQ(struct i686_IOWait_ListEntry *entry) {
 
 void i686_IOWait_UnmaskUsedIRQ() {
 	for (size_t i = 0; i < 16; ++i) {
-		if (i686_IOWait_HandlerLists[i] != NULL) {
+		if (m_handlerLists[i] != NULL) {
 			i686_PIC8259_EnableIRQ(i);
 		}
 	}

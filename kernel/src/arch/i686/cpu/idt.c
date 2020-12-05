@@ -13,20 +13,20 @@ struct i686_IDTR {
 	uint32_t base;
 } PACKED;
 
-static struct i686_IDTR i686_IDT_Pointer;
-static struct i686_IDT_Entry i686_IDT_Entries[256];
+static struct i686_IDTR m_IDTPointer;
+static struct i686_IDT_Entry m_IDTEntries[256];
 
 void i686_IDT_InstallHandler(uint8_t index, uint32_t entry, uint8_t flags) {
-	i686_IDT_Entries[index].base_low = (uint16_t)(entry & 0xffff);
-	i686_IDT_Entries[index].selector = 0x8;
-	i686_IDT_Entries[index].reserved = 0;
-	i686_IDT_Entries[index].flags = flags;
-	i686_IDT_Entries[index].base_high = (uint16_t)((entry >> 16) & 0xffff);
+	m_IDTEntries[index].base_low = (uint16_t)(entry & 0xffff);
+	m_IDTEntries[index].selector = 0x8;
+	m_IDTEntries[index].reserved = 0;
+	m_IDTEntries[index].flags = flags;
+	m_IDTEntries[index].base_high = (uint16_t)((entry >> 16) & 0xffff);
 }
 
 void i686_IDT_Initialize() {
-	memset(&i686_IDT_Entries, 0, sizeof(i686_IDT_Entries));
-	i686_IDT_Pointer.limit = sizeof(i686_IDT_Entries) - 1;
-	i686_IDT_Pointer.base = (uint32_t)&i686_IDT_Entries;
-	ASM volatile("lidt %0" : : "m"(i686_IDT_Pointer));
+	memset(&m_IDTEntries, 0, sizeof(m_IDTEntries));
+	m_IDTPointer.limit = sizeof(m_IDTEntries) - 1;
+	m_IDTPointer.base = (uint32_t)&m_IDTEntries;
+	ASM volatile("lidt %0" : : "m"(m_IDTPointer));
 }

@@ -1,25 +1,25 @@
 bits 32
 
 global i686_Stivale_EntryPoint
-extern i686_KernelInit_DoInitialization
+extern i686_KernelInit_Main
 
 KERNEL_MAPPING_BASE: equ 0xc0000000
 
 section .bss
 align 4096
-i686_BootStackBottom:
+m_bootStackBottom:
 resb 65536
-i686_BootStackTop:
-i686_BootStackTopPhys: equ i686_BootStackTop - KERNEL_MAPPING_BASE
-i686_BootPageTableDirectory:
+m_bootStackTop:
+m_bootStackTopPhys: equ m_bootStackTop - KERNEL_MAPPING_BASE
+m_bootPageTableDirectory:
 resb 4096
-i686_BootPageTableDirectoryPhys: equ i686_BootPageTableDirectory - KERNEL_MAPPING_BASE
-i686_BootPageTable:
+m_bootPageTableDirectoryPhys: equ m_bootPageTableDirectory - KERNEL_MAPPING_BASE
+m_bootPageTable:
 resb 4096
-i686_BootPageTablePhys: equ i686_BootPageTable - KERNEL_MAPPING_BASE
+m_bootPageTablePhys: equ m_bootPageTable - KERNEL_MAPPING_BASE
 
 section .stivalehdr
-dd i686_BootStackTopPhys
+dd m_bootStackTopPhys
 dd 0
 dw 1
 dw 0
@@ -31,7 +31,7 @@ section .inittext
 i686_Stivale_EntryPoint:
     pop ebx
     pop ebx
-    mov edi, i686_BootPageTablePhys
+    mov edi, m_bootPageTablePhys
     xor esi, esi
     mov ecx, 1024
 .mapping_loop:
@@ -45,11 +45,11 @@ i686_Stivale_EntryPoint:
     dec ecx
     jmp .mapping_loop
 .mapping_done:
-    mov ebp, i686_BootPageTablePhys
+    mov ebp, m_bootPageTablePhys
     or ebp, 0b11
-    mov dword [i686_BootPageTableDirectoryPhys], ebp
-    mov dword [i686_BootPageTableDirectoryPhys + 768 * 4], ebp
-    mov ecx, i686_BootPageTableDirectoryPhys
+    mov dword [m_bootPageTableDirectoryPhys], ebp
+    mov dword [m_bootPageTableDirectoryPhys + 768 * 4], ebp
+    mov ecx, m_bootPageTableDirectoryPhys
     mov cr3, ecx
     mov ecx, cr0
     or ecx, 0x80010000
@@ -58,9 +58,9 @@ i686_Stivale_EntryPoint:
 
 section .text
 i686_higher_half_start:
-    mov esp, i686_BootStackTop
+    mov esp, m_bootStackTop
     push ebx
-    call i686_KernelInit_DoInitialization
+    call i686_KernelInit_Main
     pop ebx
     cli
 .halted:

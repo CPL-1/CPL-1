@@ -14,7 +14,7 @@ static void qsort_SwapMemory(void *loc1, void *loc2, size_t size) {
 	}
 }
 
-static void qsort_SwapEntriesAtPosition(void *array, size_t size, size_t i1, size_t i2) {
+static void qsort_SwapEntriesAtPositions(void *array, size_t size, size_t i1, size_t i2) {
 	qsort_SwapMemory(qsort_GetAtOffset(array, size, i1), qsort_GetAtOffset(array, size, i2), size);
 }
 
@@ -32,7 +32,7 @@ static size_t qsort_partition(void *array, size_t size, size_t l, size_t r, qsor
 		if (i >= j) {
 			break;
 		}
-		qsort_SwapEntriesAtPosition(array, size, i++, j--);
+		qsort_SwapEntriesAtPositions(array, size, i++, j--);
 	}
 	return j;
 }

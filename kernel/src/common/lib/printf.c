@@ -127,7 +127,7 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 	return pos;
 }
 
-void printf_WriteStrinig(const char *str, uint64_t size) {
+void printf_WriteString(const char *str, uint64_t size) {
 	for (uint64_t i = 0; i < size; ++i) {
 		HAL_TTY_PrintCharacter(str[i]);
 	}
@@ -137,6 +137,6 @@ void printf_WriteStrinig(const char *str, uint64_t size) {
 size_t va_printf(const char *str, va_list args) {
 	char buf[1024];
 	size_t count = va_sprintf(str, buf, 1024, args);
-	printf_WriteStrinig(buf, count);
+	printf_WriteString(buf, count);
 	return count;
 }

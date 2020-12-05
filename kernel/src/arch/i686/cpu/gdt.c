@@ -17,18 +17,18 @@ struct i686_GDT_Entry {
 	uint8_t baseHigh;
 } PACKED;
 
-static struct i686_GDT_Entry i686_GDT_Entries[GDT_ENTRIES_COUNT];
-static struct i686_GDTR i686_GDT_Pointer;
+static struct i686_GDT_Entry m_entries[GDT_ENTRIES_COUNT];
+static struct i686_GDTR m_GDTPointer;
 
 void i686_GDT_InstallEntry(uint32_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t granularity) {
-	i686_GDT_Entries[index].baseLow = (base & 0xFFFFFF);
-	i686_GDT_Entries[index].baseHigh = (base >> 24) & 0xFF;
+	m_entries[index].baseLow = (base & 0xFFFFFF);
+	m_entries[index].baseHigh = (base >> 24) & 0xFF;
 
-	i686_GDT_Entries[index].limitLow = (limit & 0xFFFF);
-	i686_GDT_Entries[index].granularity = (limit >> 16) & 0x0F;
+	m_entries[index].limitLow = (limit & 0xFFFF);
+	m_entries[index].granularity = (limit >> 16) & 0x0F;
 
-	i686_GDT_Entries[index].granularity |= granularity & 0xF0;
-	i686_GDT_Entries[index].access = access;
+	m_entries[index].granularity |= granularity & 0xF0;
+	m_entries[index].access = access;
 }
 
 uint16_t i686_GDT_GetTSSSegment() {
@@ -50,7 +50,7 @@ void i686_GDT_Initialize() {
 	i686_GDT_InstallEntry(5, 0, 0xBFFFFFFF, 0xFA, 0xCF); // user code 0x28
 	i686_GDT_InstallEntry(6, 0, 0xBFFFFFFF, 0xF2, 0xCF); // user data 0x30
 	i686_GDT_InstallTSS();
-	i686_GDT_Pointer.size = sizeof(i686_GDT_Entries) - 1;
-	i686_GDT_Pointer.offset = (uint32_t)&i686_GDT_Entries;
-	ASM volatile("lgdt %0" : : "m"(i686_GDT_Pointer));
+	m_GDTPointer.size = sizeof(m_entries) - 1;
+	m_GDTPointer.offset = (uint32_t)&m_entries;
+	ASM volatile("lgdt %0" : : "m"(m_GDTPointer));
 }

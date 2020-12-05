@@ -47,7 +47,7 @@ void i686_KernelInit_URMThreadFunction() {
 
 void i686_KernelInit_ExecuteInitProcess();
 
-void i686_KernelInit_DoInitialization(uint32_t mb_offset) {
+void i686_KernelInit_Main(uint32_t mb_offset) {
 	i686_Stivale_Initialize(mb_offset);
 	KernelLog_InfoMsg("i686 Kernel Init", "Preparing to unleash the real power of your CPU...");
 	KernelLog_InitDoneMsg("i686 Stivale v1.0 Tables Parser");
@@ -83,7 +83,7 @@ void i686_KernelInit_DoInitialization(uint32_t mb_offset) {
 	KernelLog_InfoMsg("i686 Kernel Init", "Starting Init Process...");
 	struct Proc_ProcessID initID = Proc_MakeNewProcess(Proc_GetProcessID());
 	struct Proc_Process *initData = Proc_GetProcessData(initID);
-	struct i686_cpu_state *initState = (struct i686_cpu_state *)(initData->processState);
+	struct i686_CPUState *initState = (struct i686_CPUState *)(initData->processState);
 	initState->ds = initState->es = initState->gs = initState->fs = initState->ss = 0x21;
 	initState->cs = 0x19;
 	initState->eip = (uint32_t)i686_KernelInit_ExecuteInitProcess;

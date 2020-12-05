@@ -3,7 +3,7 @@
 
 #include <hal/proc/isrhandler.h>
 
-struct hal_nvme_controller {
+struct HAL_NVMEController {
 	void *ctx;
 	uintptr_t offset;
 	size_t size;

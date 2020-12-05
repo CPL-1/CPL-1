@@ -13,17 +13,17 @@
 
 #define PROC_MOD_NAME "Process Manager & Scheduler"
 
-static uint64_t Proc_InstanceCountsByID[PROC_MAX_PROCESS_COUNT];
-static struct Proc_Process *Proc_ProcessesByID[PROC_MAX_PROCESS_COUNT];
-static struct Proc_Process *Proc_CurrentProcess;
-static struct Proc_Process *Proc_DeallocQueueHead;
-static bool Proc_Initialized = false;
+static uint64_t m_instanceCountsByID[PROC_MAX_PROCESS_COUNT];
+static struct Proc_Process *m_processesByID[PROC_MAX_PROCESS_COUNT];
+static struct Proc_Process *m_CurrentProcess;
+static struct Proc_Process *m_deallocQueueHead;
+static bool m_procInitialized = false;
 
 #define PROC_SCHEDULER_STACK_SIZE 65536
 static char Proc_SchedulerStack[PROC_SCHEDULER_STACK_SIZE];
 
 bool Proc_IsInitialized() {
-	return Proc_Initialized;
+	return m_procInitialized;
 }
 
 struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id) {
@@ -32,12 +32,12 @@ struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id) {
 		return NULL;
 	}
 	HAL_InterruptLock_Lock();
-	struct Proc_Process *data = Proc_ProcessesByID[array_index];
+	struct Proc_Process *data = m_processesByID[array_index];
 	if (data == NULL) {
 		HAL_InterruptLock_Unlock();
 		return NULL;
 	}
-	if (Proc_InstanceCountsByID[array_index] != id.instance_number) {
+	if (m_instanceCountsByID[array_index] != id.instance_number) {
 		HAL_InterruptLock_Unlock();
 		return NULL;
 	}
@@ -49,10 +49,10 @@ static struct Proc_ProcessID Proc_AllocateProcessID(struct Proc_Process *process
 	struct Proc_ProcessID result;
 	for (size_t i = 0; i < PROC_MAX_PROCESS_COUNT; ++i) {
 		HAL_InterruptLock_Lock();
-		if (Proc_ProcessesByID[i] == NULL) {
-			Proc_ProcessesByID[i] = process;
+		if (m_processesByID[i] == NULL) {
+			m_processesByID[i] = process;
 			result.id = i;
-			result.instance_number = Proc_InstanceCountsByID[i];
+			result.instance_number = m_instanceCountsByID[i];
 			HAL_InterruptLock_Unlock();
 			return result;
 		}
@@ -111,8 +111,8 @@ void Proc_Resume(struct Proc_ProcessID id) {
 	HAL_InterruptLock_Lock();
 	process->state = RUNNING;
 	struct Proc_Process *next, *prev;
-	next = Proc_CurrentProcess;
-	prev = Proc_CurrentProcess->prev;
+	next = m_CurrentProcess;
+	prev = m_CurrentProcess->prev;
 	next->prev = process;
 	prev->next = process;
 	process->next = next;
@@ -137,14 +137,14 @@ void Proc_Suspend(struct Proc_ProcessID id, bool overrideState) {
 		process->state = SLEEPING;
 	}
 	Proc_CutFromActiveList(process);
-	if (process == Proc_CurrentProcess) {
+	if (process == m_CurrentProcess) {
 		Proc_Yield();
 	}
 	HAL_InterruptLock_Unlock();
 }
 
 struct Proc_ProcessID Proc_GetProcessID() {
-	struct Proc_Process *current = Proc_CurrentProcess;
+	struct Proc_Process *current = m_CurrentProcess;
 	struct Proc_ProcessID id = current->pid;
 	return id;
 }
@@ -155,17 +155,17 @@ void Proc_SuspendSelf(bool overrideState) {
 
 void Proc_Dispose(struct Proc_Process *process) {
 	HAL_InterruptLock_Lock();
-	process->nextInQueue = Proc_DeallocQueueHead;
-	Proc_DeallocQueueHead = process;
+	process->nextInQueue = m_deallocQueueHead;
+	m_deallocQueueHead = process;
 	HAL_InterruptLock_Unlock();
 }
 
 void Proc_Exit(int exitCode) {
 	HAL_InterruptLock_Lock();
-	struct Proc_Process *process = Proc_CurrentProcess;
+	struct Proc_Process *process = m_CurrentProcess;
 	process->returnCode = exitCode;
-	Proc_InstanceCountsByID[process->pid.id]++;
-	Proc_ProcessesByID[process->pid.id] = NULL;
+	m_instanceCountsByID[process->pid.id]++;
+	m_processesByID[process->pid.id] = NULL;
 	process->state = ZOMBIE;
 	Proc_CutFromActiveList(process);
 	struct Proc_ProcessID parentID = process->ppid;
@@ -198,7 +198,7 @@ struct Proc_Process *Proc_GetWaitingQueueHead(struct Proc_Process *process) {
 
 struct Proc_Process *Proc_WaitForChildTermination() {
 	HAL_InterruptLock_Lock();
-	struct Proc_Process *process = Proc_CurrentProcess;
+	struct Proc_Process *process = m_CurrentProcess;
 	if (process->waitQueueHead != NULL) {
 		struct Proc_Process *result = Proc_GetWaitingQueueHead(process);
 		HAL_InterruptLock_Unlock();
@@ -218,17 +218,17 @@ void Proc_Yield() {
 }
 
 void Proc_PreemptCallback(UNUSED void *ctx, char *frame) {
-	memcpy(Proc_CurrentProcess->processState, frame, HAL_PROCESS_STATE_SIZE);
-	Proc_CurrentProcess = Proc_CurrentProcess->next;
-	memcpy(frame, Proc_CurrentProcess->processState, HAL_PROCESS_STATE_SIZE);
-	VirtualMM_SwitchToAddressSpace(Proc_CurrentProcess->address_space);
-	HAL_ISRStacks_SetSyscallsStack(Proc_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
+	memcpy(m_CurrentProcess->processState, frame, HAL_PROCESS_STATE_SIZE);
+	m_CurrentProcess = m_CurrentProcess->next;
+	memcpy(frame, m_CurrentProcess->processState, HAL_PROCESS_STATE_SIZE);
+	VirtualMM_SwitchToAddressSpace(m_CurrentProcess->address_space);
+	HAL_ISRStacks_SetSyscallsStack(m_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
 }
 
 void Proc_Initialize() {
 	for (size_t i = 0; i < PROC_MAX_PROCESS_COUNT; ++i) {
-		Proc_ProcessesByID[i] = NULL;
-		Proc_InstanceCountsByID[i] = 0;
+		m_processesByID[i] = NULL;
+		m_instanceCountsByID[i] = 0;
 	}
 	struct Proc_ProcessID kernelProcID = Proc_MakeNewProcess(PROC_INVALID_PROC_ID);
 	if (!proc_is_valid_Proc_ProcessID(kernelProcID)) {
@@ -239,7 +239,7 @@ void Proc_Initialize() {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to access data of the kernel process");
 	}
 	kernelProcessData->state = RUNNING;
-	Proc_CurrentProcess = kernelProcessData;
+	m_CurrentProcess = kernelProcessData;
 	kernelProcessData->next = kernelProcessData;
 	kernelProcessData->prev = kernelProcessData;
 	kernelProcessData->processState = Heap_AllocateMemory(HAL_PROCESS_STATE_SIZE);
@@ -250,23 +250,23 @@ void Proc_Initialize() {
 	if (kernelProcessData->address_space == NULL) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to allocate process address space object");
 	}
-	Proc_DeallocQueueHead = NULL;
+	m_deallocQueueHead = NULL;
 	HAL_ISRStacks_SetISRStack((uintptr_t)(Proc_SchedulerStack) + PROC_SCHEDULER_STACK_SIZE);
 	if (!HAL_Timer_SetCallback((HAL_ISR_Handler)Proc_PreemptCallback)) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to set timer callback");
 	}
-	Proc_Initialized = true;
+	m_procInitialized = true;
 }
 
 bool Proc_PollDisposeQueue() {
 	HAL_InterruptLock_Lock();
-	struct Proc_Process *process = Proc_DeallocQueueHead;
+	struct Proc_Process *process = m_deallocQueueHead;
 	if (process == NULL) {
 		HAL_InterruptLock_Unlock();
 		return false;
 	}
 	KernelLog_InfoMsg("User Request Monitor", "Disposing process...");
-	Proc_DeallocQueueHead = process->nextInQueue;
+	m_deallocQueueHead = process->nextInQueue;
 	HAL_InterruptLock_Unlock();
 	if (process->address_space != 0) {
 		VirtualMM_DropAddressSpace(process->address_space);
