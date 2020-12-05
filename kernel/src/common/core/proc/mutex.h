@@ -3,16 +3,16 @@
 
 #include <common/misc/utils.h>
 
-struct mutex {
-	struct proc_process *queue_head;
-	struct proc_process *queue_tail;
+struct Mutex {
+	struct Proc_Process *queueHead;
+	struct Proc_Process *queueTail;
 	bool locked;
 };
 
-void mutex_init(struct mutex *mutex);
-void mutex_lock(struct mutex *mutex);
-void mutex_unlock(struct mutex *mutex);
-bool mutex_is_queued(struct mutex *mutex);
-bool mutex_is_locked(struct mutex *mutex);
+void Mutex_Initialize(struct Mutex *mutex);
+void Mutex_Lock(struct Mutex *mutex);
+void Mutex_Unlock(struct Mutex *mutex);
+bool Mutex_IsAnyProcessWaiting(struct Mutex *mutex);
+bool Mutex_IsLocked(struct Mutex *mutex);
 
 #endif

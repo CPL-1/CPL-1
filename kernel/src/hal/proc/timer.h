@@ -3,7 +3,7 @@
 
 #include <hal/proc/isrhandler.h>
 
-bool hal_timer_set_callback(hal_isr_handler_t handler);
-void hal_timer_trigger_callback();
+bool HAL_Timer_SetCallback(HAL_ISR_Handler handler);
+void HAL_Timer_TriggerInterrupt();
 
 #endif

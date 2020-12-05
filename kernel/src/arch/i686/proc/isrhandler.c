@@ -1,32 +1,28 @@
 #include <common/core/memory/heap.h>
 #include <hal/proc/isrhandler.h>
 
-extern void i686_isr_with_ctx_template_begin();
-extern void i686_isr_with_ctx_template_end();
+extern void i686_ISR_TemplateBegin();
+extern void i686_ISR_TemplateEnd();
 
-struct i686_isr_with_ctx_template {
+struct i686_ISR_ISRTemplate {
 	char rsvd1[0x16];
 	void *arg;
 	char rsvd2;
 	void *func;
-} packed;
+} PACKED;
 
-static size_t i686_isr_template_size() {
-	size_t template_size = (uint32_t)i686_isr_with_ctx_template_end -
-						   (uint32_t)i686_isr_with_ctx_template_begin;
-	return template_size;
+static USIZE i686_ISR_GetTemplateSize() {
+	return (UINT32)i686_ISR_TemplateEnd - (UINT32)i686_ISR_TemplateBegin;
 }
 
-hal_isr_handler_t i686_isr_handler_new(void *func, void *arg) {
-	struct i686_isr_with_ctx_template *new_function =
-		(struct i686_isr_with_ctx_template *)heap_alloc(
-			i686_isr_template_size());
-	if (new_function == NULL) {
+HAL_ISR_Handler i686_ISR_MakeNewISRHandler(void *func, void *arg) {
+	struct i686_ISR_ISRTemplate *newFunction =
+		(struct i686_ISR_ISRTemplate *)Heap_AllocateMemory(i686_ISR_GetTemplateSize());
+	if (newFunction == NULL) {
 		return NULL;
 	}
-	memcpy(new_function, (void *)i686_isr_with_ctx_template_begin,
-		   i686_isr_template_size());
-	new_function->func = func;
-	new_function->arg = arg;
-	return (hal_isr_handler_t)new_function;
+	memcpy(newFunction, (void *)i686_ISR_TemplateBegin, i686_ISR_GetTemplateSize());
+	newFunction->func = func;
+	newFunction->arg = arg;
+	return (HAL_ISR_Handler)newFunction;
 }

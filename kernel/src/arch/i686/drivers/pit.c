@@ -6,25 +6,27 @@
 #include <arch/i686/proc/isrhandler.h>
 #include <hal/proc/isrhandler.h>
 
-void i686_pit_init(uint32_t freq) {
-	uint32_t divisor = 1193180 / freq;
-	outb(0x43, 0x36);
+void i686_PIT8253_Initialize(UINT32 freq) {
+	UINT32 divisor = 1193180 / freq;
+	i686_Ports_WriteByte(0x43, 0x36);
 
-	uint8_t lo = (uint8_t)(divisor & 0xff);
-	uint8_t hi = (uint8_t)((divisor >> 8) & 0xff);
+	UINT8 lo = (UINT8)(divisor & 0xff);
+	UINT8 hi = (UINT8)((divisor >> 8) & 0xff);
 
-	outb(0x40, lo);
-	outb(0x40, hi);
+	i686_Ports_WriteByte(0x40, lo);
+	i686_Ports_WriteByte(0x40, hi);
 }
 
-bool hal_timer_set_callback(hal_isr_handler_t entry) {
-	i686_iowait_add_handler(0, (i686_iowait_handler_t)entry, NULL, NULL);
-	hal_isr_handler_t handler = i686_isr_handler_new(entry, NULL);
+bool HAL_Timer_SetCallback(HAL_ISR_Handler entry) {
+	i686_IOWait_AddHandler(0, (i686_iowait_handler_t)entry, NULL, NULL);
+	HAL_ISR_Handler handler = i686_ISR_MakeNewISRHandler(entry, NULL);
 	if (handler == NULL) {
 		return false;
 	}
-	i686_idt_install_isr(0xfe, (uint32_t)handler);
+	i686_IDT_InstallISR(0xfe, (UINT32)handler);
 	return true;
 }
 
-void hal_timer_trigger_callback() { asm volatile("int $0xfe"); }
+void HAL_Timer_TriggerInterrupt() {
+	ASM volatile("int $0xfe");
+}

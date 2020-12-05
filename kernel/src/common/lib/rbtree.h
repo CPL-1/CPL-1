@@ -3,52 +3,50 @@
 
 #include <common/lib/rbtree.h>
 
-struct rb_node {
+struct RedBlackTree_Node {
 	bool is_black;
-	struct rb_node *parent;
-	struct rb_node *desc[2];
-	struct rb_node *iter[2];
+	struct RedBlackTree_Node *parent;
+	struct RedBlackTree_Node *desc[2];
+	struct RedBlackTree_Node *iter[2];
 };
 
-typedef int (*rb_cmp_t)(struct rb_node *left, struct rb_node *right,
-						void *opaque);
-typedef void (*rb_augment_callback_t)(struct rb_node *parent);
-typedef void (*rb_cleanup_callback_t)(struct rb_node *node);
+typedef int (*RedBlackTree_Comparator)(struct RedBlackTree_Node *left, struct RedBlackTree_Node *right, void *opaque);
+typedef void (*RedBlackTree_AugmentCallback)(struct RedBlackTree_Node *parent);
+typedef void (*RedBlackTree_CleanupCallback)(struct RedBlackTree_Node *node);
 
-struct rb_root {
-	struct rb_node *root;
-	struct rb_node *ends[2];
-	rb_augment_callback_t augment_callback;
+struct RedBlackTree_Tree {
+	struct RedBlackTree_Node *root;
+	struct RedBlackTree_Node *ends[2];
+	RedBlackTree_AugmentCallback augmentCallback;
 };
 
-static bool rb_insert(struct rb_root *root, struct rb_node *node,
-					  rb_cmp_t comparator, void *ctx);
-static struct rb_node *rb_query(struct rb_root *root, struct rb_node *node,
-								rb_cmp_t comparator, void *ctx,
-								bool require_match);
-static void rb_delete(struct rb_root *root, struct rb_node *node);
+static bool RedBlackTree_Insert(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node,
+								RedBlackTree_Comparator comparator, void *ctx);
+static struct RedBlackTree_Node *RedBlackTree_Query(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node,
+													RedBlackTree_Comparator comparator, void *ctx, bool require_match);
+static void RedBlackTree_Remove(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node);
 
-static struct rb_node *rb_get_parent(struct rb_node *node) {
+static struct RedBlackTree_Node *RedBlackTree_GetParent(struct RedBlackTree_Node *node) {
 	if (node == NULL) {
 		return NULL;
 	}
 	return node->parent;
 }
 
-static bool rb_is_black(struct rb_node *node) {
+static bool RedBlackTree_IsBlack(struct RedBlackTree_Node *node) {
 	if (node == NULL) {
 		return true;
 	}
 	return node->is_black;
 }
 
-static void rb_set_is_black(struct rb_node *node, bool is_black) {
+static void RedBlackTree_SetIsBlack(struct RedBlackTree_Node *node, bool is_black) {
 	if (node != NULL) {
 		node->is_black = is_black;
 	}
 }
 
-static int rb_get_direction(struct rb_node *node) {
+static int RedBlackTree_GetDirection(struct RedBlackTree_Node *node) {
 	if (node->parent == 0) {
 		return 0;
 	}
@@ -58,20 +56,19 @@ static int rb_get_direction(struct rb_node *node) {
 	return 1;
 }
 
-static struct rb_node *rb_get_sibling(struct rb_node *node) {
-	struct rb_node *parent = rb_get_parent(node);
+static struct RedBlackTree_Node *RedBlackTree_GetSibling(struct RedBlackTree_Node *node) {
+	struct RedBlackTree_Node *parent = RedBlackTree_GetParent(node);
 	if (parent == NULL) {
 		return NULL;
 	}
-	return parent->desc[1 - rb_get_direction(node)];
+	return parent->desc[1 - RedBlackTree_GetDirection(node)];
 }
 
-static void rb_rotate(struct rb_root *root, struct rb_node *node,
-					  int direction) {
-	struct rb_node *new_top = node->desc[1 - direction];
-	struct rb_node *parent = node->parent;
-	struct rb_node *middle = new_top->desc[direction];
-	int pos = rb_get_direction(node);
+static void RedBlackTree_Rotate(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node, int direction) {
+	struct RedBlackTree_Node *new_top = node->desc[1 - direction];
+	struct RedBlackTree_Node *parent = node->parent;
+	struct RedBlackTree_Node *middle = new_top->desc[direction];
+	int pos = RedBlackTree_GetDirection(node);
 	node->desc[1 - direction] = middle;
 	if (middle != NULL) {
 		middle->parent = node;
@@ -88,36 +85,36 @@ static void rb_rotate(struct rb_root *root, struct rb_node *node,
 	}
 }
 
-static void rb_fix_insertion(struct rb_root *root, struct rb_node *node) {
-	while (!rb_is_black(rb_get_parent(node))) {
+static void RedBlackTree_FixInsertion(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node) {
+	while (!RedBlackTree_IsBlack(RedBlackTree_GetParent(node))) {
 		node->is_black = false;
-		struct rb_node *parent = rb_get_parent(node);
-		struct rb_node *uncle = rb_get_sibling(parent);
-		struct rb_node *greatparent = rb_get_parent(parent);
-		int node_pos = rb_get_direction(node);
-		if (rb_is_black(uncle)) {
-			if (rb_get_direction(parent) == node_pos) {
-				rb_rotate(root, greatparent, 1 - node_pos);
-				rb_set_is_black(parent, true);
+		struct RedBlackTree_Node *parent = RedBlackTree_GetParent(node);
+		struct RedBlackTree_Node *uncle = RedBlackTree_GetSibling(parent);
+		struct RedBlackTree_Node *greatparent = RedBlackTree_GetParent(parent);
+		int node_pos = RedBlackTree_GetDirection(node);
+		if (RedBlackTree_IsBlack(uncle)) {
+			if (RedBlackTree_GetDirection(parent) == node_pos) {
+				RedBlackTree_Rotate(root, greatparent, 1 - node_pos);
+				RedBlackTree_SetIsBlack(parent, true);
 			} else {
-				rb_rotate(root, parent, 1 - node_pos);
-				rb_rotate(root, greatparent, node_pos);
-				rb_set_is_black(node, true);
+				RedBlackTree_Rotate(root, parent, 1 - node_pos);
+				RedBlackTree_Rotate(root, greatparent, node_pos);
+				RedBlackTree_SetIsBlack(node, true);
 			}
-			rb_set_is_black(greatparent, false);
+			RedBlackTree_SetIsBlack(greatparent, false);
 			break;
 		} else {
-			rb_set_is_black(parent, true);
-			rb_set_is_black(uncle, true);
-			rb_set_is_black(greatparent, false);
+			RedBlackTree_SetIsBlack(parent, true);
+			RedBlackTree_SetIsBlack(uncle, true);
+			RedBlackTree_SetIsBlack(greatparent, false);
 			node = greatparent;
 		}
 	}
 	root->root->is_black = true;
 }
 
-unused static bool rb_insert(struct rb_root *root, struct rb_node *node,
-							 rb_cmp_t comparator, void *ctx) {
+UNUSED static bool RedBlackTree_Insert(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node,
+									   RedBlackTree_Comparator comparator, void *ctx) {
 	node->desc[0] = node->desc[1] = node->parent = NULL;
 	node->is_black = false;
 	if (root->root == NULL) {
@@ -128,8 +125,8 @@ unused static bool rb_insert(struct rb_root *root, struct rb_node *node,
 		node->iter[0] = node->iter[1] = NULL;
 		return true;
 	}
-	struct rb_node *prev = NULL;
-	struct rb_node *current = root->root;
+	struct RedBlackTree_Node *prev = NULL;
+	struct RedBlackTree_Node *current = root->root;
 	int direction = 0;
 	while (current != NULL) {
 		int cmp_result = comparator(node, current, ctx);
@@ -142,7 +139,7 @@ unused static bool rb_insert(struct rb_root *root, struct rb_node *node,
 	}
 	prev->desc[direction] = node;
 	node->parent = prev;
-	struct rb_node *neighbour = prev->iter[direction];
+	struct RedBlackTree_Node *neighbour = prev->iter[direction];
 	if (neighbour != NULL) {
 		neighbour->iter[1 - direction] = node;
 	} else {
@@ -151,22 +148,22 @@ unused static bool rb_insert(struct rb_root *root, struct rb_node *node,
 	prev->iter[direction] = node;
 	node->iter[direction] = neighbour;
 	node->iter[1 - direction] = prev;
-	rb_fix_insertion(root, node);
-	if (root->augment_callback != NULL) {
-		root->augment_callback(prev);
+	RedBlackTree_FixInsertion(root, node);
+	if (root->augmentCallback != NULL) {
+		root->augmentCallback(prev);
 	}
 	return true;
 }
 
-static inline void rb_swap(struct rb_node *node, struct rb_node *replacement,
-						   struct rb_root *root) {
-	struct rb_node *node_parent = node->parent;
-	int node_pos = rb_get_direction(node);
-	struct rb_node *node_child[2];
+static INLINE void RedBlackTree_SwapNodes(struct RedBlackTree_Node *node, struct RedBlackTree_Node *replacement,
+										  struct RedBlackTree_Tree *root) {
+	struct RedBlackTree_Node *node_parent = node->parent;
+	int node_pos = RedBlackTree_GetDirection(node);
+	struct RedBlackTree_Node *node_child[2];
 	node_child[0] = node->desc[0];
 	node_child[1] = node->desc[1];
-	struct rb_node *replacement_child = replacement->desc[0];
-	int replacement_pos = rb_get_direction(replacement);
+	struct RedBlackTree_Node *replacement_child = replacement->desc[0];
+	int replacement_pos = RedBlackTree_GetDirection(replacement);
 	bool node_is_black = node->is_black;
 	bool replacement_is_black = replacement->is_black;
 	node->is_black = replacement_is_black;
@@ -190,7 +187,7 @@ static inline void rb_swap(struct rb_node *node, struct rb_node *replacement,
 			node_parent->desc[node_pos] = replacement;
 		}
 	} else {
-		struct rb_node *replacement_parent = replacement->parent;
+		struct RedBlackTree_Node *replacement_parent = replacement->parent;
 		replacement->parent = node_parent;
 		if (node_parent == NULL) {
 			root->root = replacement;
@@ -211,9 +208,8 @@ static inline void rb_swap(struct rb_node *node, struct rb_node *replacement,
 			replacement_child->parent = node;
 		}
 	}
-	struct rb_node *node_iters[2] = {node->iter[0], node->iter[1]};
-	struct rb_node *replacement_iters[2] = {replacement->iter[0],
-											replacement->iter[1]};
+	struct RedBlackTree_Node *node_iters[2] = {node->iter[0], node->iter[1]};
+	struct RedBlackTree_Node *replacement_iters[2] = {replacement->iter[0], replacement->iter[1]};
 	if (node_iters[0] == replacement) {
 		node_iters[0] = node;
 	}
@@ -252,15 +248,15 @@ static inline void rb_swap(struct rb_node *node, struct rb_node *replacement,
 	}
 }
 
-unused static struct rb_node *rb_query(struct rb_root *root,
-									   struct rb_node *node,
-									   rb_cmp_t comparator, void *ctx,
-									   bool require_match) {
+UNUSED static struct RedBlackTree_Node *RedBlackTree_Query(struct RedBlackTree_Tree *root,
+														   struct RedBlackTree_Node *node,
+														   RedBlackTree_Comparator comparator, void *ctx,
+														   bool require_match) {
 	if (root->root == NULL) {
 		return NULL;
 	}
-	struct rb_node *prev = NULL;
-	struct rb_node *current = root->root;
+	struct RedBlackTree_Node *prev = NULL;
+	struct RedBlackTree_Node *current = root->root;
 	while (current != NULL) {
 		int cmp_result = comparator(node, current, ctx);
 		if (cmp_result == 0) {
@@ -273,58 +269,56 @@ unused static struct rb_node *rb_query(struct rb_root *root,
 	return require_match ? NULL : prev;
 }
 
-static struct rb_node *rb_find_prev_node(struct rb_node *node) {
-	struct rb_node *current = node->desc[0];
+static struct RedBlackTree_Node *RedBlackTree_FindReplacement(struct RedBlackTree_Node *node) {
+	struct RedBlackTree_Node *current = node->desc[0];
 	while (current->desc[1] != NULL) {
 		current = current->desc[1];
 	}
 	return current;
 }
 
-static void rb_remove_internal_nodes(struct rb_node *node,
-									 struct rb_root *root) {
+static void RedBlackTree_RemoveInternalNodes(struct RedBlackTree_Node *node, struct RedBlackTree_Tree *root) {
 	if (node->desc[0] != NULL && node->desc[1] != NULL) {
-		struct rb_node *prev = rb_find_prev_node(node);
-		rb_swap(node, prev, root);
+		struct RedBlackTree_Node *prev = RedBlackTree_FindReplacement(node);
+		RedBlackTree_SwapNodes(node, prev, root);
 	}
 }
 
-static void rb_fix_double_black(struct rb_root *root, struct rb_node *node) {
+static void RedBlackTree_FixDoubleBlack(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node) {
 	while (true) {
 		if (node->parent == NULL) {
 			return;
 		}
-		int node_pos = rb_get_direction(node);
-		struct rb_node *node_parent = node->parent;
-		struct rb_node *node_sibling = rb_get_sibling(node);
-		if (!rb_is_black(node_sibling)) {
-			rb_rotate(root, node_parent, node_pos);
-			rb_set_is_black(node_sibling, true);
-			rb_set_is_black(node_parent, false);
-			node_sibling = rb_get_sibling(node);
+		int node_pos = RedBlackTree_GetDirection(node);
+		struct RedBlackTree_Node *node_parent = node->parent;
+		struct RedBlackTree_Node *node_sibling = RedBlackTree_GetSibling(node);
+		if (!RedBlackTree_IsBlack(node_sibling)) {
+			RedBlackTree_Rotate(root, node_parent, node_pos);
+			RedBlackTree_SetIsBlack(node_sibling, true);
+			RedBlackTree_SetIsBlack(node_parent, false);
+			node_sibling = RedBlackTree_GetSibling(node);
 		}
 		if (node_sibling != NULL) {
-			if (rb_is_black(node_sibling->desc[0]) &&
-				rb_is_black(node_sibling->desc[1])) {
-				if (rb_is_black(node_parent)) {
-					rb_set_is_black(node_sibling, false);
+			if (RedBlackTree_IsBlack(node_sibling->desc[0]) && RedBlackTree_IsBlack(node_sibling->desc[1])) {
+				if (RedBlackTree_IsBlack(node_parent)) {
+					RedBlackTree_SetIsBlack(node_sibling, false);
 					node = node_parent;
 					continue;
 				} else {
-					rb_set_is_black(node_parent, true);
-					rb_set_is_black(node_sibling, false);
+					RedBlackTree_SetIsBlack(node_parent, true);
+					RedBlackTree_SetIsBlack(node_sibling, false);
 					return;
 				}
 			}
 		}
 		bool parent_is_black = node_parent->is_black;
-		if (rb_is_black(node_sibling->desc[1 - node_pos])) {
-			rb_rotate(root, node_sibling, 1 - node_pos);
+		if (RedBlackTree_IsBlack(node_sibling->desc[1 - node_pos])) {
+			RedBlackTree_Rotate(root, node_sibling, 1 - node_pos);
 			node_sibling->is_black = false;
-			node_sibling = rb_get_sibling(node);
+			node_sibling = RedBlackTree_GetSibling(node);
 			node_sibling->is_black = true;
 		}
-		rb_rotate(root, node_parent, node_pos);
+		RedBlackTree_Rotate(root, node_parent, node_pos);
 		node_parent->is_black = true;
 		node_sibling->is_black = parent_is_black;
 		if (node_sibling->desc[1 - node_pos] != NULL) {
@@ -334,7 +328,7 @@ static void rb_fix_double_black(struct rb_root *root, struct rb_node *node) {
 	}
 }
 
-static void rb_cut_from_iter_list(struct rb_root *root, struct rb_node *node) {
+static void RedBlackTree_CutFromIterList(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node) {
 	if (node->iter[0] != NULL) {
 		node->iter[0]->iter[1] = node->iter[1];
 	} else {
@@ -353,11 +347,11 @@ static void rb_cut_from_iter_list(struct rb_root *root, struct rb_node *node) {
 	}
 }
 
-unused static void rb_delete(struct rb_root *root, struct rb_node *node) {
-	rb_remove_internal_nodes(node, root);
-	struct rb_node *node_child = node->desc[0];
-	struct rb_node *node_parent = node->parent;
-	int node_pos = rb_get_direction(node);
+UNUSED static void RedBlackTree_Remove(struct RedBlackTree_Tree *root, struct RedBlackTree_Node *node) {
+	RedBlackTree_RemoveInternalNodes(node, root);
+	struct RedBlackTree_Node *node_child = node->desc[0];
+	struct RedBlackTree_Node *node_parent = node->parent;
+	int node_pos = RedBlackTree_GetDirection(node);
 	if (node_child == NULL) {
 		node_child = node->desc[1];
 	}
@@ -369,52 +363,51 @@ unused static void rb_delete(struct rb_root *root, struct rb_node *node) {
 		} else {
 			node_parent->desc[node_pos] = node_child;
 			node_child->parent = node_parent;
-			if (root->augment_callback != NULL) {
-				root->augment_callback(node_parent);
+			if (root->augmentCallback != NULL) {
+				root->augmentCallback(node_parent);
 			}
 		}
-		rb_set_is_black(node_child, true);
-		rb_cut_from_iter_list(root, node);
+		RedBlackTree_SetIsBlack(node_child, true);
+		RedBlackTree_CutFromIterList(root, node);
 		return;
 	}
-	if (!rb_is_black(node)) {
+	if (!RedBlackTree_IsBlack(node)) {
 		node_parent->desc[node_pos] = NULL;
-		rb_cut_from_iter_list(root, node);
-		if (root->augment_callback != NULL) {
-			root->augment_callback(node_parent);
+		RedBlackTree_CutFromIterList(root, node);
+		if (root->augmentCallback != NULL) {
+			root->augmentCallback(node_parent);
 		}
 		return;
 	}
-	rb_fix_double_black(root, node);
+	RedBlackTree_FixDoubleBlack(root, node);
 	if (node_parent == NULL) {
 		root->root = NULL;
-		rb_cut_from_iter_list(root, node);
+		RedBlackTree_CutFromIterList(root, node);
 	} else {
 		node_parent->desc[node_pos] = NULL;
-		rb_cut_from_iter_list(root, node);
-		if (root->augment_callback != NULL) {
-			root->augment_callback(node_parent);
+		RedBlackTree_CutFromIterList(root, node);
+		if (root->augmentCallback != NULL) {
+			root->augmentCallback(node_parent);
 		}
 	}
 }
 
-unused static void rb_clear(struct rb_root *root,
-							rb_cleanup_callback_t callback) {
-	struct rb_node *current = root->ends[0];
+UNUSED static void RedBlackTree_Clear(struct RedBlackTree_Tree *root, RedBlackTree_CleanupCallback callback) {
+	struct RedBlackTree_Node *current = root->ends[0];
 	while (current != NULL) {
-		struct rb_node *next = current->iter[1];
+		struct RedBlackTree_Node *next = current->iter[1];
 		callback(current);
 		current = next;
 	}
 	root->root = root->ends[0] = root->ends[1] = NULL;
 }
 
-static int rb_check_black_property(struct rb_node *node) {
+static int RedBlackTree_CheckBlackCountsProperty(struct RedBlackTree_Node *node) {
 	if (node == NULL) {
 		return 0;
 	}
-	int left_height = rb_check_black_property(node->desc[0]);
-	int right_height = rb_check_black_property(node->desc[1]);
+	int left_height = RedBlackTree_CheckBlackCountsProperty(node->desc[0]);
+	int right_height = RedBlackTree_CheckBlackCountsProperty(node->desc[1]);
 	if (left_height == -1 || right_height == -1) {
 		return -1;
 	}
@@ -424,12 +417,12 @@ static int rb_check_black_property(struct rb_node *node) {
 	return left_height + (node->is_black ? 1 : 0);
 }
 
-static bool rb_check_parents(struct rb_node *node) {
+static bool RedBlackTree_CheckParents(struct RedBlackTree_Node *node) {
 	if (node == NULL) {
 		return true;
 	}
-	bool left_ok = rb_check_parents(node->desc[0]);
-	bool right_ok = rb_check_parents(node->desc[1]);
+	bool left_ok = RedBlackTree_CheckParents(node->desc[0]);
+	bool right_ok = RedBlackTree_CheckParents(node->desc[1]);
 	if (!(left_ok && right_ok)) {
 		return false;
 	}
@@ -442,27 +435,27 @@ static bool rb_check_parents(struct rb_node *node) {
 	return true;
 }
 
-static bool rb_check_double_red_absence(struct rb_node *node) {
-	if (rb_is_black(node)) {
+static bool RedBlackTree_CheckDoubleRedAbsence(struct RedBlackTree_Node *node) {
+	if (RedBlackTree_IsBlack(node)) {
 		return true;
 	}
-	bool left_ok = rb_check_parents(node->desc[0]);
-	bool right_ok = rb_check_parents(node->desc[1]);
+	bool left_ok = RedBlackTree_CheckParents(node->desc[0]);
+	bool right_ok = RedBlackTree_CheckParents(node->desc[1]);
 	if (!(left_ok && right_ok)) {
 		return false;
 	}
-	if (!rb_is_black(node->desc[0]) || !rb_is_black(node->desc[1]) ||
-		!rb_is_black(node->parent)) {
+	if (!RedBlackTree_IsBlack(node->desc[0]) || !RedBlackTree_IsBlack(node->desc[1]) ||
+		!RedBlackTree_IsBlack(node->parent)) {
 		return false;
 	}
 	return true;
 }
 
-static bool rb_verify_iterators(struct rb_root *root, rb_cmp_t cmp,
-								void *opaque, bool require_neg_one) {
-	struct rb_node *current = root->ends[0];
+static bool RedBlackTree_VerifyIterators(struct RedBlackTree_Tree *root, RedBlackTree_Comparator cmp, void *opaque,
+										 bool require_neg_one) {
+	struct RedBlackTree_Node *current = root->ends[0];
 	while (current != NULL) {
-		struct rb_node *next = current->iter[1];
+		struct RedBlackTree_Node *next = current->iter[1];
 		if (next != NULL) {
 			if (next->iter[0] != current) {
 				return false;
@@ -489,15 +482,13 @@ static bool rb_verify_iterators(struct rb_root *root, rb_cmp_t cmp,
 	return true;
 }
 
-static bool rb_verify_bst_correctness(struct rb_node *node, rb_cmp_t cmp,
-									  void *opaque, bool require_neg_one) {
+static bool RedBlackTree_VerifyBSTProperty(struct RedBlackTree_Node *node, RedBlackTree_Comparator cmp, void *opaque,
+										   bool require_neg_one) {
 	if (node == NULL) {
 		return true;
 	}
-	bool left_ok =
-		rb_verify_bst_correctness(node->desc[0], cmp, opaque, require_neg_one);
-	bool right_ok =
-		rb_verify_bst_correctness(node->desc[1], cmp, opaque, require_neg_one);
+	bool left_ok = RedBlackTree_VerifyBSTProperty(node->desc[0], cmp, opaque, require_neg_one);
+	bool right_ok = RedBlackTree_VerifyBSTProperty(node->desc[1], cmp, opaque, require_neg_one);
 	if (!(left_ok && right_ok)) {
 		return false;
 	}
@@ -528,12 +519,12 @@ static bool rb_verify_bst_correctness(struct rb_node *node, rb_cmp_t cmp,
 	return true;
 }
 
-unused static bool rb_verify_invariants(struct rb_root *root, rb_cmp_t cmp,
-										void *opaque, bool require_neg_one) {
-	if (rb_check_black_property(root->root) == -1) {
+UNUSED static bool RedBlackTree_VerifyInvariants(struct RedBlackTree_Tree *root, RedBlackTree_Comparator cmp,
+												 void *opaque, bool require_neg_one) {
+	if (RedBlackTree_CheckBlackCountsProperty(root->root) == -1) {
 		return false;
 	}
-	if (!rb_check_parents(root->root)) {
+	if (!RedBlackTree_CheckParents(root->root)) {
 		return false;
 	}
 	if (root->root != NULL) {
@@ -548,15 +539,14 @@ unused static bool rb_verify_invariants(struct rb_root *root, rb_cmp_t cmp,
 		(root->ends[1] != NULL && root->ends[1]->iter[1] != NULL)) {
 		return false;
 	}
-	if (!rb_check_double_red_absence(root->root)) {
+	if (!RedBlackTree_CheckDoubleRedAbsence(root->root)) {
 		return false;
 	}
-	if (!rb_verify_iterators(root, cmp, opaque, require_neg_one)) {
+	if (!RedBlackTree_VerifyIterators(root, cmp, opaque, require_neg_one)) {
 		return false;
 	}
 	if (cmp != NULL) {
-		if (!rb_verify_bst_correctness(root->root, cmp, opaque,
-									   require_neg_one)) {
+		if (!RedBlackTree_VerifyBSTProperty(root->root, cmp, opaque, require_neg_one)) {
 			return false;
 		}
 	}

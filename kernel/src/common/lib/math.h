@@ -4,9 +4,9 @@
 
 #define MATH_LOG2_ROUNDUP(val)                                                 \
 	({                                                                         \
-		auto copy = (val);                                                     \
+		AUTO copy = (val);                                                     \
 		typeof(copy) current = 1;                                              \
-		size_t count = 0;                                                      \
+		USIZE count = 0;                                                       \
 		while (current < copy) {                                               \
 			current *= 2;                                                      \
 			count += 1;                                                        \

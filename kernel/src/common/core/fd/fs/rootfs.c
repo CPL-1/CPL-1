@@ -2,28 +2,27 @@
 #include <common/core/memory/heap.h>
 #include <common/lib/kmsg.h>
 
-static struct vfs_inode_ops rootfs_inode_ops;
-static struct vfs_superblock_type rootfs_sb_type;
+static struct VFS_InodeOperations RootFS_InodeOperations;
+static struct VFS_Superblock_type RootFS_SuperblockType;
 
 #define ROOTFS_ROOT_INODE_CTX ((void *)1)
 #define ROOTFS_DEV_INODE_CTX ((void *)2)
 
-static ino_t rootfs_get_child(struct vfs_inode *inode, const char *name) {
+static ino_t RootFS_GetChild(struct VFS_Inode *inode, const char *name) {
 	if (inode->ctx == ROOTFS_ROOT_INODE_CTX) {
-		if (streq(name, "dev")) {
+		if (StringsEqual(name, "dev")) {
 			return 2;
 		}
 	}
 	return 0;
 }
 
-static bool rootfs_get_inode(unused struct vfs_superblock *sb,
-							 struct vfs_inode *inode, ino_t id) {
-	inode->stat.st_type = VFS_DT_DIR;
-	inode->stat.st_size = 0;
-	inode->stat.st_blksize = 0;
-	inode->stat.st_blkcnt = 0;
-	inode->ops = &rootfs_inode_ops;
+static bool RootFS_GetInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *inode, ino_t id) {
+	inode->stat.stType = VFS_DT_DIR;
+	inode->stat.stSize = 0;
+	inode->stat.stBlksize = 0;
+	inode->stat.stBlkcnt = 0;
+	inode->ops = &RootFS_InodeOperations;
 	if (id == 1) {
 		inode->ctx = ROOTFS_ROOT_INODE_CTX;
 		return true;
@@ -34,28 +33,27 @@ static bool rootfs_get_inode(unused struct vfs_superblock *sb,
 	return false;
 }
 
-struct vfs_superblock *rootfs_make_superblock() {
-	memcpy(&(rootfs_sb_type.fs_name), "rootfs", 7);
-	rootfs_sb_type.fs_name_hash = strhash("rootfs");
-	rootfs_sb_type.mount = NULL;
-	rootfs_sb_type.umount = NULL;
-	rootfs_sb_type.get_inode = rootfs_get_inode;
-	rootfs_sb_type.get_root_inode = NULL;
-	rootfs_sb_type.drop_inode = NULL;
-	rootfs_sb_type.sync = NULL;
+struct VFS_Superblock *RootFS_MakeSuperblock() {
+	memcpy(&(RootFS_SuperblockType.fsName), "rootfs", 7);
+	RootFS_SuperblockType.fsNameHash = GetStringHash("rootfs");
+	RootFS_SuperblockType.mount = NULL;
+	RootFS_SuperblockType.umount = NULL;
+	RootFS_SuperblockType.getInode = RootFS_GetInode;
+	RootFS_SuperblockType.getRootInode = NULL;
+	RootFS_SuperblockType.dropInode = NULL;
+	RootFS_SuperblockType.sync = NULL;
 
-	rootfs_inode_ops.get_child = rootfs_get_child;
-	rootfs_inode_ops.open = NULL;
-	rootfs_inode_ops.mkdir = NULL;
-	rootfs_inode_ops.link = NULL;
-	rootfs_inode_ops.unlink = NULL;
+	RootFS_InodeOperations.getChild = RootFS_GetChild;
+	RootFS_InodeOperations.open = NULL;
+	RootFS_InodeOperations.mkdir = NULL;
+	RootFS_InodeOperations.link = NULL;
+	RootFS_InodeOperations.unlink = NULL;
 
-	struct vfs_superblock *sb = ALLOC_OBJ(struct vfs_superblock);
+	struct VFS_Superblock *sb = ALLOC_OBJ(struct VFS_Superblock);
 	if (sb == NULL) {
-		kmsg_err("Root Filesystem (rootfs)",
-				 "Failed to allocate space for rootfs superblock");
+		KernelLog_ErrorMsg("Root Filesystem (rootfs)", "Failed to allocate space for rootfs superblock");
 	}
-	sb->type = &rootfs_sb_type;
+	sb->type = &RootFS_SuperblockType;
 	sb->ctx = NULL;
 	return sb;
 }

@@ -5,74 +5,67 @@
 #include <common/core/storage/partdev.h>
 #include <common/core/storage/storage.h>
 
-struct partdev_inode_data {
-	uint64_t start;
-	uint64_t count;
-	struct storage_dev *storage;
+struct PartDev_InodeData {
+	UINT64 start;
+	UINT64 count;
+	struct Storage_Device *storage;
 };
 
-static int partdev_fd_rw(struct fd *file, int size, char *buf, bool write) {
+static int partdev_fd_rw(struct File *file, int size, char *buf, bool write) {
 	if (size == 0) {
 		return 0;
 	} else if (size < 0) {
 		return -1;
 	}
-	struct partdev_inode_data *ino_data =
-		(struct partdev_inode_data *)(file->ctx);
-	off_t end_offset = (off_t)size + file->offset;
-	if (end_offset < 0) {
+	struct PartDev_InodeData *inoData = (struct PartDev_InodeData *)(file->ctx);
+	off_t endOffset = (off_t)size + file->offset;
+	if (endOffset < 0) {
 		return -1;
 	}
-	if (end_offset < file->offset || (uint64_t)end_offset > ino_data->count) {
+	if (endOffset < file->offset || (UINT64)endOffset > inoData->count) {
 		return -1;
 	}
-	if (!storage_rw(ino_data->storage, ino_data->start + file->offset, size,
-					buf, write)) {
+	if (!storageRW(inoData->storage, inoData->start + file->offset, size, buf, write)) {
 		return -1;
 	}
 	return size;
 }
 
-static off_t partdev_fd_callback_lseek(struct fd *file, off_t offset,
-									   int whence) {
+static off_t partdev_fd_callback_lseek(struct File *file, off_t offset, int whence) {
 	if (whence != SEEK_SET) {
 		return -1;
 	}
 	if (offset < 0) {
 		return -1;
 	}
-	struct partdev_inode_data *ino_data =
-		(struct partdev_inode_data *)(file->ctx);
-	if ((uint64_t)offset > ino_data->count) {
+	struct PartDev_InodeData *inoData = (struct PartDev_InodeData *)(file->ctx);
+	if ((UINT64)offset > inoData->count) {
 		return -1;
 	}
 	return offset;
 }
 
-static int partdev_fd_callback_read(struct fd *file, int size, char *buf) {
+static int partdev_fd_callback_read(struct File *file, int size, char *buf) {
 	return partdev_fd_rw(file, size, buf, false);
 }
 
-static int partdev_fd_callback_write(struct fd *file, int size,
-									 const char *buf) {
+static int partdev_fd_callback_write(struct File *file, int size, const char *buf) {
 	return partdev_fd_rw(file, size, (char *)buf, true);
 }
 
-static void partdev_fd_callback_flush(struct fd *file) {
-	struct partdev_inode_data *ino_data =
-		(struct partdev_inode_data *)(file->ctx);
-	storage_flush(ino_data->storage);
+static void partdev_fd_callback_flush(struct File *file) {
+	struct PartDev_InodeData *ino_data = (struct PartDev_InodeData *)(file->ctx);
+	storageFlush(ino_data->storage);
 }
 
-static void partdev_fd_callback_close(struct fd *file) {
-	struct partdev_inode_data *ino_data =
-		(struct partdev_inode_data *)(file->ctx);
-	struct storage_dev *storage = ino_data->storage;
-	storage_lock_close_partition(storage);
-	vfs_finalize(file);
+static void partdev_fd_callback_close(struct File *file) {
+	struct PartDev_InodeData *ino_data = (struct PartDev_InodeData *)(file->ctx);
+	struct Storage_Device *storage = ino_data->storage;
+	Storage_LockClosePartition(storage);
+	VFS_FinalizeFile(file);
 }
 
-static struct fd_ops partdev_fd_ops = {
+static struct FileOperations partdev_fd_ops = {
 	.read = partdev_fd_callback_read,
 	.write = partdev_fd_callback_write,
 	.readdir = NULL,
@@ -81,16 +74,14 @@ static struct fd_ops partdev_fd_ops = {
 	.close = partdev_fd_callback_close,
 };
 
-static struct fd *partdev_callback_open(struct vfs_inode *inode,
-										unused int perm) {
-	struct fd *fd = ALLOC_OBJ(struct fd);
+static struct File *partdev_callback_open(struct VFS_Inode *inode, UNUSED int perm) {
+	struct File *fd = ALLOC_OBJ(struct File);
 	if (fd == NULL) {
 		return NULL;
 	}
-	struct partdev_inode_data *ino_data =
-		(struct partdev_inode_data *)(inode->ctx);
-	struct storage_dev *storage = ino_data->storage;
-	if (!storage_lock_try_open_partition(storage)) {
+	struct PartDev_InodeData *ino_data = (struct PartDev_InodeData *)(inode->ctx);
+	struct Storage_Device *storage = ino_data->storage;
+	if (!Storage_LockTryOpenPartition(storage)) {
 		FREE_OBJ(fd);
 		return NULL;
 	}
@@ -100,35 +91,33 @@ static struct fd *partdev_callback_open(struct vfs_inode *inode,
 	return fd;
 }
 
-static struct vfs_inode_ops partdev_inode_ops = {
-	.get_child = NULL,
+static struct VFS_InodeOperations partdev_inode_ops = {
+	.getChild = NULL,
 	.open = partdev_callback_open,
 	.mkdir = NULL,
 	.link = NULL,
 	.unlink = NULL,
 };
 
-struct vfs_inode *partdev_make(struct storage_dev *storage, uint64_t start,
-							   uint64_t count) {
-	struct vfs_inode *part_inode = ALLOC_OBJ(struct vfs_inode);
-	if (part_inode == NULL) {
+struct VFS_Inode *PartDev_MakePartitionDevice(struct Storage_Device *storage, UINT64 start, UINT64 count) {
+	struct VFS_Inode *partInode = ALLOC_OBJ(struct VFS_Inode);
+	if (partInode == NULL) {
 		return NULL;
 	}
-	struct partdev_inode_data *part_data = ALLOC_OBJ(struct partdev_inode_data);
-	if (part_data == NULL) {
-		FREE_OBJ(part_inode);
+	struct PartDev_InodeData *partData = ALLOC_OBJ(struct PartDev_InodeData);
+	if (partData == NULL) {
+		FREE_OBJ(partInode);
 		return NULL;
 	}
-	part_data->start = start;
-	part_data->count = count;
-	part_data->storage = storage;
+	partData->start = start;
+	partData->count = count;
+	partData->storage = storage;
 
-	part_inode->stat.st_blksize = storage->sector_size;
-	part_inode->stat.st_blkcnt =
-		ALIGN_UP(count, storage->sector_size) / storage->sector_size;
-	part_inode->stat.st_type = VFS_DT_BLK;
-	part_inode->stat.st_size = count;
-	part_inode->ctx = (void *)part_data;
-	part_inode->ops = &partdev_inode_ops;
-	return part_inode;
+	partInode->stat.stBlksize = storage->sectorSize;
+	partInode->stat.stBlkcnt = ALIGN_UP(count, storage->sectorSize) / storage->sectorSize;
+	partInode->stat.stType = VFS_DT_BLK;
+	partInode->stat.stSize = count;
+	partInode->ctx = (void *)partData;
+	partInode->ops = &partdev_inode_ops;
+	return partInode;
 }

@@ -4,79 +4,75 @@
 #include <common/core/storage/storage.h>
 #include <common/lib/kmsg.h>
 
-bool storage_cache_init(struct storage_dev *storage) {
-	mutex_init(&(storage->mutex));
+bool Storage_CacheInit(struct Storage_Device *storage) {
+	Mutex_Initialize(&(storage->mutex));
 	return true;
 }
 
-static bool storage_lock_try_open(struct storage_dev *storage) {
-	mutex_lock(&(storage->mutex));
-	if (storage->opened_mode != STORAGE_NOT_OPENED) {
-		mutex_unlock(&(storage->mutex));
+static bool Storage_LockTryOpen(struct Storage_Device *storage) {
+	Mutex_Lock(&(storage->mutex));
+	if (storage->openedMode != STORAGE_NOT_OPENED) {
+		Mutex_Unlock(&(storage->mutex));
 		return false;
 	}
-	storage->opened_mode = STORAGE_OPENED;
-	mutex_unlock(&(storage->mutex));
+	storage->openedMode = STORAGE_OPENED;
+	Mutex_Unlock(&(storage->mutex));
 	return true;
 }
 
-bool storage_lock_try_open_partition(struct storage_dev *storage) {
-	mutex_lock(&(storage->mutex));
-	if (storage->opened_mode == STORAGE_OPENED) {
-		mutex_unlock(&(storage->mutex));
+bool Storage_LockTryOpenPartition(struct Storage_Device *storage) {
+	Mutex_Lock(&(storage->mutex));
+	if (storage->openedMode == STORAGE_OPENED) {
+		Mutex_Unlock(&(storage->mutex));
 		return false;
 	}
-	if (storage->opened_mode == STORAGE_NOT_OPENED) {
-		storage->opened_mode = STORAGE_OPENED_PARTITION;
+	if (storage->openedMode == STORAGE_NOT_OPENED) {
+		storage->openedMode = STORAGE_OPENED_PARTITION;
 		storage->partitions_opened_count = 1;
 	} else {
 		storage->partitions_opened_count++;
 	}
-	mutex_unlock(&(storage->mutex));
+	Mutex_Unlock(&(storage->mutex));
 	return true;
 }
 
-static void storage_lock_close(struct storage_dev *storage) {
-	mutex_lock(&(storage->mutex));
-	if (storage->opened_mode != STORAGE_OPENED) {
-		kmsg_err("Storage Stack Manager",
-				 "Attempt to close device when storage->opened_mode is not "
-				 "equal to STORAGE_OPENED");
+static void Storage_LockClose(struct Storage_Device *storage) {
+	Mutex_Lock(&(storage->mutex));
+	if (storage->openedMode != STORAGE_OPENED) {
+		KernelLog_ErrorMsg("Storage Stack Manager", "Attempt to close device when storage->opened_mode is not "
+													"equal to STORAGE_OPENED");
 	}
-	storage->opened_mode = STORAGE_NOT_OPENED;
-	mutex_unlock(&(storage->mutex));
+	storage->openedMode = STORAGE_NOT_OPENED;
+	Mutex_Unlock(&(storage->mutex));
 }
 
-void storage_lock_close_partition(struct storage_dev *storage) {
-	mutex_lock(&(storage->mutex));
-	if (storage->opened_mode != STORAGE_OPENED_PARTITION) {
-		kmsg_err("Storage Stack Manager",
-				 "Attempt to close partition when storage->opened_mode is not "
-				 "equal to STORAGE_OPENED_PARTITION");
+void Storage_LockClosePartition(struct Storage_Device *storage) {
+	Mutex_Lock(&(storage->mutex));
+	if (storage->openedMode != STORAGE_OPENED_PARTITION) {
+		KernelLog_ErrorMsg("Storage Stack Manager", "Attempt to close partition when storage->opened_mode is not "
+													"equal to STORAGE_OPENED_PARTITION");
 	}
 	if (storage->partitions_opened_count == 0) {
-		kmsg_err("Storage Stack Manager",
-				 "Attempt to close partition when "
-				 "storage->partitions_opened_count is zero");
+		KernelLog_ErrorMsg("Storage Stack Manager", "Attempt to close partition when "
+													"storage->partitions_opened_count is zero");
 	}
 	storage->partitions_opened_count--;
 	if (storage->partitions_opened_count == 0) {
-		storage->opened_mode = STORAGE_NOT_OPENED;
+		storage->openedMode = STORAGE_NOT_OPENED;
 	}
-	mutex_unlock(&(storage->mutex));
+	Mutex_Unlock(&(storage->mutex));
 }
 
-static bool storage_rw_one_sector(struct storage_dev *storage, uint64_t lba,
-								  size_t start, size_t end, char *buf,
-								  bool write) {
-	char *tmp_buf = heap_alloc(storage->sector_size);
+static bool StorageRWOneSector(struct Storage_Device *storage, UINT64 lba, USIZE start, USIZE end, char *buf,
+							   bool write) {
+	char *tmp_buf = Heap_AllocateMemory(storage->sectorSize);
 	if (tmp_buf == NULL) {
 		return false;
 	}
 	if (write) {
-		if (start != 0 || end != storage->sector_size) {
+		if (start != 0 || end != storage->sectorSize) {
 			if (!storage->rw_lba(storage->ctx, tmp_buf, lba, 1, false)) {
-				heap_free(tmp_buf, storage->sector_size);
+				Heap_FreeMemory(tmp_buf, storage->sectorSize);
 				return false;
 			}
 		}
@@ -84,27 +80,25 @@ static bool storage_rw_one_sector(struct storage_dev *storage, uint64_t lba,
 	}
 	bool result = storage->rw_lba(storage->ctx, tmp_buf, lba, 1, write);
 	if (!result) {
-		heap_free(tmp_buf, storage->sector_size);
+		Heap_FreeMemory(tmp_buf, storage->sectorSize);
 		return false;
 	}
 	if (!write) {
 		memcpy(buf, tmp_buf + start, end - start);
 	}
-	heap_free(tmp_buf, storage->sector_size);
+	Heap_FreeMemory(tmp_buf, storage->sectorSize);
 	return true;
 }
 
-static bool storage_rw_range(struct storage_dev *storage, uint64_t lba,
-							 uint64_t count, char *buf, bool write) {
-	uint64_t current_offset = lba;
+static bool StorageRWRange(struct Storage_Device *storage, UINT64 lba, UINT64 count, char *buf, bool write) {
+	UINT64 current_offset = lba;
 	while (current_offset < lba + count) {
-		size_t buffer_offset = (current_offset - lba) * storage->sector_size;
-		uint64_t remaining = lba + count - current_offset;
-		if (remaining > storage->max_rw_sectors_count) {
-			remaining = storage->max_rw_sectors_count;
+		USIZE buffer_offset = (current_offset - lba) * storage->sectorSize;
+		UINT64 remaining = lba + count - current_offset;
+		if (remaining > storage->maxRWSectorsCount) {
+			remaining = storage->maxRWSectorsCount;
 		}
-		if (!storage->rw_lba(storage->ctx, buf + buffer_offset, current_offset,
-							 remaining, write)) {
+		if (!storage->rw_lba(storage->ctx, buf + buffer_offset, current_offset, remaining, write)) {
 			return false;
 		}
 		current_offset += remaining;
@@ -112,65 +106,57 @@ static bool storage_rw_range(struct storage_dev *storage, uint64_t lba,
 	return true;
 }
 
-bool storage_rw(struct storage_dev *storage, uint64_t offset, size_t size,
-				char *buf, bool write) {
-	if ((offset + (uint64_t)size) < offset) {
+bool storageRW(struct Storage_Device *storage, UINT64 offset, USIZE size, char *buf, bool write) {
+	if ((offset + (UINT64)size) < offset) {
 		return false;
 	}
-	if ((offset + (uint64_t)size) >=
-		storage->sector_size * storage->sectors_count) {
+	if ((offset + (UINT64)size) >= storage->sectorSize * storage->sectorsCount) {
 		return false;
 	}
-	mutex_lock(&(storage->mutex));
-	uint64_t sector_size = (uint64_t)(storage->sector_size);
-	uint64_t start_lba = offset / sector_size;
-	uint64_t end_lba = (offset + size) / sector_size;
-	size_t start_lba_offset = offset - start_lba * sector_size;
-	size_t ending_lba_offset = (offset + size) - end_lba * sector_size;
+	Mutex_Lock(&(storage->mutex));
+	UINT64 sector_size = (UINT64)(storage->sectorSize);
+	UINT64 start_lba = offset / sector_size;
+	UINT64 end_lba = (offset + size) / sector_size;
+	USIZE start_lba_offset = offset - start_lba * sector_size;
+	USIZE ending_lba_offset = (offset + size) - end_lba * sector_size;
 	if (start_lba == end_lba) {
-		bool result =
-			storage_rw_one_sector(storage, start_lba, start_lba_offset,
-								  ending_lba_offset, buf, write);
-		mutex_unlock(&(storage->mutex));
+		bool result = StorageRWOneSector(storage, start_lba, start_lba_offset, ending_lba_offset, buf, write);
+		Mutex_Unlock(&(storage->mutex));
 		return result;
 	} else if (end_lba - 1 == start_lba && ending_lba_offset == 0) {
-		bool result = storage_rw_one_sector(
-			storage, start_lba, start_lba_offset, sector_size, buf, write);
-		mutex_unlock(&(storage->mutex));
+		bool result = StorageRWOneSector(storage, start_lba, start_lba_offset, sector_size, buf, write);
+		Mutex_Unlock(&(storage->mutex));
 		return result;
 	} else {
-		size_t large_zone_offset = 0;
+		USIZE large_zone_offset = 0;
 		if (start_lba_offset != 0) {
-			if (!storage_rw_one_sector(storage, start_lba, start_lba_offset,
-									   sector_size, buf, write)) {
-				mutex_unlock(&(storage->mutex));
+			if (!StorageRWOneSector(storage, start_lba, start_lba_offset, sector_size, buf, write)) {
+				Mutex_Unlock(&(storage->mutex));
 				return false;
 			}
 			start_lba += 1;
 			large_zone_offset = start_lba_offset;
 		}
 		if (ending_lba_offset != 0) {
-			if (!storage_rw_one_sector(storage, end_lba, 0, ending_lba_offset,
-									   buf + (size - ending_lba_offset),
-									   write)) {
-				mutex_unlock(&(storage->mutex));
+			if (!StorageRWOneSector(storage, end_lba, 0, ending_lba_offset, buf + (size - ending_lba_offset), write)) {
+				Mutex_Unlock(&(storage->mutex));
 				return false;
 			}
 		}
-		bool result = storage_rw_range(storage, start_lba, end_lba - start_lba,
-									   buf + large_zone_offset, write);
-		mutex_unlock(&(storage->mutex));
+		bool result = StorageRWRange(storage, start_lba, end_lba - start_lba, buf + large_zone_offset, write);
+		Mutex_Unlock(&(storage->mutex));
 		return result;
 	}
 }
 
-void storage_flush(unused struct storage_dev *storage) {}
+void storageFlush(UNUSED struct Storage_Device *storage) {
+}
 
-int storage_fd_callback_rw(struct fd *file, int size, char *buf, bool write) {
+int storageFDCallbackRW(struct File *file, int size, char *buf, bool write) {
 	if (size == 0) {
 		return 0;
 	}
-	struct storage_dev *storage = (struct storage_dev *)file->ctx;
+	struct Storage_Device *storage = (struct Storage_Device *)file->ctx;
 	off_t pos = file->offset;
 	if (size < 1) {
 		return -1;
@@ -178,67 +164,63 @@ int storage_fd_callback_rw(struct fd *file, int size, char *buf, bool write) {
 	if ((pos + (off_t)size) < pos) {
 		return -1;
 	}
-	if ((pos + (off_t)size) >=
-		(off_t)(storage->sector_size * storage->sectors_count)) {
+	if ((pos + (off_t)size) >= (off_t)(storage->sectorSize * storage->sectorsCount)) {
 		return -1;
 	}
-	if (!storage_rw(storage, (uint64_t)pos, (size_t)size, buf, write)) {
+	if (!storageRW(storage, (UINT64)pos, (USIZE)size, buf, write)) {
 		return -1;
 	}
 	return size;
 }
 
-static int storage_fd_callback_read(struct fd *file, int size, char *buf) {
-	return storage_fd_callback_rw(file, size, buf, false);
+static int storageFDCallbackRead(struct File *file, int size, char *buf) {
+	return storageFDCallbackRW(file, size, buf, false);
 }
 
-static int storage_fd_callback_write(struct fd *file, int size,
-									 const char *buf) {
-	return storage_fd_callback_rw(file, size, (char *)buf, true);
+static int storageFDCallbackWrite(struct File *file, int size, const char *buf) {
+	return storageFDCallbackRW(file, size, (char *)buf, true);
 }
 
-static off_t storage_fd_callback_lseek(struct fd *file, off_t offset,
-									   int whence) {
-	struct storage_dev *storage = (struct storage_dev *)file->ctx;
+static off_t Storage_FDCallbackLseek(struct File *file, off_t offset, int whence) {
+	struct Storage_Device *storage = (struct Storage_Device *)file->ctx;
 	if (whence != SEEK_SET) {
 		return -1;
 	}
 	if (offset < 0) {
 		return -1;
 	}
-	if (offset >= (off_t)(storage->sector_size * storage->sectors_count)) {
+	if (offset >= (off_t)(storage->sectorSize * storage->sectorsCount)) {
 		return -1;
 	}
 	return offset;
 }
 
-static void storage_fd_callback_flush(struct fd *file) {
-	struct storage_dev *storage = (struct storage_dev *)file->ctx;
-	storage_flush(storage);
+static void Storage_FDCallbackFlush(struct File *file) {
+	struct Storage_Device *storage = (struct Storage_Device *)file->ctx;
+	storageFlush(storage);
 }
 
-static void storage_fd_callback_close(struct fd *file) {
-	struct storage_dev *storage = (struct storage_dev *)file->ctx;
-	storage_flush(storage);
-	storage_lock_close(storage);
-	vfs_finalize(file);
+static void Storage_FDCallbackClose(struct File *file) {
+	struct Storage_Device *storage = (struct Storage_Device *)file->ctx;
+	storageFlush(storage);
+	Storage_LockClose(storage);
+	VFS_FinalizeFile(file);
 }
 
-static struct fd_ops storage_fd_ops = {.read = storage_fd_callback_read,
-									   .write = storage_fd_callback_write,
-									   .readdir = NULL,
-									   .lseek = storage_fd_callback_lseek,
-									   .flush = storage_fd_callback_flush,
-									   .close = storage_fd_callback_close};
+static struct FileOperations storage_fd_ops = {.read = storageFDCallbackRead,
+											   .write = storageFDCallbackWrite,
+											   .readdir = NULL,
+											   .lseek = Storage_FDCallbackLseek,
+											   .flush = Storage_FDCallbackFlush,
+											   .close = Storage_FDCallbackClose};
 
-static struct fd *storage_inode_callback_open(struct vfs_inode *inode,
-											  unused int perm) {
-	struct fd *fd = ALLOC_OBJ(struct fd);
+struct File *storageFileOpen(struct VFS_Inode *inode, UNUSED int perm) {
+	struct File *fd = ALLOC_OBJ(struct File);
 	if (fd == NULL) {
 		return NULL;
 	}
-	struct storage_dev *storage = (struct storage_dev *)(inode->ctx);
-	if (!storage_lock_try_open(storage)) {
+	struct Storage_Device *storage = (struct Storage_Device *)(inode->ctx);
+	if (!Storage_LockTryOpen(storage)) {
 		FREE_OBJ(fd);
 		return NULL;
 	}
@@ -248,48 +230,47 @@ static struct fd *storage_inode_callback_open(struct vfs_inode *inode,
 	return fd;
 }
 
-static struct vfs_inode_ops storage_inode_ops = {
-	.get_child = NULL,
-	.open = storage_inode_callback_open,
+static struct VFS_InodeOperations storage_inode_ops = {
+	.getChild = NULL,
+	.open = storageFileOpen,
 	.mkdir = NULL,
 	.link = NULL,
 	.unlink = NULL,
 };
 
-struct vfs_inode *storage_make_inode(struct storage_dev *storage) {
-	struct vfs_inode *inode = ALLOC_OBJ(struct vfs_inode);
+struct VFS_Inode *storageMakeInode(struct Storage_Device *storage) {
+	struct VFS_Inode *inode = ALLOC_OBJ(struct VFS_Inode);
 	if (inode == NULL) {
 		return NULL;
 	}
 	inode->ctx = (void *)storage;
 	inode->ops = &storage_inode_ops;
-	inode->stat.st_blksize = storage->sector_size;
-	inode->stat.st_blkcnt = storage->sectors_count;
-	inode->stat.st_type = VFS_DT_BLK;
-	inode->stat.st_size = storage->sector_size * storage->sectors_count;
+	inode->stat.stBlksize = storage->sectorSize;
+	inode->stat.stBlkcnt = storage->sectorsCount;
+	inode->stat.stType = VFS_DT_BLK;
+	inode->stat.stSize = storage->sectorSize * storage->sectorsCount;
 	return inode;
 }
 
-bool storage_init(struct storage_dev *storage) {
-	storage_cache_init(storage);
-	struct vfs_inode *inode = storage_make_inode(storage);
+bool storageInit(struct Storage_Device *storage) {
+	Storage_CacheInit(storage);
+	struct VFS_Inode *inode = storageMakeInode(storage);
 	if (inode == NULL) {
 		return false;
 	}
-	if (!devfs_register_inode(storage->name, inode)) {
+	if (!DevFS_RegisterInode(storage->name, inode)) {
 		return false;
 	}
-	if (mbr_check_disk(storage)) {
-		mbr_enumerate_partitions(storage);
+	if (MBR_CheckDisk(storage)) {
+		MBR_EnumeratePartitions(storage);
 	}
 	return true;
 }
 
-void storage_make_part_name(struct storage_dev *storage, char *buf,
-							unsigned int part_id) {
-	if (storage->partitioning_scheme == STORAGE_NUMERIC_PART_NAMING) {
-		sprintf("%s%lu\0", buf, 256, storage->name, (uint64_t)(part_id + 1));
-	} else if (storage->partitioning_scheme == STORAGE_P_NUMERIC_PART_NAMING) {
-		sprintf("%sp%lu\0", buf, 256, storage->name, (uint64_t)(part_id + 1));
+void storageMakePartitionName(struct Storage_Device *storage, char *buf, unsigned int part_id) {
+	if (storage->partitioningScheme == STORAGE_NUMERIC_PART_NAMING) {
+		sprintf("%s%lu\0", buf, 256, storage->name, (UINT64)(part_id + 1));
+	} else if (storage->partitioningScheme == STORAGE_P_NUMERIC_PART_NAMING) {
+		sprintf("%sp%lu\0", buf, 256, storage->name, (UINT64)(part_id + 1));
 	}
 }

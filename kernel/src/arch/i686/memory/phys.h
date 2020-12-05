@@ -3,10 +3,10 @@
 
 #include <common/misc/utils.h>
 
-void i686_phys_init();
+void i686_PhysicalMM_Initialize();
 
-uint32_t i686_phys_krnl_alloc_frame();
-void i686_phys_krnl_free_frame(uint32_t frame);
-uint32_t i686_phys_get_mem_size();
+UINT32 i686_PhysicalMM_KernelAllocFrame();
+void HAL_PhysicalMM_KernelFreeFrame(UINT32 frame);
+UINT32 i686_PhysicalMM_GetMemorySize();
 
 #endif

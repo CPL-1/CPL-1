@@ -3,6 +3,6 @@
 
 #include <common/misc/utils.h>
 
-void ring1_switch();
+void Ring1_Switch();
 
 #endif

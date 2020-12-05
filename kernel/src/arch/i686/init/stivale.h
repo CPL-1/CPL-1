@@ -3,7 +3,8 @@
 
 #include <common/misc/utils.h>
 
-enum i686_stivale_mmap_entry_type {
+enum i686_stivale_mmap_entry_type
+{
 	AVAILABLE = 1,
 	RESERVED = 2,
 	ACPI_RECLAIMABLE = 3,
@@ -14,18 +15,27 @@ enum i686_stivale_mmap_entry_type {
 };
 
 struct i686_stivale_mmap_entry {
-	uint64_t base;
-	uint64_t length;
-	uint32_t type;
-	uint32_t reserved;
-} packed;
+	UINT64 base;
+	UINT64 length;
+	UINT32 type;
+	UINT32 reserved;
+} PACKED;
 
-struct i686_stivale_mmap {
+struct i686_Stivale_FramebufferInfo {
+	UINT64 framebufferAddr;
+	UINT16 framebufferPitch;
+	UINT16 framebufferWidth;
+	UINT16 framebufferHeight;
+	UINT16 framebufferBPP;
+} PACKED;
+
+struct i686_Stivale_MemoryMap {
 	struct i686_stivale_mmap_entry *entries;
-	uint32_t entries_count;
+	UINT32 entries_count;
 };
 
-void i686_stivale_init(uint32_t phys_info);
-bool i686_stivale_get_mmap(struct i686_stivale_mmap *buf);
+void i686_Stivale_Initialize(UINT32 phys_info);
+bool i686_Stivale_GetMemoryMap(struct i686_Stivale_MemoryMap *buf);
+bool i686_Stivale_GetFramebufferInfo(struct i686_Stivale_FramebufferInfo *buf);
 
 #endif

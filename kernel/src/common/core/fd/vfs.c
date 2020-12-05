@@ -3,157 +3,154 @@
 #include <common/lib/kmsg.h>
 #include <common/lib/pathsplit.h>
 
-static struct mutex vfs_mutex;
-static struct vfs_superblock *vfs_root;
-static struct vfs_superblock *vfs_sb_list;
-static struct vfs_superblock_type *vfs_sb_types;
+static struct Mutex VFS_Mutex;
+static struct VFS_Superblock *VFS_Root;
+static struct VFS_Superblock *VFS_SuperblockList;
+static struct VFS_Superblock_type *VFS_SuperblockTypes;
 
-struct vfs_inode *vfs_get_inode(struct vfs_superblock *sb, ino_t id) {
-	if (sb->type->get_inode == NULL) {
+struct VFS_Inode *VFS_GetInode(struct VFS_Superblock *sb, ino_t id) {
+	if (sb->type->getInode == NULL) {
 		return NULL;
 	}
-	mutex_lock(&(sb->mutex));
+	Mutex_Lock(&(sb->mutex));
 	ino_t modulo = id % VFS_ICACHE_MODULO;
-	struct vfs_inode *current = sb->inode_lists[modulo];
+	struct VFS_Inode *current = sb->inodeLists[modulo];
 	while (current != NULL) {
 		if (current->id == id) {
-			current->ref_count++;
-			mutex_unlock(&(sb->mutex));
+			current->refCount++;
+			Mutex_Unlock(&(sb->mutex));
 			return current;
 		}
-		current = current->next_in_cache;
+		current = current->nextInCache;
 	}
-	struct vfs_inode *node = ALLOC_OBJ(struct vfs_inode);
+	struct VFS_Inode *node = ALLOC_OBJ(struct VFS_Inode);
 	if (node == NULL) {
-		mutex_unlock(&(sb->mutex));
+		Mutex_Unlock(&(sb->mutex));
 		return NULL;
 	}
-	if (!sb->type->get_inode(sb, node, id)) {
+	if (!sb->type->getInode(sb, node, id)) {
 		FREE_OBJ(node);
-		mutex_unlock(&(sb->mutex));
+		Mutex_Unlock(&(sb->mutex));
 		return NULL;
 	}
-	node->next_in_cache = sb->inode_lists[modulo];
-	if (sb->inode_lists[modulo] != NULL) {
-		sb->inode_lists[modulo]->prev_in_cache = node;
+	node->nextInCache = sb->inodeLists[modulo];
+	if (sb->inodeLists[modulo] != NULL) {
+		sb->inodeLists[modulo]->prevInCache = node;
 	}
-	node->prev_in_cache = NULL;
-	sb->inode_lists[modulo] = node;
+	node->prevInCache = NULL;
+	sb->inodeLists[modulo] = node;
 	node->id = id;
-	node->ref_count = 1;
+	node->refCount = 1;
 	node->dirty = false;
 	node->sb = sb;
 	node->mount = NULL;
-	mutex_init(&(node->mutex));
-	mutex_unlock(&(sb->mutex));
+	Mutex_Initialize(&(node->mutex));
+	Mutex_Unlock(&(sb->mutex));
 	return node;
 }
 
-void vfs_drop_inode(struct vfs_superblock *sb, struct vfs_inode *inode) {
-	mutex_lock(&(sb->mutex));
+void VFS_DropInode(struct VFS_Superblock *sb, struct VFS_Inode *inode) {
+	Mutex_Lock(&(sb->mutex));
 	ino_t modulo = inode->id % VFS_ICACHE_MODULO;
-	if (inode->ref_count == 0) {
-		kmsg_err(
-			"Virtual File System",
-			"How the hell we are dropping inode more times than we opened it?");
+	if (inode->refCount == 0) {
+		KernelLog_ErrorMsg("Virtual File System", "How the hell we are dropping inode more times than we opened it?");
 	}
-	inode->ref_count--;
-	if (inode->ref_count == 0) {
-		if (inode->prev_in_cache == NULL) {
-			sb->inode_lists[modulo] = inode->next_in_cache;
+	inode->refCount--;
+	if (inode->refCount == 0) {
+		if (inode->prevInCache == NULL) {
+			sb->inodeLists[modulo] = inode->nextInCache;
 		} else {
-			inode->prev_in_cache->next_in_cache = inode->next_in_cache;
+			inode->prevInCache->nextInCache = inode->nextInCache;
 		}
-		if (inode->next_in_cache != NULL) {
-			inode->next_in_cache->prev_in_cache = NULL;
+		if (inode->nextInCache != NULL) {
+			inode->nextInCache->prevInCache = NULL;
 		}
-		if (sb->type->drop_inode != NULL) {
-			sb->type->drop_inode(sb, inode, inode->id);
+		if (sb->type->dropInode != NULL) {
+			sb->type->dropInode(sb, inode, inode->id);
 		}
 		FREE_OBJ(inode);
 	}
-	mutex_unlock(&(sb->mutex));
+	Mutex_Unlock(&(sb->mutex));
 }
 
-struct vfs_inode *vfs_sb_next_inode(struct vfs_superblock *sb,
-									struct vfs_inode *inode) {
+struct VFS_Inode *VFS_SuperblockGetNextInode(struct VFS_Superblock *sb, struct VFS_Inode *inode) {
 	if (inode == NULL) {
 		for (ino_t i = 0; i < VFS_ICACHE_MODULO; ++i) {
-			if (sb->inode_lists[i] != NULL) {
-				return sb->inode_lists[i];
+			if (sb->inodeLists[i] != NULL) {
+				return sb->inodeLists[i];
 			}
 		}
 	} else {
-		if (inode->next_in_cache != NULL) {
-			return inode->next_in_cache;
+		if (inode->nextInCache != NULL) {
+			return inode->nextInCache;
 		}
 		ino_t modulo = inode->id % VFS_ICACHE_MODULO;
 		for (ino_t i = modulo; i < VFS_ICACHE_MODULO; ++i) {
-			return sb->inode_lists[i];
+			return sb->inodeLists[i];
 		}
 	}
 	return NULL;
 }
 
-bool vfs_is_inode_loaded(struct vfs_superblock *sb, ino_t id) {
+bool VFS_IsInodeLoaded(struct VFS_Superblock *sb, ino_t id) {
 	ino_t modulo = id % VFS_ICACHE_MODULO;
-	struct vfs_inode *current = sb->inode_lists[modulo];
+	struct VFS_Inode *current = sb->inodeLists[modulo];
 	while (current != NULL) {
 		if (current->id == id) {
 			return true;
 		}
-		current = current->next_in_cache;
+		current = current->nextInCache;
 	}
 	return false;
 }
 
-bool vfs_drop_mount(struct vfs_dentry *dentry) {
-	struct vfs_superblock *sb = dentry->inode->sb;
-	struct vfs_dentry *mount_location = sb->mount_location;
-	size_t a = 0;
-	if ((a = ATOMIC_DECREMENT(&(dentry->ref_count))) > 1) {
-		mutex_unlock(&(dentry->mutex));
+bool VFS_DropMount(struct VFS_Dentry *dentry) {
+	struct VFS_Superblock *sb = dentry->inode->sb;
+	struct VFS_Dentry *mountLocation = sb->mountLocation;
+	USIZE a = 0;
+	if ((a = ATOMIC_DECREMENT(&(dentry->refCount))) > 1) {
+		Mutex_Unlock(&(dentry->mutex));
 		return false;
 	}
-	mount_location->inode->mount = NULL;
-	sb->mount_location = NULL;
-	mutex_unlock(&(dentry->mutex));
+	mountLocation->inode->mount = NULL;
+	sb->mountLocation = NULL;
+	Mutex_Unlock(&(dentry->mutex));
 	if (sb->type->umount != NULL) {
 		sb->type->umount(sb->ctx);
 	}
-	mutex_lock(&vfs_mutex);
-	if (sb->next_mounted != NULL) {
-		sb->next_mounted->prev_mounted = sb->prev_mounted;
+	Mutex_Lock(&VFS_Mutex);
+	if (sb->nextMounted != NULL) {
+		sb->nextMounted->prevMounted = sb->prevMounted;
 	}
-	if (sb->prev_mounted != NULL) {
-		sb->prev_mounted->next_mounted = sb->next_mounted;
+	if (sb->prevMounted != NULL) {
+		sb->prevMounted->nextMounted = sb->nextMounted;
 	} else {
-		vfs_sb_list = sb->next_mounted;
+		VFS_SuperblockList = sb->nextMounted;
 	}
-	mutex_unlock(&vfs_mutex);
+	Mutex_Unlock(&VFS_Mutex);
 	FREE_OBJ(sb);
 	return true;
 }
 
-struct vfs_dentry *vfs_backtrace_mounts(struct vfs_dentry *dentry) {
+struct VFS_Dentry *VFS_BacktraceMounts(struct VFS_Dentry *dentry) {
 	while (dentry->parent == NULL) {
-		struct vfs_superblock *sb = dentry->inode->sb;
-		struct vfs_dentry *mount_location = sb->mount_location;
-		if (sb->mount_location == NULL) {
+		struct VFS_Superblock *sb = dentry->inode->sb;
+		struct VFS_Dentry *mountLocation = sb->mountLocation;
+		if (sb->mountLocation == NULL) {
 			return dentry;
 		}
-		ATOMIC_INCREMENT(&(mount_location->ref_count));
-		mutex_lock(&(mount_location->mutex));
-		vfs_drop_mount(dentry);
-		dentry = mount_location;
+		ATOMIC_INCREMENT(&(mountLocation->refCount));
+		Mutex_Lock(&(mountLocation->mutex));
+		VFS_DropMount(dentry);
+		dentry = mountLocation;
 	}
 	return dentry;
 }
 
-void vfs_dentry_cut(struct vfs_dentry *dentry) {
-	struct vfs_dentry *prev = dentry->prev;
-	struct vfs_dentry *next = dentry->next;
-	struct vfs_dentry *par = dentry->parent;
+void VFS_CutDentryFromChildList(struct VFS_Dentry *dentry) {
+	struct VFS_Dentry *prev = dentry->prev;
+	struct VFS_Dentry *next = dentry->next;
+	struct VFS_Dentry *par = dentry->parent;
 	if (prev == NULL) {
 		par->head = next;
 	} else {
@@ -164,40 +161,39 @@ void vfs_dentry_cut(struct vfs_dentry *dentry) {
 	}
 }
 
-bool vfs_drop_dentry(struct vfs_dentry *dentry) {
-	if (ATOMIC_DECREMENT(&(dentry->ref_count)) > 1) {
-		mutex_unlock(&(dentry->mutex));
+bool VFS_DropDentry(struct VFS_Dentry *dentry) {
+	if (ATOMIC_DECREMENT(&(dentry->refCount)) > 1) {
+		Mutex_Unlock(&(dentry->mutex));
 		return false;
 	}
-	vfs_dentry_cut(dentry);
-	vfs_drop_inode(dentry->inode->sb, dentry->inode);
-	mutex_unlock(&(dentry->mutex));
+	VFS_CutDentryFromChildList(dentry);
+	VFS_DropInode(dentry->inode->sb, dentry->inode);
+	Mutex_Unlock(&(dentry->mutex));
 	FREE_OBJ(dentry);
 	return true;
 }
 
-struct vfs_dentry *vfs_dentry_walk_to_parent(struct vfs_dentry *dentry) {
-	struct vfs_dentry *backtraced = vfs_backtrace_mounts(dentry);
+struct VFS_Dentry *VFS_WalkToDentryParent(struct VFS_Dentry *dentry) {
+	struct VFS_Dentry *backtraced = VFS_BacktraceMounts(dentry);
 	if (backtraced->parent == NULL) {
 		return dentry;
 	}
-	struct vfs_dentry *parent = backtraced->parent;
-	ATOMIC_INCREMENT(&(parent->ref_count));
-	mutex_lock(&(parent->mutex));
-	vfs_drop_dentry(backtraced);
+	struct VFS_Dentry *parent = backtraced->parent;
+	ATOMIC_INCREMENT(&(parent->refCount));
+	Mutex_Lock(&(parent->mutex));
+	VFS_DropDentry(backtraced);
 	return parent;
 }
 
-struct vfs_dentry *vfs_dentry_lookup(struct vfs_dentry *dentry,
-									 const char *name) {
-	size_t hash = strhash(name);
-	struct vfs_dentry *current = dentry->head;
+struct VFS_Dentry *VFS_GetLoadedDentryChild(struct VFS_Dentry *dentry, const char *name) {
+	USIZE hash = GetStringHash(name);
+	struct VFS_Dentry *current = dentry->head;
 	while (current != NULL) {
 		if (current->hash != hash) {
 			current = current->next;
 			continue;
 		}
-		if (streq(current->name, name)) {
+		if (StringsEqual(current->name, name)) {
 			return current;
 		}
 		current = current->next;
@@ -205,216 +201,210 @@ struct vfs_dentry *vfs_dentry_lookup(struct vfs_dentry *dentry,
 	return NULL;
 }
 
-struct vfs_dentry *vfs_dentry_load_child(struct vfs_dentry *dentry,
-										 const char *name) {
-	size_t name_length = strlen(name);
-	if (name_length > 255) {
+struct VFS_Dentry *VFS_DentryLoadChild(struct VFS_Dentry *dentry, const char *name) {
+	USIZE nameLength = strlen(name);
+	if (nameLength > 255) {
 		return NULL;
 	}
-	struct vfs_superblock *sb = dentry->inode->sb;
-	if (dentry->inode->ops->get_child == NULL) {
+	struct VFS_Superblock *sb = dentry->inode->sb;
+	if (dentry->inode->ops->getChild == NULL) {
 		return NULL;
 	}
-	ino_t id = dentry->inode->ops->get_child(dentry->inode, name);
+	ino_t id = dentry->inode->ops->getChild(dentry->inode, name);
 	if (id == 0) {
 		return NULL;
 	}
-	struct vfs_inode *new_inode = vfs_get_inode(sb, id);
-	if (new_inode == NULL) {
+	struct VFS_Inode *newInode = VFS_GetInode(sb, id);
+	if (newInode == NULL) {
 		return NULL;
 	}
-	struct vfs_dentry *new_dentry = ALLOC_OBJ(struct vfs_dentry);
+	struct VFS_Dentry *newDentry = ALLOC_OBJ(struct VFS_Dentry);
 	if (dentry == NULL) {
 		return NULL;
 	}
-	new_dentry->inode = new_inode;
-	new_dentry->hash = strhash(name);
-	memset(new_dentry->name, 0, 255);
-	memcpy(new_dentry->name, name, name_length);
-	new_dentry->head = NULL;
-	new_dentry->ref_count = 0;
-	ATOMIC_INCREMENT(&(dentry->ref_count));
-	new_dentry->prev = NULL;
-	new_dentry->next = dentry->head;
-	new_dentry->parent = dentry;
-	new_dentry->next = dentry->head;
+	newDentry->inode = newInode;
+	newDentry->hash = GetStringHash(name);
+	memset(newDentry->name, 0, 255);
+	memcpy(newDentry->name, name, nameLength);
+	newDentry->head = NULL;
+	newDentry->refCount = 0;
+	ATOMIC_INCREMENT(&(dentry->refCount));
+	newDentry->prev = NULL;
+	newDentry->next = dentry->head;
+	newDentry->parent = dentry;
+	newDentry->next = dentry->head;
 	if (dentry->head != NULL) {
-		dentry->head->prev = new_dentry;
+		dentry->head->prev = newDentry;
 	}
-	dentry->head = new_dentry;
-	mutex_init(&(new_dentry->mutex));
-	return new_dentry;
+	dentry->head = newDentry;
+	Mutex_Initialize(&(newDentry->mutex));
+	return newDentry;
 }
 
-struct vfs_dentry *vfs_trace_mounts(struct vfs_dentry *dentry) {
+struct VFS_Dentry *VFS_TraceMounts(struct VFS_Dentry *dentry) {
 	while (true) {
-		struct vfs_superblock *sb = dentry->inode->mount;
+		struct VFS_Superblock *sb = dentry->inode->mount;
 		if (sb == NULL) {
 			break;
 		}
-		struct vfs_dentry *next = sb->root;
-		ATOMIC_INCREMENT(&(next->ref_count));
-		mutex_unlock(&(dentry->mutex));
-		mutex_lock(&(next->mutex));
-		ATOMIC_DECREMENT(&(dentry->ref_count));
+		struct VFS_Dentry *next = sb->root;
+		ATOMIC_INCREMENT(&(next->refCount));
+		Mutex_Unlock(&(dentry->mutex));
+		Mutex_Lock(&(next->mutex));
+		ATOMIC_DECREMENT(&(dentry->refCount));
 		dentry = next;
 	}
 	return dentry;
 }
 
-struct vfs_dentry *vfs_dentry_drop_get_parent(struct vfs_dentry *dentry) {
+struct VFS_Dentry *VFS_Dentry_GetDentryDropParent(struct VFS_Dentry *dentry) {
 	if (dentry->parent != NULL) {
 		return dentry->parent;
 	} else {
-		return dentry->inode->sb->mount_location;
+		return dentry->inode->sb->mountLocation;
 	}
 }
 
-void vfs_dentry_drop_rec(struct vfs_dentry *dentry) {
+void VFS_Dentry_DropRecursively(struct VFS_Dentry *dentry) {
 	while (dentry != NULL) {
-		struct vfs_dentry *parent = vfs_dentry_drop_get_parent(dentry);
+		struct VFS_Dentry *parent = VFS_Dentry_GetDentryDropParent(dentry);
 		if (parent == NULL) {
-			ATOMIC_DECREMENT(&(dentry->ref_count));
-			mutex_unlock(&(dentry->mutex));
+			ATOMIC_DECREMENT(&(dentry->refCount));
+			Mutex_Unlock(&(dentry->mutex));
 			return;
 		}
-		mutex_lock(&(parent->mutex));
-		if (!((dentry->parent == NULL) ? vfs_drop_mount
-									   : vfs_drop_dentry)(dentry)) {
-			mutex_unlock(&(dentry->mutex));
-			mutex_unlock(&(parent->mutex));
+		Mutex_Lock(&(parent->mutex));
+		if (!((dentry->parent == NULL) ? VFS_DropMount : VFS_DropDentry)(dentry)) {
+			Mutex_Unlock(&(dentry->mutex));
+			Mutex_Unlock(&(parent->mutex));
 			return;
 		}
 		dentry = parent;
 	}
 }
 
-struct vfs_dentry *vfs_dentry_walk_to_child(struct vfs_dentry *dentry,
-											const char *name) {
+struct VFS_Dentry *VFS_Dentry_WalkToChild(struct VFS_Dentry *dentry, const char *name) {
 	if (strlen(name) > VFS_MAX_NAME_LENGTH) {
-		vfs_dentry_drop_rec(dentry);
+		VFS_Dentry_DropRecursively(dentry);
 		return NULL;
 	}
-	struct vfs_dentry *result = vfs_dentry_lookup(dentry, name);
+	struct VFS_Dentry *result = VFS_GetLoadedDentryChild(dentry, name);
 	if (result == NULL) {
-		result = vfs_dentry_load_child(dentry, name);
+		result = VFS_DentryLoadChild(dentry, name);
 		if (result == NULL) {
-			vfs_dentry_drop_rec(dentry);
+			VFS_Dentry_DropRecursively(dentry);
 			return NULL;
 		}
 	}
-	ATOMIC_INCREMENT(&(result->ref_count));
-	mutex_unlock(&(dentry->mutex));
-	mutex_lock(&(result->mutex));
-	ATOMIC_DECREMENT(&(dentry->ref_count));
-	return vfs_trace_mounts(result);
+	ATOMIC_INCREMENT(&(result->refCount));
+	Mutex_Unlock(&(dentry->mutex));
+	Mutex_Lock(&(result->mutex));
+	ATOMIC_DECREMENT(&(dentry->refCount));
+	return VFS_TraceMounts(result);
 }
 
-struct vfs_dentry *vfs_dentry_walk(struct vfs_dentry *dentry,
-								   struct path_splitter *splitter) {
-	const char *name = path_splitter_get(splitter);
-	struct vfs_dentry *current = dentry;
+struct VFS_Dentry *VFS_Dentry_Walk(struct VFS_Dentry *dentry, struct PathSplitter *splitter) {
+	const char *name = PathSplitter_Get(splitter);
+	struct VFS_Dentry *current = dentry;
 	while (name != NULL) {
-		if (*name == '\0' || streq(name, ".")) {
+		if (*name == '\0' || StringsEqual(name, ".")) {
 			goto next;
-		} else if (streq(name, "..")) {
-			current = vfs_dentry_walk_to_parent(current);
+		} else if (StringsEqual(name, "..")) {
+			current = VFS_WalkToDentryParent(current);
 		} else {
-			current = vfs_dentry_walk_to_child(current, name);
+			current = VFS_Dentry_WalkToChild(current, name);
 		}
 		if (current == NULL) {
 			return NULL;
 		}
 	next:
-		name = path_splitter_advance(splitter);
+		name = PathSplitter_Advance(splitter);
 	}
 	return current;
 }
 
-struct vfs_dentry *vfs_walk_from_root(const char *path) {
-	struct path_splitter splitter;
-	if (!path_splitter_init(path, &splitter)) {
+struct VFS_Dentry *VFS_Dentry_WalkFromRoot(const char *path) {
+	struct PathSplitter splitter;
+	if (!PathSplitter_Init(path, &splitter)) {
 		return NULL;
 	}
-	struct vfs_dentry *fs_root = vfs_root->root;
-	if (fs_root == NULL) {
-		kmsg_err("Virtual File System", "Filesystem root should never be NULL");
+	struct VFS_Dentry *fsRoot = VFS_Root->root;
+	if (fsRoot == NULL) {
+		KernelLog_ErrorMsg("Virtual File System", "Filesystem root should never be NULL");
 	}
-	mutex_lock(&(fs_root->mutex));
-	ATOMIC_INCREMENT(&(fs_root->ref_count));
-	fs_root = vfs_trace_mounts(fs_root);
-	if (fs_root == NULL) {
-		kmsg_err("Virtual File System",
-				 "vfs_trace_mounts should never return NULL");
+	Mutex_Lock(&(fsRoot->mutex));
+	ATOMIC_INCREMENT(&(fsRoot->refCount));
+	fsRoot = VFS_TraceMounts(fsRoot);
+	if (fsRoot == NULL) {
+		KernelLog_ErrorMsg("Virtual File System", "VFS_TraceMounts should never return NULL");
 	}
-	struct vfs_dentry *result = vfs_dentry_walk(fs_root, &splitter);
-	path_splitter_dispose(&splitter);
+	struct VFS_Dentry *result = VFS_Dentry_Walk(fsRoot, &splitter);
+	PathSplitter_Dispose(&splitter);
 	return result;
 }
 
-bool vfs_mount_initialized(const char *path, struct vfs_superblock *sb) {
-	struct vfs_dentry *dir = vfs_walk_from_root(path);
+bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) {
+	struct VFS_Dentry *dir = VFS_Dentry_WalkFromRoot(path);
 	if (dir == NULL) {
-		vfs_dentry_drop_rec(dir);
+		VFS_Dentry_DropRecursively(dir);
 		return false;
 	}
-	if (dir->inode->stat.st_type != VFS_DT_DIR) {
-		vfs_dentry_drop_rec(dir);
+	if (dir->inode->stat.stType != VFS_DT_DIR) {
+		VFS_Dentry_DropRecursively(dir);
 		return false;
 	}
 	if (dir->inode->mount != NULL) {
-		kmsg_err("Virtual File System",
-				 "vfs_trace_mounts is not doing its job");
+		KernelLog_ErrorMsg("Virtual File System", "VFS_TraceMounts is not doing its job");
 	}
 	dir->inode->mount = sb;
-	sb->mount_location = dir;
+	sb->mountLocation = dir;
 	ino_t root_id = 1;
-	if (sb->type->get_root_inode != NULL) {
-		root_id = sb->type->get_root_inode(sb->ctx);
+	if (sb->type->getRootInode != NULL) {
+		root_id = sb->type->getRootInode(sb->ctx);
 	}
 	if (root_id == 0) {
-		vfs_dentry_drop_rec(dir);
+		VFS_Dentry_DropRecursively(dir);
 		return false;
 	}
-	for (size_t i = 0; i < VFS_ICACHE_MODULO; ++i) {
-		sb->inode_lists[i] = NULL;
+	for (USIZE i = 0; i < VFS_ICACHE_MODULO; ++i) {
+		sb->inodeLists[i] = NULL;
 	}
-	mutex_init(&(sb->mutex));
-	struct vfs_inode *inode = vfs_get_inode(sb, root_id);
+	Mutex_Initialize(&(sb->mutex));
+	struct VFS_Inode *inode = VFS_GetInode(sb, root_id);
 	if (inode == NULL) {
-		vfs_dentry_drop_rec(dir);
+		VFS_Dentry_DropRecursively(dir);
 		return false;
 	}
-	struct vfs_dentry *dentry = ALLOC_OBJ(struct vfs_dentry);
+	struct VFS_Dentry *dentry = ALLOC_OBJ(struct VFS_Dentry);
 	dentry->hash = 0;
 	if (dentry == NULL) {
-		vfs_dentry_drop_rec(dir);
-		vfs_drop_inode(inode->sb, inode);
+		VFS_Dentry_DropRecursively(dir);
+		VFS_DropInode(inode->sb, inode);
 		return false;
 	}
 	dentry->parent = dentry->head = dentry->next = dentry->prev = NULL;
-	dentry->ref_count = 1;
+	dentry->refCount = 1;
 	dentry->inode = inode;
-	mutex_init(&(dentry->mutex));
+	Mutex_Initialize(&(dentry->mutex));
 	sb->root = dentry;
-	mutex_lock(&vfs_mutex);
-	sb->next_mounted = vfs_sb_list;
-	if (vfs_sb_list != NULL) {
-		vfs_sb_list->prev_mounted = sb;
+	Mutex_Lock(&VFS_Mutex);
+	sb->nextMounted = VFS_SuperblockList;
+	if (VFS_SuperblockList != NULL) {
+		VFS_SuperblockList->prevMounted = sb;
 	}
-	sb->prev_mounted = NULL;
-	vfs_sb_list = sb;
-	mutex_unlock(&vfs_mutex);
-	mutex_unlock(&(dir->mutex));
+	sb->prevMounted = NULL;
+	VFS_SuperblockList = sb;
+	Mutex_Unlock(&VFS_Mutex);
+	Mutex_Unlock(&(dir->mutex));
 	return true;
 }
 
-struct vfs_superblock_type *vfs_get_type(const char *fs_type) {
-	mutex_lock(&vfs_mutex);
-	struct vfs_superblock_type *current = vfs_sb_types;
+struct VFS_Superblock_type *VFS_Dentry_GetFSTypeDescriptor(const char *fsType) {
+	Mutex_Lock(&VFS_Mutex);
+	struct VFS_Superblock_type *current = VFS_SuperblockTypes;
 	while (current != NULL) {
-		if (streq(current->fs_name, fs_type)) {
-			mutex_unlock(&vfs_mutex);
+		if (StringsEqual(current->fsName, fsType)) {
+			Mutex_Unlock(&VFS_Mutex);
 			if (current->mount == NULL) {
 				return NULL;
 			}
@@ -422,26 +412,25 @@ struct vfs_superblock_type *vfs_get_type(const char *fs_type) {
 		}
 		current = current->next;
 	}
-	mutex_unlock(&vfs_mutex);
+	Mutex_Unlock(&VFS_Mutex);
 	return NULL;
 }
 
-bool vfs_mount_user(const char *path, const char *devpath,
-					const char *fs_type_name) {
-	struct vfs_superblock_type *fs_type = vfs_get_type(fs_type_name);
-	if (fs_type == NULL) {
+bool VFS_UserMount(const char *path, const char *devpath, const char *fsTypeName) {
+	struct VFS_Superblock_type *fsType = VFS_Dentry_GetFSTypeDescriptor(fsTypeName);
+	if (fsType == NULL) {
 		return false;
 	}
-	if (fs_type->mount == NULL) {
+	if (fsType->mount == NULL) {
 		return false;
 	}
-	struct vfs_superblock *sb = fs_type->mount(devpath);
+	struct VFS_Superblock *sb = fsType->mount(devpath);
 	if (sb == NULL) {
 		return false;
 	}
-	if (!vfs_mount_initialized(path, sb)) {
-		if (!(fs_type->umount != NULL)) {
-			fs_type->umount(sb);
+	if (!VFS_Dentry_MountInitializedFS(path, sb)) {
+		if (!(fsType->umount != NULL)) {
+			fsType->umount(sb);
 		}
 		FREE_OBJ(sb);
 		return false;
@@ -449,89 +438,89 @@ bool vfs_mount_user(const char *path, const char *devpath,
 	return true;
 }
 
-bool vfs_unmount(const char *path) {
-	struct vfs_dentry *fs_root = vfs_walk_from_root(path);
-	if (fs_root == NULL) {
+bool VFS_UserUnmount(const char *path) {
+	struct VFS_Dentry *fsRoot = VFS_Dentry_WalkFromRoot(path);
+	if (fsRoot == NULL) {
 		return false;
 	}
-	struct vfs_dentry *location = fs_root->inode->sb->mount_location;
-	mutex_lock(&(location->mutex));
-	struct vfs_superblock *mounted_sb = location->inode->mount;
+	struct VFS_Dentry *location = fsRoot->inode->sb->mountLocation;
+	Mutex_Lock(&(location->mutex));
+	struct VFS_Superblock *mounted_sb = location->inode->mount;
 	if (mounted_sb == NULL) {
-		mutex_unlock(&(location->mutex));
-		vfs_dentry_drop_rec(fs_root);
+		Mutex_Unlock(&(location->mutex));
+		VFS_Dentry_DropRecursively(fsRoot);
 		return false;
 	}
 	location->inode->mount = NULL;
-	ATOMIC_DECREMENT(&(fs_root->ref_count));
-	mutex_unlock(&(location->mutex));
-	vfs_dentry_drop_rec(fs_root);
+	ATOMIC_DECREMENT(&(fsRoot->refCount));
+	Mutex_Unlock(&(location->mutex));
+	VFS_Dentry_DropRecursively(fsRoot);
 	return true;
 }
 
-void vfs_init(struct vfs_superblock *sb) {
-	for (size_t i = 0; i < VFS_ICACHE_MODULO; ++i) {
-		sb->inode_lists[i] = NULL;
+void VFS_Initialize(struct VFS_Superblock *sb) {
+	for (USIZE i = 0; i < VFS_ICACHE_MODULO; ++i) {
+		sb->inodeLists[i] = NULL;
 	}
-	ino_t root_inode = 1;
-	if (sb->type->get_root_inode != NULL) {
-		root_inode = sb->type->get_root_inode(sb->ctx);
+	ino_t rootInode = 1;
+	if (sb->type->getRootInode != NULL) {
+		rootInode = sb->type->getRootInode(sb->ctx);
 	}
-	if (root_inode == 0) {
-		kmsg_err("Virtual File System", "rootfs root inode number is zero");
+	if (rootInode == 0) {
+		KernelLog_ErrorMsg("Virtual File System", "rootfs root inode number is zero");
 	}
-	struct vfs_inode *inode = vfs_get_inode(sb, root_inode);
+	struct VFS_Inode *inode = VFS_GetInode(sb, rootInode);
 	if (inode == NULL) {
-		kmsg_err("Virtual File System", "Failed to load rootfs root inode");
+		KernelLog_ErrorMsg("Virtual File System", "Failed to load rootfs root inode");
 	}
-	struct vfs_dentry *dentry = ALLOC_OBJ(struct vfs_dentry);
+	struct VFS_Dentry *dentry = ALLOC_OBJ(struct VFS_Dentry);
 	if (dentry == NULL) {
-		kmsg_err("Virtual File System", "Failed to allocate root dirent");
+		KernelLog_ErrorMsg("Virtual File System", "Failed to allocate root dirent");
 	}
 	dentry->parent = dentry->head = dentry->prev = dentry->next = NULL;
 	dentry->hash = 0;
 	dentry->inode = inode;
-	dentry->ref_count = 1;
+	dentry->refCount = 1;
 	sb->root = dentry;
-	sb->mount_location = NULL;
-	sb->next_mounted = sb->prev_mounted;
-	vfs_sb_list = sb;
-	vfs_root = sb;
-	mutex_init(&vfs_mutex);
-	mutex_init(&(dentry->mutex));
+	sb->mountLocation = NULL;
+	sb->nextMounted = sb->prevMounted;
+	VFS_SuperblockList = sb;
+	VFS_Root = sb;
+	Mutex_Initialize(&VFS_Mutex);
+	Mutex_Initialize(&(dentry->mutex));
 }
 
-void vfs_register_filesystem(struct vfs_superblock_type *type) {
-	mutex_lock(&vfs_mutex);
-	struct vfs_superblock_type *current = vfs_sb_types;
+void VFS_RegisterFilesystem(struct VFS_Superblock_type *type) {
+	Mutex_Lock(&VFS_Mutex);
+	struct VFS_Superblock_type *current = VFS_SuperblockTypes;
 	type->next = current;
 	if (current != NULL) {
 		current->prev = type;
 	}
 	type->prev = NULL;
-	vfs_sb_types = type;
-	mutex_unlock(&vfs_mutex);
+	VFS_SuperblockTypes = type;
+	Mutex_Unlock(&VFS_Mutex);
 }
 
-struct fd *vfs_open(const char *path, int perm) {
-	struct vfs_dentry *file = vfs_walk_from_root(path);
+struct File *VFS_Open(const char *path, int perm) {
+	struct VFS_Dentry *file = VFS_Dentry_WalkFromRoot(path);
 	if (file == NULL) {
 		return false;
 	}
 	if (file->inode->ops->open == NULL) {
-		vfs_dentry_drop_rec(file);
+		VFS_Dentry_DropRecursively(file);
 	}
-	mutex_unlock(&(file->mutex));
-	struct fd *fd = file->inode->ops->open(file->inode, perm);
+	Mutex_Unlock(&(file->mutex));
+	struct File *fd = file->inode->ops->open(file->inode, perm);
 	if (fd == NULL) {
-		mutex_lock(&(file->mutex));
-		vfs_dentry_drop_rec(file);
+		Mutex_Lock(&(file->mutex));
+		VFS_Dentry_DropRecursively(file);
 	}
 	fd->dentry = file;
 	return fd;
 }
 
-void vfs_finalize(struct fd *fd) {
-	mutex_lock(&(fd->dentry->mutex));
-	vfs_dentry_drop_rec(fd->dentry);
+void VFS_FinalizeFile(struct File *fd) {
+	Mutex_Lock(&(fd->dentry->mutex));
+	VFS_Dentry_DropRecursively(fd->dentry);
 }

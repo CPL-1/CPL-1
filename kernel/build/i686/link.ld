@@ -1,4 +1,4 @@
-ENTRY(i686_stivale_start)
+ENTRY(i686_Stivale_EntryPoint)
 
 SECTIONS
 {
@@ -35,5 +35,5 @@ SECTIONS
         *(.bss)
     }
 
-    i686_phys_kernel_end = . - 0xC0000000;
+    i686_PhysicalMM_KernelEnd = . - 0xC0000000;
 }

@@ -6,29 +6,25 @@
 #include <common/lib/kmsg.h>
 #include <hal/drivers/storage/nvme.h>
 
-void detect_hardware_callback(struct i686_pci_address addr,
-							  unused struct i686_pci_id id, unused void *ctx) {
-	uint16_t type = i686_pci_get_type(addr);
+void i686_DetectHardware_EnumerateCallback(struct i686_PCI_Address addr, UNUSED struct i686_PCI_ID id,
+										   UNUSED void *ctx) {
+	UINT16 type = i686_PCI_GetDeviceType(addr);
 	switch (type) {
 	case NVME_I686_PCI_TYPE: {
-		kmsg_log("i686 Hardware Autodetection Routine",
-				 "Found NVME controller on PCI bus");
-		struct hal_nvme_controller *controller =
-			ALLOC_OBJ(struct hal_nvme_controller);
+		KernelLog_InfoMsg("i686 Hardware Autodetection Routine", "Found NVME controller on PCI bus");
+		struct hal_nvme_controller *controller = ALLOC_OBJ(struct hal_nvme_controller);
 		if (controller == NULL) {
-			kmsg_warn("i686 Hardware Autodetection Routine",
-					  "Failed to allocate NVME HAL controller object. Skipping "
-					  "NVME controller");
+			KernelLog_WarnMsg("i686 Hardware Autodetection Routine",
+							  "Failed to allocate NVME HAL controller object. Skipping "
+							  "NVME controller");
 			break;
 		}
-		if (!i686_nvme_detect_from_pci_bus(addr, controller)) {
-			kmsg_warn("i686 Hardware Autodetection Routine",
-					  "Failed to initialize NVME controller on PCI bus");
+		if (!i686_NVME_DetectFromPCIBus(addr, controller)) {
+			KernelLog_WarnMsg("i686 Hardware Autodetection Routine", "Failed to initialize NVME controller on PCI bus");
 			break;
 		}
-		if (!nvme_init(controller)) {
-			kmsg_warn("i686 Hardware Autodetection Routine",
-					  "Failed to initialize NVME controller on PCI bus");
+		if (!NVME_Initialize(controller)) {
+			KernelLog_WarnMsg("i686 Hardware Autodetection Routine", "Failed to initialize NVME controller on PCI bus");
 		}
 	} break;
 	default:
@@ -36,4 +32,6 @@ void detect_hardware_callback(struct i686_pci_address addr,
 	}
 }
 
-void detect_hardware() { i686_pci_enumerate(detect_hardware_callback, NULL); }
+void i686_DetectHardware() {
+	i686_PCI_Enumerate(i686_DetectHardware_EnumerateCallback, NULL);
+}

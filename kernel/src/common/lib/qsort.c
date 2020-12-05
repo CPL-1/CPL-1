@@ -1,54 +1,50 @@
 #include <common/lib/qsort.h>
 
-static void *qsort_at_offset(void *array, size_t size, size_t index) {
-	return (void *)(((uintptr_t)array) + size * index);
+static void *qsort_GetAtOffset(void *array, USIZE size, USIZE index) {
+	return (void *)(((UINTN)array) + size * index);
 }
 
-static void qsort_memswap(void *loc1, void *loc2, size_t size) {
+static void qsort_SwapMemory(void *loc1, void *loc2, USIZE size) {
 	char *cloc1 = (char *)loc1;
 	char *cloc2 = (char *)loc2;
-	for (size_t i = 0; i < size; ++i) {
+	for (USIZE i = 0; i < size; ++i) {
 		char tmp = cloc1[i];
 		cloc1[i] = cloc2[i];
 		cloc2[i] = tmp;
 	}
 }
 
-static void qsort_swap(void *array, size_t size, size_t i1, size_t i2) {
-	qsort_memswap(qsort_at_offset(array, size, i1),
-				  qsort_at_offset(array, size, i2), size);
+static void qsort_SwapEntriesAtPosition(void *array, USIZE size, USIZE i1, USIZE i2) {
+	qsort_SwapMemory(qsort_GetAtOffset(array, size, i1), qsort_GetAtOffset(array, size, i2), size);
 }
 
-static size_t qsort_partition(void *array, size_t size, size_t l, size_t r,
-							  qsort_comparator_t cmp, const void *ctx) {
-	void *v = qsort_at_offset(array, size, (l + r) / 2);
-	size_t i = l;
-	size_t j = r;
+static USIZE qsort_partition(void *array, USIZE size, USIZE l, USIZE r, qsort_comparator_t cmp, const void *ctx) {
+	void *v = qsort_GetAtOffset(array, size, (l + r) / 2);
+	USIZE i = l;
+	USIZE j = r;
 	while (i <= j) {
-		while (cmp(qsort_at_offset(array, size, i), v, ctx)) {
+		while (cmp(qsort_GetAtOffset(array, size, i), v, ctx)) {
 			++i;
 		}
-		while (cmp(v, qsort_at_offset(array, size, j), ctx)) {
+		while (cmp(v, qsort_GetAtOffset(array, size, j), ctx)) {
 			--j;
 		}
 		if (i >= j) {
 			break;
 		}
-		qsort_swap(array, size, i++, j--);
+		qsort_SwapEntriesAtPosition(array, size, i++, j--);
 	}
 	return j;
 }
 
-static void qsort_rec(void *array, size_t size, size_t l, size_t r,
-					  qsort_comparator_t cmp, const void *ctx) {
+static void qsort_Recursive(void *array, USIZE size, USIZE l, USIZE r, qsort_comparator_t cmp, const void *ctx) {
 	if (l < r) {
-		size_t c = qsort_partition(array, size, l, r, cmp, ctx);
-		qsort_rec(array, size, l, c, cmp, ctx);
-		qsort_rec(array, size, c + 1, r, cmp, ctx);
+		USIZE c = qsort_partition(array, size, l, r, cmp, ctx);
+		qsort_Recursive(array, size, l, c, cmp, ctx);
+		qsort_Recursive(array, size, c + 1, r, cmp, ctx);
 	}
 }
 
-void qsort(void *array, size_t size, size_t count, qsort_comparator_t cmp,
-		   const void *ctx) {
-	qsort_rec(array, size, 0, count - 1, cmp, ctx);
+void qsort(void *array, USIZE size, USIZE count, qsort_comparator_t cmp, const void *ctx) {
+	qsort_Recursive(array, size, 0, count - 1, cmp, ctx);
 }

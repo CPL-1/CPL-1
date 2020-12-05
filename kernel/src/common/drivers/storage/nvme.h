@@ -6,6 +6,6 @@
 
 #define NVME_I686_PCI_TYPE 0x0108
 
-bool nvme_init(struct hal_nvme_controller *buf);
+bool NVME_Initialize(struct hal_nvme_controller *buf);
 
 #endif

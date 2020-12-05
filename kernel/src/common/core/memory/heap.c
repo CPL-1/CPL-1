@@ -5,9 +5,9 @@
 #define BLOCK_SIZE 65536
 #define HEAP_SIZE_CLASSES_COUNT 13
 
-static struct mutex heap_mutex;
-static size_t heap_size_classes[HEAP_SIZE_CLASSES_COUNT] = {
-	16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536};
+static struct Mutex Heap_Mutex;
+static USIZE Heap_SizeClasses[HEAP_SIZE_CLASSES_COUNT] = {16,	32,	  64,	128,   256,	  512,	1024,
+														  2048, 4096, 8192, 16384, 32768, 65536};
 
 struct heap_slub_obj_hdr {
 	struct heap_slub_obj_hdr *next;
@@ -15,36 +15,36 @@ struct heap_slub_obj_hdr {
 
 static struct heap_slub_obj_hdr *slubs[HEAP_SIZE_CLASSES_COUNT];
 
-static size_t heap_get_size_class(size_t size) {
-	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
-		if (size <= heap_size_classes[i]) {
+static USIZE Heap_GetSizeClass(USIZE size) {
+	for (USIZE i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
+		if (size <= Heap_SizeClasses[i]) {
 			return i;
 		}
 	}
 	return HEAP_SIZE_CLASSES_COUNT;
 }
 
-bool heap_validate_slub_lists() {
-	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
+bool Heap_ValidateSlubLists() {
+	for (USIZE i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
 		struct heap_slub_obj_hdr *hdr = slubs[i];
 		while (hdr != NULL) {
 			hdr = hdr->next;
 		}
-		asm volatile("nop");
+		ASM volatile("nop");
 	}
 	return true;
 }
 
-static bool heap_add_objects_to_slubs(size_t index) {
-	size_t size = heap_size_classes[index];
-	size_t objects_count = BLOCK_SIZE / size;
-	size_t block = hal_phys_krnl_alloc_area(BLOCK_SIZE);
+static bool Heap_AddObjectToSlubs(USIZE index) {
+	USIZE size = Heap_SizeClasses[index];
+	USIZE objects_count = BLOCK_SIZE / size;
+	USIZE block = HAL_PhysicalMM_KernelAllocArea(BLOCK_SIZE);
 	if (block == 0) {
 		return false;
 	}
-	for (size_t i = 0; i < objects_count; ++i) {
-		size_t offset = i * size;
-		size_t address = hal_virt_kernel_mapping_base + block + offset;
+	for (USIZE i = 0; i < objects_count; ++i) {
+		USIZE offset = i * size;
+		USIZE address = HAL_VirtualMM_KernelMappingBase + block + offset;
 		struct heap_slub_obj_hdr *block = (struct heap_slub_obj_hdr *)address;
 		block->next = slubs[index];
 		slubs[index] = block;
@@ -52,57 +52,55 @@ static bool heap_add_objects_to_slubs(size_t index) {
 	return true;
 }
 
-void heap_init() {
-	mutex_init(&heap_mutex);
-	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
+void Heap_Initialize() {
+	Mutex_Initialize(&Heap_Mutex);
+	for (USIZE i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
 		slubs[i] = NULL;
 	}
 }
 
-void *heap_alloc(size_t size) {
+void *Heap_AllocateMemory(USIZE size) {
 	if (size == 0) {
 		return NULL;
 	}
-	mutex_lock(&heap_mutex);
-	size_t size_class = heap_get_size_class(size);
+	Mutex_Lock(&Heap_Mutex);
+	USIZE size_class = Heap_GetSizeClass(size);
 	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
-		uintptr_t result =
-			hal_phys_krnl_alloc_area(ALIGN_UP(size, hal_virt_page_size));
+		UINTN result = HAL_PhysicalMM_KernelAllocArea(ALIGN_UP(size, HAL_VirtualMM_PageSize));
 		if (result == 0) {
-			mutex_unlock(&heap_mutex);
+			Mutex_Unlock(&Heap_Mutex);
 			return NULL;
 		} else {
-			mutex_unlock(&heap_mutex);
-			return (void *)(result + hal_virt_kernel_mapping_base);
+			Mutex_Unlock(&Heap_Mutex);
+			return (void *)(result + HAL_VirtualMM_KernelMappingBase);
 		}
 	}
 	if (slubs[size_class] == NULL) {
-		if (!heap_add_objects_to_slubs(size_class)) {
-			mutex_unlock(&heap_mutex);
+		if (!Heap_AddObjectToSlubs(size_class)) {
+			Mutex_Unlock(&Heap_Mutex);
 			return NULL;
 		}
 	}
 	struct heap_slub_obj_hdr *result = slubs[size_class];
 	slubs[size_class] = result->next;
-	mutex_unlock(&heap_mutex);
+	Mutex_Unlock(&Heap_Mutex);
 	return result;
 }
 
-void heap_free(void *area, size_t size) {
+void Heap_FreeMemory(void *area, USIZE size) {
 	if (area == NULL) {
 		return;
 	}
-	mutex_lock(&heap_mutex);
-	size_t size_class = heap_get_size_class(size);
+	Mutex_Lock(&Heap_Mutex);
+	USIZE size_class = Heap_GetSizeClass(size);
 	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
-		mutex_unlock(&heap_mutex);
-		hal_phys_krnl_free_area((uintptr_t)area,
-								ALIGN_UP(size, hal_virt_page_size));
+		Mutex_Unlock(&Heap_Mutex);
+		HAL_PhysicalMM_KernelFreeArea((UINTN)area, ALIGN_UP(size, HAL_VirtualMM_PageSize));
 		return;
 	}
 	struct heap_slub_obj_hdr *hdr = (struct heap_slub_obj_hdr *)area;
 	hdr->next = slubs[size_class];
 	slubs[size_class] = hdr;
-	mutex_unlock(&heap_mutex);
+	Mutex_Unlock(&Heap_Mutex);
 	return;
 }

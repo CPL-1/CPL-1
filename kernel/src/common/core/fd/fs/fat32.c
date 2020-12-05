@@ -6,256 +6,243 @@
 #include <common/lib/dynarray.h>
 #include <common/lib/kmsg.h>
 
-static struct vfs_superblock_type fat32_superblock_type;
-static struct vfs_inode_ops fat32_file_inode_ops;
-static struct vfs_inode_ops fat32_dir_inode_ops;
-unused static struct fd_ops fat32_reg_file_ops;
-unused static struct fd_ops fat32_dir_file_ops;
+static struct VFS_Superblock_type FAT32_SuperblockType;
+static struct VFS_InodeOperations FAT32_FileInodeOperations;
+static struct VFS_InodeOperations FAT32_DirectoryInodeOperations;
+UNUSED static struct FileOperations FAT32_RegularFileOperations;
+UNUSED static struct FileOperations FAT32_DirectoryFileOperations;
 
-struct fat32_bpb {
-	char volume_id[3];
-	char oem_identifier[8];
-	uint16_t bytes_per_sector;
-	uint8_t sectors_per_cluster;
-	uint16_t reserved_sectors;
-	uint8_t fat_count;
-	uint16_t directory_entries_count;
-	uint16_t total_sectors;
-	uint8_t media_descriptor_type;
-	uint16_t sectors_per_fat;
-	uint16_t sectors_per_track;
-	uint16_t heads_count;
-	uint32_t hidden_sectors;
-	uint32_t large_sector_count;
-} packed little_endian noalign;
+struct FAT32_BIOSBootRecord {
+	char volumeID[3];
+	char oemIdentifier[8];
+	UINT16 bytesPerSector;
+	UINT8 sectorsPerCluster;
+	UINT16 reservedSectors;
+	UINT8 fatCount;
+	UINT16 directoryEntriesCount;
+	UINT16 totalSectors;
+	UINT8 mediaDescriptorType;
+	UINT16 sectorsPerFat;
+	UINT16 sectorsPerTrack;
+	UINT16 headsCount;
+	UINT32 hiddenSectors;
+	UINT32 largeSectorCount;
+} PACKED LITTLE_ENDIAN NOALIGN;
 
-struct fat32_ebp {
-	uint32_t sectors_per_fat;
-	uint16_t flags;
-	uint16_t version;
-	uint32_t root_directory;
-	uint16_t fs_info_sector;
-	uint16_t backup_boot_sector;
+struct FAT32_ExtendedBootRecord {
+	UINT32 sectorsPerFAT;
+	UINT16 flags;
+	UINT16 version;
+	UINT32 rootDirectory;
+	UINT16 fsInfoSector;
+	UINT16 backupBootSector;
 	char reserved[12];
-	uint8_t drive_number;
-	uint8_t flags_for_win_nt;
-	uint8_t signature;
-	uint32_t volume_id;
-	char volume_label[11];
-	char system_id[8];
-	char boot_code[420];
-	uint16_t bootable_signature;
-} packed little_endian noalign;
+	UINT8 driveNumber;
+	UINT8 flagsForWindowsNT;
+	UINT8 signature;
+	UINT32 volumeID;
+	char volumeLabel[11];
+	char systemID[8];
+	char bootCode[420];
+	UINT16 bootableSignature;
+} PACKED LITTLE_ENDIAN NOALIGN;
 
-struct fat32_fsinfo {
-	uint32_t lead_signature;
+struct FAT32_FSInfo {
+	UINT32 lead_signature;
 	char reserved[480];
-	uint32_t another_signature;
-	uint32_t last_sector;
-	uint32_t allocation_hint;
+	UINT32 anotherSignature;
+	UINT32 lastSector;
+	UINT32 allocationHint;
 	char reserved2[12];
-	uint32_t trail_signature;
-} packed little_endian noalign;
+	UINT32 trailSignature;
+} PACKED LITTLE_ENDIAN NOALIGN;
 
-struct fat32_short_directory_entry {
+struct FAT32_ShortDirectoryEntry {
 	char name[8];
 	char ext[3];
-	uint8_t attrib;
-	uint8_t zero;
-	uint8_t tenth_of_a_second;
-	uint16_t creation_time;
-	uint16_t creation_date;
-	uint16_t last_access_date;
-	uint16_t first_cluster_hi;
-	uint16_t last_mod_time;
-	uint16_t last_mod_date;
-	uint16_t first_cluster_lo;
-	uint32_t file_size;
-} packed little_endian noalign;
+	UINT8 attrib;
+	UINT8 zero;
+	UINT8 tenthOfASecond;
+	UINT16 creationTime;
+	UINT16 creationDate;
+	UINT16 lastAccessDate;
+	UINT16 firstClusterHigh;
+	UINT16 lastModificationTime;
+	UINT16 lastModificationDate;
+	UINT16 firstClusterLow;
+	UINT32 fileSize;
+} PACKED LITTLE_ENDIAN NOALIGN;
 
-struct fat32_long_directory_entry {
-	uint8_t ordinal;
-	uint16_t ucs_chars[5];
-	uint8_t attributes;
-	uint8_t type;
-	uint8_t checksum;
-	uint16_t ucs_chars2[6];
-	uint16_t zero2;
-	uint16_t ucs_chars3[2];
-} packed little_endian noalign;
+struct FAT32_LongDirectoryEntry {
+	UINT8 ordinal;
+	UINT16 ucsChars[5];
+	UINT8 attributes;
+	UINT8 type;
+	UINT8 checksum;
+	UINT16 ucsChars2[6];
+	UINT16 zero2;
+	UINT16 ucsChars3[2];
+} PACKED LITTLE_ENDIAN NOALIGN;
 
-struct fat32_directory_entry {
+struct FAT32_DirectoryEntry {
 	char name[VFS_MAX_NAME_LENGTH + 1];
-	uint8_t attrib;
-	uint32_t first_cluster;
-	uint32_t file_size;
-	size_t hash;
+	UINT8 attrib;
+	UINT32 firstCluster;
+	UINT32 fileSize;
+	USIZE hash;
 };
 
-struct fat32_superblock {
-	struct fd *device;
-	struct fat32_bpb bpb;
-	struct fat32_ebp ebp;
-	struct fat32_fsinfo fsinfo;
-	dynarray(struct vfs_inode *) opened_inodes;
-	struct mutex mutex;
-	size_t cluster_size;
-	size_t fat_length;
-	uint64_t fat_offset;
-	uint64_t clusters_offset;
+struct FAT32_Superblock {
+	struct File *device;
+	struct FAT32_BIOSBootRecord bpb;
+	struct FAT32_ExtendedBootRecord ebp;
+	struct FAT32_FSInfo fsinfo;
+	Dynarray(struct VFS_Inode *) openedInodes;
+	struct Mutex mutex;
+	USIZE clusterSize;
+	USIZE fatLength;
+	UINT64 fatOffset;
+	UINT64 clustersOffset;
 };
 
-struct fat32_inode {
-	struct fat32_superblock *sb;
-	uint32_t first_cluster;
-	uint32_t file_size;
-	uint8_t attrib;
-	dynarray(struct fat32_directory_entry *) entries;
+struct FAT32_Inode {
+	struct FAT32_Superblock *sb;
+	UINT32 firstCluster;
+	UINT32 fileSize;
+	UINT8 attrib;
+	Dynarray(struct FAT32_DirectoryEntry *) entries;
 };
 
-struct fat32_rw_stream {
-	uint32_t offset_in_cluster;
-	uint32_t current_cluster;
+struct FAT32_RWStream {
+	UINT32 offsetInCluster;
+	UINT32 currentCluster;
 };
 
-struct fat32_reg_file_ctx {
-	struct fat32_rw_stream stream;
+struct FAT32_RegularFileContext {
+	struct FAT32_RWStream stream;
 };
 
-enum {
+enum
+{
 	FAT32_ATTR_READ_ONLY = 0x01,
 	FAT32_ATTR_HIDDEN = 0x02,
 	FAT32_ATTR_SYSTEM = 0x04,
 	FAT32_ATTR_VOLUME_ID = 0x08,
 	FAT32_ATTR_DIRECTORY = 0x10,
 	FAT32_ATTR_ARCHIVE = 0x20,
-	FAT32_ATTR_LONG_NAME = (FAT32_ATTR_READ_ONLY | FAT32_ATTR_HIDDEN |
-							FAT32_ATTR_SYSTEM | FAT32_ATTR_VOLUME_ID)
+	FAT32_ATTR_LONG_NAME = (FAT32_ATTR_READ_ONLY | FAT32_ATTR_HIDDEN | FAT32_ATTR_SYSTEM | FAT32_ATTR_VOLUME_ID)
 };
 
-enum { FAT32_END_OF_DIRECTORY = 0x00, FAT32_unused_ENTRY = 0xe5 };
-
-enum {
-	FAT32_LAST_LFN_ENTRY_ORDINAL_MASK = 0x40,
+enum
+{
+	FAT32_END_OF_DIRECTORY = 0x00,
+	FAT32_UNUSED_ENTRY = 0xe5
 };
 
-static uint64_t fat32_get_cluster_offset(struct fat32_superblock *fat32_sb,
-										 uint32_t cluster_id) {
-	return fat32_sb->clusters_offset +
-		   (cluster_id - 2) * fat32_sb->cluster_size;
+enum
+{ FAT32_LAST_LFN_ENTRY_ORDINAL_MASK = 0x40, };
+
+static UINT64 FAT32_GetClusterOffset(struct FAT32_Superblock *fat32Superblock, UINT32 clusterID) {
+	return fat32Superblock->clustersOffset + (clusterID - 2) * fat32Superblock->clusterSize;
 }
 
-static uint32_t fat32_next_cluster_id(struct fat32_superblock *fat32_sb,
-									  uint32_t cluster_id) {
-	uint32_t fat_offset = fat32_sb->fat_offset + cluster_id * 4;
+static UINT32 FAT32_GetNextClusterID(struct FAT32_Superblock *fat32Superblock, UINT32 clusterID) {
+	UINT32 fatOffset = fat32Superblock->fatOffset + clusterID * 4;
 	struct {
-		uint32_t entry;
-	} packed little_endian noalign buf;
-	if (!fd_readat(fat32_sb->device, fat_offset, 4, (char *)&buf)) {
+		UINT32 entry;
+	} PACKED LITTLE_ENDIAN NOALIGN buf;
+	if (!File_Readat(fat32Superblock->device, fatOffset, 4, (char *)&buf)) {
 		return 0x0FFFFFF7;
 	}
 	return buf.entry & 0x0FFFFFFF;
 }
 
-static bool fat32_is_end_of_cluster_chain(uint32_t cluster_id) {
-	return cluster_id >= 0x0FFFFFF7;
+static bool FAT32_IsEndOfClusterChain(UINT32 clusterID) {
+	return clusterID >= 0x0FFFFFF7;
 }
 
-static uint64_t fat32_get_stream_pos(struct fat32_superblock *fat32_sb,
-									 struct fat32_rw_stream *stream) {
-	return fat32_get_cluster_offset(fat32_sb, stream->current_cluster) +
-		   stream->offset_in_cluster;
+static UINT64 FAT32_GetStreamDrivePos(struct FAT32_Superblock *fat32Superblock, struct FAT32_RWStream *stream) {
+	return FAT32_GetClusterOffset(fat32Superblock, stream->currentCluster) + stream->offsetInCluster;
 }
 
-static bool fat32_stream_move_to_next(struct fat32_superblock *fat32_sb,
-									  struct fat32_rw_stream *stream) {
-	uint32_t next_id = fat32_next_cluster_id(fat32_sb, stream->current_cluster);
-	if (fat32_is_end_of_cluster_chain(next_id)) {
+static bool FAT32_MoveStreamToNextCluster(struct FAT32_Superblock *fat32Superblock, struct FAT32_RWStream *stream) {
+	UINT32 nextID = FAT32_GetNextClusterID(fat32Superblock, stream->currentCluster);
+	if (FAT32_IsEndOfClusterChain(nextID)) {
 		return false;
 	}
-	stream->offset_in_cluster = 0;
-	stream->current_cluster = next_id;
+	stream->offsetInCluster = 0;
+	stream->currentCluster = nextID;
 	return true;
 }
 
-static size_t fat32_read_stream(struct fat32_superblock *fat32_sb,
-								struct fat32_rw_stream *stream, int count,
-								char *buf) {
-	size_t result = 0;
+static USIZE FAT32_ReadFromStream(struct FAT32_Superblock *fat32Superblock, struct FAT32_RWStream *stream, int count,
+								  char *buf) {
+	USIZE result = 0;
 	while (count > 0) {
-		size_t chunk_size = count;
-		size_t remaining_in_chunk =
-			fat32_sb->cluster_size - stream->offset_in_cluster;
-		if (remaining_in_chunk == 0) {
-			if (!fat32_stream_move_to_next(fat32_sb, stream)) {
+		USIZE chunkSize = count;
+		USIZE remainingInChunk = fat32Superblock->clusterSize - stream->offsetInCluster;
+		if (remainingInChunk == 0) {
+			if (!FAT32_MoveStreamToNextCluster(fat32Superblock, stream)) {
 				return result;
 			}
-			remaining_in_chunk =
-				fat32_sb->cluster_size - stream->offset_in_cluster;
+			remainingInChunk = fat32Superblock->clusterSize - stream->offsetInCluster;
 		}
-		if (chunk_size > remaining_in_chunk) {
-			chunk_size = remaining_in_chunk;
+		if (chunkSize > remainingInChunk) {
+			chunkSize = remainingInChunk;
 		}
-		uint64_t stream_pos = fat32_get_stream_pos(fat32_sb, stream);
-		if (!fd_readat(fat32_sb->device, stream_pos, chunk_size,
-					   buf + result)) {
+		UINT64 streamPos = FAT32_GetStreamDrivePos(fat32Superblock, stream);
+		if (!File_Readat(fat32Superblock->device, streamPos, chunkSize, buf + result)) {
 			return result;
 		}
-		count -= chunk_size;
-		result += chunk_size;
-		stream->offset_in_cluster += chunk_size;
+		count -= chunkSize;
+		result += chunkSize;
+		stream->offsetInCluster += chunkSize;
 	}
 	return result;
 }
 
-static int64_t fat32_skip_in_stream(struct fat32_superblock *fat32_sb,
-									struct fat32_rw_stream *stream,
-									int64_t count) {
+static INT64 FAT32_SkipInStream(struct FAT32_Superblock *fat32Superblock, struct FAT32_RWStream *stream, INT64 count) {
 	if (count < 0) {
 		return -1;
 	}
-	int64_t result = 0;
+	INT64 result = 0;
 	while (count > 0) {
-		size_t chunk_size = count;
-		size_t remaining_in_chunk =
-			fat32_sb->cluster_size - stream->offset_in_cluster;
-		if (remaining_in_chunk == 0) {
-			if (!fat32_stream_move_to_next(fat32_sb, stream)) {
+		USIZE chunkSize = count;
+		USIZE remainingInChunk = fat32Superblock->clusterSize - stream->offsetInCluster;
+		if (remainingInChunk == 0) {
+			if (!FAT32_MoveStreamToNextCluster(fat32Superblock, stream)) {
 				return result;
 			}
-			remaining_in_chunk =
-				fat32_sb->cluster_size - stream->offset_in_cluster;
+			remainingInChunk = fat32Superblock->clusterSize - stream->offsetInCluster;
 		}
-		if (chunk_size > remaining_in_chunk) {
-			chunk_size = remaining_in_chunk;
+		if (chunkSize > remainingInChunk) {
+			chunkSize = remainingInChunk;
 		}
-		count -= chunk_size;
-		result += chunk_size;
-		stream->offset_in_cluster += chunk_size;
+		count -= chunkSize;
+		result += chunkSize;
+		stream->offsetInCluster += chunkSize;
 	}
 	return result;
 }
 
-static char fat32_to_lowercase(char c) {
+static char FAT32_ConvertToLowercase(char c) {
 	if (c >= 'A' && c <= 'Z') {
 		c = c - 'A' + 'a';
 	}
 	return c;
 }
 
-static void
-fat32_convert_short_filename(struct fat32_short_directory_entry *entry,
-							 char *buf) {
-	size_t size = 0;
+static void FAT32_ConvertShortFilename(struct FAT32_ShortDirectoryEntry *entry, char *buf) {
+	USIZE size = 0;
 	if (entry->name[0] == ' ' || entry->name[0] == '\0') {
 		goto ext;
 	}
-	for (size_t i = 0; i < 8; ++i) {
+	for (USIZE i = 0; i < 8; ++i) {
 		if (entry->name[i] == ' ' || entry->name[i] == '\0') {
 			buf[size] = '\0';
 			goto ext;
 		}
-		buf[size] = fat32_to_lowercase(entry->name[i]);
+		buf[size] = FAT32_ConvertToLowercase(entry->name[i]);
 		size++;
 	}
 ext:
@@ -265,21 +252,22 @@ ext:
 	}
 	buf[size] = '.';
 	++size;
-	for (size_t i = 0; i < 3; ++i) {
+	for (USIZE i = 0; i < 3; ++i) {
 		if (entry->ext[i] == ' ' || entry->ext[i] == '\0') {
 			buf[size] = '\0';
 			return;
 		}
-		buf[size] = fat32_to_lowercase(entry->ext[i]);
+		buf[size] = FAT32_ConvertToLowercase(entry->ext[i]);
 		size++;
 	}
 	buf[size] = '\0';
 }
 
-// source: https://github.com/benkasminbullock/unicode-c/blob/master/unicode.c
-static int fat32_ucs2_to_utf8(uint16_t ucs2, char *buf, size_t limit) {
-	static size_t UNI_SUR_HIGH_START = 0xD800;
-	static size_t UNI_SUR_LOW_END = 0xDF88;
+// source:
+// https://github.com/benkASMi686_Ports_ReadByteullock/unicode-c/blob/master/unicode.c
+static int FAT32_ConvertUCS2CharacterToUTF8(UINT16 ucs2, char *buf, USIZE limit) {
+	static USIZE UNI_SUR_HIGH_START = 0xD800;
+	static USIZE UNI_SUR_LOW_END = 0xDF88;
 	if (ucs2 < 0x80) {
 		if (limit < 1) {
 			return -1;
@@ -310,134 +298,119 @@ static int fat32_ucs2_to_utf8(uint16_t ucs2, char *buf, size_t limit) {
 	return -1;
 }
 
-#define FAT32_LFN_FILL_FROM_ENTRY(name)                                        \
-	for (size_t j = 0; j < ARR_SIZE(entries[i].name); ++j) {                   \
-		if (entries[i].name[j] == 0) {                                         \
-			return pos;                                                        \
-		}                                                                      \
-		int delta =                                                            \
-			fat32_ucs2_to_utf8(entries[i].name[j], buf + pos, size - pos);     \
-		if (delta == -1) {                                                     \
-			return -1;                                                         \
-		}                                                                      \
-		pos += delta;                                                          \
+#define FAT32_LFN_FILL_FROM_ENTRY(name)                                                                                \
+	for (USIZE j = 0; j < ARR_SIZE(entries[i].name); ++j) {                                                            \
+		if (entries[i].name[j] == 0) {                                                                                 \
+			return pos;                                                                                                \
+		}                                                                                                              \
+		int delta = FAT32_ConvertUCS2CharacterToUTF8(entries[i].name[j], buf + pos, size - pos);                       \
+		if (delta == -1) {                                                                                             \
+			return -1;                                                                                                 \
+		}                                                                                                              \
+		pos += delta;                                                                                                  \
 	}
 
-static int
-fat32_convert_long_filename(dynarray(struct fat32_long_directory_entry) entries,
-							char *buf, size_t size) {
-	size_t pos = 0;
-	for (size_t i = 0; i < dynarray_len(entries); ++i) {
-		FAT32_LFN_FILL_FROM_ENTRY(ucs_chars);
-		FAT32_LFN_FILL_FROM_ENTRY(ucs_chars2);
-		FAT32_LFN_FILL_FROM_ENTRY(ucs_chars3);
+static int FAT32_ConvertLongFilename(Dynarray(struct FAT32_LongDirectoryEntry) entries, char *buf, USIZE size) {
+	USIZE pos = 0;
+	for (USIZE i = 0; i < DYNARRAY_LENGTH(entries); ++i) {
+		FAT32_LFN_FILL_FROM_ENTRY(ucsChars);
+		FAT32_LFN_FILL_FROM_ENTRY(ucsChars2);
+		FAT32_LFN_FILL_FROM_ENTRY(ucsChars3);
 	}
 	return pos;
 }
 
 #undef FAT32_LFN_FILL_FROM_ENTRY
 
-static enum {
+static enum
+{
 	FAT32_READ_ENTRY_READ,
 	FAT32_READ_ENTRY_SKIP,
 	FAT32_READ_ENTRY_END,
 	FAT32_READ_ENTRY_ERROR,
-} fat32_read_directory_entry(struct fat32_superblock *fat32_sb,
-							 struct fat32_directory_entry *entry,
-							 struct fat32_rw_stream *stream) {
-	char buf[sizeof(struct fat32_short_directory_entry)];
-	struct fat32_short_directory_entry *as_short =
-		(struct fat32_short_directory_entry *)&buf;
-	struct fat32_long_directory_entry *as_long =
-		(struct fat32_long_directory_entry *)&buf;
-	if (fat32_read_stream(fat32_sb, stream,
-						  sizeof(struct fat32_short_directory_entry),
-						  buf) != sizeof(struct fat32_short_directory_entry)) {
+} FAT32_ReadDirectoryEntryFromStream(struct FAT32_Superblock *fat32Superblock, struct FAT32_DirectoryEntry *entry,
+									 struct FAT32_RWStream *stream) {
+	char buf[sizeof(struct FAT32_ShortDirectoryEntry)];
+	struct FAT32_ShortDirectoryEntry *asShort = (struct FAT32_ShortDirectoryEntry *)&buf;
+	struct FAT32_LongDirectoryEntry *asLong = (struct FAT32_LongDirectoryEntry *)&buf;
+	if (FAT32_ReadFromStream(fat32Superblock, stream, sizeof(struct FAT32_ShortDirectoryEntry), buf) !=
+		sizeof(struct FAT32_ShortDirectoryEntry)) {
 		return FAT32_READ_ENTRY_END;
 	}
-	if ((uint8_t)(as_short->name[0]) == FAT32_unused_ENTRY) {
+	if ((UINT8)(asShort->name[0]) == FAT32_UNUSED_ENTRY) {
 		return FAT32_READ_ENTRY_SKIP;
 	}
-	if ((uint8_t)(as_short->name[0]) == FAT32_END_OF_DIRECTORY) {
+	if ((UINT8)(asShort->name[0]) == FAT32_END_OF_DIRECTORY) {
 		return FAT32_READ_ENTRY_END;
 	}
-	if (as_short->attrib == FAT32_ATTR_LONG_NAME) {
-		dynarray(struct fat32_long_directory_entry) long_entries =
-			dynarray_make(struct fat32_long_directory_entry);
-		if (long_entries == NULL) {
+	if (asShort->attrib == FAT32_ATTR_LONG_NAME) {
+		Dynarray(struct FAT32_LongDirectoryEntry) longEntries = DYNARRAY_NEW(struct FAT32_LongDirectoryEntry);
+		if (longEntries == NULL) {
 			return FAT32_READ_ENTRY_ERROR;
 		}
-		dynarray(struct fat32_long_directory_entry) with_elem =
-			dynarray_push(long_entries, *as_long);
-		if (with_elem == NULL) {
-			dynarray_dispose(long_entries);
+		Dynarray(struct FAT32_LongDirectoryEntry) withElem = DYNARRAY_PUSH(longEntries, *asLong);
+		if (withElem == NULL) {
+			DYNARRAY_DISPOSE(longEntries);
 			return FAT32_READ_ENTRY_ERROR;
 		}
-		long_entries = with_elem;
+		longEntries = withElem;
 		while (true) {
-			if (fat32_read_stream(fat32_sb, stream,
-								  sizeof(struct fat32_short_directory_entry),
-								  buf) !=
-				sizeof(struct fat32_short_directory_entry)) {
-				dynarray_dispose(long_entries);
+			if (FAT32_ReadFromStream(fat32Superblock, stream, sizeof(struct FAT32_ShortDirectoryEntry), buf) !=
+				sizeof(struct FAT32_ShortDirectoryEntry)) {
+				DYNARRAY_DISPOSE(longEntries);
 				return FAT32_READ_ENTRY_ERROR;
 			}
-			if (as_short->attrib != FAT32_ATTR_LONG_NAME) {
+			if (asShort->attrib != FAT32_ATTR_LONG_NAME) {
 				break;
 			}
-			dynarray(struct fat32_long_directory_entry) with_elem =
-				dynarray_push(long_entries, *as_long);
+			Dynarray(struct FAT32_LongDirectoryEntry) with_elem = DYNARRAY_PUSH(longEntries, *asLong);
 			if (with_elem == NULL) {
-				dynarray_dispose(long_entries);
+				DYNARRAY_DISPOSE(longEntries);
 				return FAT32_READ_ENTRY_ERROR;
 			}
-			long_entries = with_elem;
+			longEntries = with_elem;
 		}
-		for (size_t i = 0; i < dynarray_len(long_entries) / 2; ++i) {
-			struct fat32_long_directory_entry tmp;
-			tmp = long_entries[dynarray_len(long_entries) - 1 - i];
-			long_entries[dynarray_len(long_entries) - 1 - i] = long_entries[i];
-			long_entries[i] = tmp;
+		for (USIZE i = 0; i < DYNARRAY_LENGTH(longEntries) / 2; ++i) {
+			struct FAT32_LongDirectoryEntry tmp;
+			tmp = longEntries[DYNARRAY_LENGTH(longEntries) - 1 - i];
+			longEntries[DYNARRAY_LENGTH(longEntries) - 1 - i] = longEntries[i];
+			longEntries[i] = tmp;
 		}
-		for (size_t i = 0; i < dynarray_len(long_entries) - 1; ++i) {
-			if (long_entries[i].ordinal != i + 1) {
-				dynarray_dispose(long_entries);
+		for (USIZE i = 0; i < DYNARRAY_LENGTH(longEntries) - 1; ++i) {
+			if (longEntries[i].ordinal != i + 1) {
+				DYNARRAY_DISPOSE(longEntries);
 				return FAT32_READ_ENTRY_ERROR;
 			}
 		}
-		if (long_entries[dynarray_len(long_entries) - 1].ordinal !=
-			(dynarray_len(long_entries) | FAT32_LAST_LFN_ENTRY_ORDINAL_MASK)) {
-			dynarray_dispose(long_entries);
+		if (longEntries[DYNARRAY_LENGTH(longEntries) - 1].ordinal !=
+			(DYNARRAY_LENGTH(longEntries) | FAT32_LAST_LFN_ENTRY_ORDINAL_MASK)) {
+			DYNARRAY_DISPOSE(longEntries);
 			return FAT32_READ_ENTRY_ERROR;
 		}
-		int len = fat32_convert_long_filename(long_entries, entry->name,
-											  VFS_MAX_NAME_LENGTH);
+		int len = FAT32_ConvertLongFilename(longEntries, entry->name, VFS_MAX_NAME_LENGTH);
 		if (len == -1) {
-			dynarray_dispose(long_entries);
+			DYNARRAY_DISPOSE(longEntries);
 			return FAT32_READ_ENTRY_ERROR;
 		}
 		entry->name[len] = '\0';
 	} else {
-		fat32_convert_short_filename(as_short, entry->name);
+		FAT32_ConvertShortFilename(asShort, entry->name);
 	}
-	entry->attrib = as_short->attrib;
-	entry->file_size = as_short->file_size;
-	entry->first_cluster =
-		(as_short->first_cluster_hi) << 16U | as_short->first_cluster_lo;
-	entry->hash = strhash(entry->name);
+	entry->attrib = asShort->attrib;
+	entry->fileSize = asShort->fileSize;
+	entry->firstCluster = (asShort->firstClusterHigh) << 16U | asShort->firstClusterLow;
+	entry->hash = GetStringHash(entry->name);
 	return FAT32_READ_ENTRY_READ;
 }
 
-static dynarray(struct fat32_directory_entry *)
-	fat32_read_directory(struct fat32_superblock *sb,
-						 struct fat32_rw_stream *stream) {
-	dynarray(struct fat32_directory_entry *) result =
-		dynarray_make(struct fat32_directory_entry *);
-	struct fat32_directory_entry buf;
+static Dynarray(struct FAT32_DirectoryEntry *)
+	FAT32_ReadDirectoryFromStream(struct FAT32_Superblock *sb, struct FAT32_RWStream *stream) {
+	Dynarray(struct FAT32_DirectoryEntry *) result = DYNARRAY_NEW(struct FAT32_DirectoryEntry *);
+	struct FAT32_DirectoryEntry buf;
 	while (true) {
-		int status = fat32_read_directory_entry(sb, &buf, stream);
+		int status = FAT32_ReadDirectoryEntryFromStream(sb, &buf, stream);
 		if (status == FAT32_READ_ENTRY_ERROR) {
-			dynarray_dispose(result);
+			DYNARRAY_DISPOSE(result);
 			return NULL;
 		}
 		if (status == FAT32_READ_ENTRY_SKIP) {
@@ -446,17 +419,15 @@ static dynarray(struct fat32_directory_entry *)
 		if (status == FAT32_READ_ENTRY_END) {
 			break;
 		}
-		struct fat32_directory_entry *dynamic_buf =
-			ALLOC_OBJ(struct fat32_directory_entry);
-		if (dynamic_buf == NULL) {
-			dynarray_dispose(result);
+		struct FAT32_DirectoryEntry *dynamicBuf = ALLOC_OBJ(struct FAT32_DirectoryEntry);
+		if (dynamicBuf == NULL) {
+			DYNARRAY_DISPOSE(result);
 			return NULL;
 		}
-		memcpy(dynamic_buf, &buf, sizeof(buf));
-		dynarray(struct fat32_directory_entry *) copy =
-			dynarray_push(result, dynamic_buf);
+		memcpy(dynamicBuf, &buf, sizeof(buf));
+		Dynarray(struct FAT32_DirectoryEntry *) copy = DYNARRAY_PUSH(result, dynamicBuf);
 		if (copy == NULL) {
-			dynarray_dispose(result);
+			DYNARRAY_DISPOSE(result);
 			return NULL;
 		}
 		result = copy;
@@ -464,280 +435,262 @@ static dynarray(struct fat32_directory_entry *)
 	return result;
 }
 
-static bool fat32_make_directory_inode(struct fat32_superblock *fat32_sb,
-									   struct fat32_directory_entry *entry,
-									   struct vfs_inode *inode) {
-	struct fat32_rw_stream directory_stream;
-	directory_stream.current_cluster = entry->first_cluster;
-	directory_stream.offset_in_cluster = 0;
-	dynarray(struct fat32_directory_entry *) entries =
-		fat32_read_directory(fat32_sb, &directory_stream);
+static bool FAT32_MakeDirectoryInode(struct FAT32_Superblock *fat32Superblock, struct FAT32_DirectoryEntry *entry,
+									 struct VFS_Inode *inode) {
+	struct FAT32_RWStream directoryStream;
+	directoryStream.currentCluster = entry->firstCluster;
+	directoryStream.offsetInCluster = 0;
+	Dynarray(struct FAT32_DirectoryEntry *) entries = FAT32_ReadDirectoryFromStream(fat32Superblock, &directoryStream);
 	if (entries == NULL) {
 		return false;
 	}
-	struct fat32_inode *inode_ctx = ALLOC_OBJ(struct fat32_inode);
-	if (inode_ctx == NULL) {
-		dynarray_dispose(entries);
+	struct FAT32_Inode *inodeContext = ALLOC_OBJ(struct FAT32_Inode);
+	if (inodeContext == NULL) {
+		DYNARRAY_DISPOSE(entries);
 		return false;
 	}
-	inode_ctx->sb = fat32_sb;
-	inode_ctx->first_cluster = entry->first_cluster;
-	inode_ctx->attrib = entry->attrib;
-	inode_ctx->file_size = entry->file_size;
-	inode_ctx->entries = entries;
-	inode->ctx = (void *)inode_ctx;
-	inode->ops = &fat32_dir_inode_ops;
-	inode->stat.st_blkcnt = entry->file_size / fat32_sb->cluster_size;
-	inode->stat.st_blksize = fat32_sb->cluster_size;
-	inode->stat.st_size = entry->file_size;
-	inode->stat.st_type = VFS_DT_DIR;
+	inodeContext->sb = fat32Superblock;
+	inodeContext->firstCluster = entry->firstCluster;
+	inodeContext->attrib = entry->attrib;
+	inodeContext->fileSize = entry->fileSize;
+	inodeContext->entries = entries;
+	inode->ctx = (void *)inodeContext;
+	inode->ops = &FAT32_DirectoryInodeOperations;
+	inode->stat.stBlkcnt = entry->fileSize / fat32Superblock->clusterSize;
+	inode->stat.stBlksize = fat32Superblock->clusterSize;
+	inode->stat.stSize = entry->fileSize;
+	inode->stat.stType = VFS_DT_DIR;
 	return true;
 }
 
-static void fat32_clean_inode(struct vfs_inode *inode) {
-	struct fat32_inode *ctx = (struct fat32_inode *)(inode->ctx);
+static void FAT32_CleanInode(struct VFS_Inode *inode) {
+	struct FAT32_Inode *ctx = (struct FAT32_Inode *)(inode->ctx);
 	if (ctx->entries != NULL) {
-		dynarray_dispose(ctx->entries);
+		DYNARRAY_DISPOSE(ctx->entries);
 	}
 	FREE_OBJ(ctx);
 }
 
-static ino_t fat32_try_inode_insert(struct fat32_superblock *fat32_sb,
-									struct vfs_inode *inode) {
-	mutex_lock(&(fat32_sb->mutex));
+static ino_t FAT32_TryInsertingInode(struct FAT32_Superblock *fat32Superblock, struct VFS_Inode *inode) {
+	Mutex_Lock(&(fat32Superblock->mutex));
 	ino_t index;
-	struct dynarray(vfs_inode) *new_list =
-		pdynarray_insert_pointer(fat32_sb->opened_inodes, inode, &index);
+	struct Dynarray(VFS_Inode) *new_list =
+		POINTER_DYNARRAY_INSERT_pointer(fat32Superblock->openedInodes, inode, &index);
 	if (new_list == NULL) {
-		mutex_unlock(&(fat32_sb->mutex));
+		Mutex_Unlock(&(fat32Superblock->mutex));
 		return 0;
 	}
-	fat32_sb->opened_inodes = new_list;
-	mutex_unlock(&(fat32_sb->mutex));
+	fat32Superblock->openedInodes = new_list;
+	Mutex_Unlock(&(fat32Superblock->mutex));
 	return index + 2;
 }
 
-static ino_t fat32_add_directory_inode(struct fat32_superblock *fat32_sb,
-									   struct fat32_directory_entry *entry) {
-	struct vfs_inode *inode = ALLOC_OBJ(struct vfs_inode);
+static ino_t FAT32_AddDirectoryInode(struct FAT32_Superblock *fat32Superblock, struct FAT32_DirectoryEntry *entry) {
+	struct VFS_Inode *inode = ALLOC_OBJ(struct VFS_Inode);
 	if (inode == NULL) {
 		return 0;
 	}
-	if (!fat32_make_directory_inode(fat32_sb, entry, inode)) {
+	if (!FAT32_MakeDirectoryInode(fat32Superblock, entry, inode)) {
 		FREE_OBJ(inode);
 		return 0;
 	}
-	ino_t index = fat32_try_inode_insert(fat32_sb, inode);
+	ino_t index = FAT32_TryInsertingInode(fat32Superblock, inode);
 	if (index == 0) {
-		fat32_clean_inode(inode);
+		FAT32_CleanInode(inode);
 		FREE_OBJ(inode);
 		return 0;
 	}
 	return index;
 }
 
-static ino_t fat32_add_file_inode(struct fat32_superblock *fat32_sb,
-								  struct fat32_directory_entry *entry) {
-	struct vfs_inode *inode = ALLOC_OBJ(struct vfs_inode);
+static ino_t FAT32_AddFileInode(struct FAT32_Superblock *fat32Superblock, struct FAT32_DirectoryEntry *entry) {
+	struct VFS_Inode *inode = ALLOC_OBJ(struct VFS_Inode);
 	if (inode == NULL) {
 		return 0;
 	}
-	struct fat32_inode *inode_ctx = ALLOC_OBJ(struct fat32_inode);
-	if (inode_ctx == NULL) {
+	struct FAT32_Inode *inodeContext = ALLOC_OBJ(struct FAT32_Inode);
+	if (inodeContext == NULL) {
 		FREE_OBJ(inode);
 		return 0;
 	}
-	inode->ctx = (void *)inode_ctx;
-	inode_ctx->attrib = entry->attrib;
-	inode_ctx->entries = NULL;
-	inode_ctx->file_size = entry->file_size;
-	inode_ctx->first_cluster = entry->first_cluster;
-	inode_ctx->sb = fat32_sb;
-	inode->ops = &fat32_file_inode_ops;
-	inode->stat.st_blkcnt = entry->file_size / fat32_sb->cluster_size;
-	inode->stat.st_blksize = fat32_sb->cluster_size;
-	inode->stat.st_size = entry->file_size;
-	inode->stat.st_type = VFS_DT_REG;
-	ino_t index = fat32_try_inode_insert(fat32_sb, inode);
+	inode->ctx = (void *)inodeContext;
+	inodeContext->attrib = entry->attrib;
+	inodeContext->entries = NULL;
+	inodeContext->fileSize = entry->fileSize;
+	inodeContext->firstCluster = entry->firstCluster;
+	inodeContext->sb = fat32Superblock;
+	inode->ops = &FAT32_FileInodeOperations;
+	inode->stat.stBlkcnt = entry->fileSize / fat32Superblock->clusterSize;
+	inode->stat.stBlksize = fat32Superblock->clusterSize;
+	inode->stat.stSize = entry->fileSize;
+	inode->stat.stType = VFS_DT_REG;
+	ino_t index = FAT32_TryInsertingInode(fat32Superblock, inode);
 	if (index == 0) {
-		fat32_clean_inode(inode);
+		FAT32_CleanInode(inode);
 		FREE_OBJ(inode);
 		return 0;
 	}
 	return index;
 }
 
-static ino_t fat32_add_inode(struct fat32_superblock *fat32_sb,
-							 struct fat32_directory_entry *entry) {
+static ino_t FAT32_AddInode(struct FAT32_Superblock *fat32Superblock, struct FAT32_DirectoryEntry *entry) {
 	if (entry->attrib & FAT32_ATTR_DIRECTORY) {
-		return fat32_add_directory_inode(fat32_sb, entry);
+		return FAT32_AddDirectoryInode(fat32Superblock, entry);
 	}
-	return fat32_add_file_inode(fat32_sb, entry);
+	return FAT32_AddFileInode(fat32Superblock, entry);
 }
 
-static bool fat32_get_inode(struct vfs_superblock *sb, struct vfs_inode *buf,
-							ino_t id) {
+static bool FAT32_GetInode(struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id) {
 	if (id < 1) {
 		return false;
 	}
-	struct fat32_superblock *fat32_sb = (struct fat32_superblock *)(sb->ctx);
-	mutex_lock(&(fat32_sb->mutex));
+	struct FAT32_Superblock *fat32Superblock = (struct FAT32_Superblock *)(sb->ctx);
+	Mutex_Lock(&(fat32Superblock->mutex));
 	if (id == 1) {
-		struct fat32_inode *fat32_ino = ALLOC_OBJ(struct fat32_inode);
-		if (fat32_ino == NULL) {
-			mutex_unlock(&(fat32_sb->mutex));
+		struct FAT32_Inode *fat32Inode = ALLOC_OBJ(struct FAT32_Inode);
+		if (fat32Inode == NULL) {
+			Mutex_Unlock(&(fat32Superblock->mutex));
 			return false;
 		}
-		struct fat32_directory_entry root_entry;
-		root_entry.attrib = FAT32_ATTR_DIRECTORY;
-		root_entry.file_size = 0;
-		root_entry.first_cluster = fat32_sb->ebp.root_directory;
-		if (!fat32_make_directory_inode(fat32_sb, &root_entry, buf)) {
-			mutex_unlock(&(fat32_sb->mutex));
+		struct FAT32_DirectoryEntry rootEntry;
+		rootEntry.attrib = FAT32_ATTR_DIRECTORY;
+		rootEntry.fileSize = 0;
+		rootEntry.firstCluster = fat32Superblock->ebp.rootDirectory;
+		if (!FAT32_MakeDirectoryInode(fat32Superblock, &rootEntry, buf)) {
+			Mutex_Unlock(&(fat32Superblock->mutex));
 			return false;
 		}
-		mutex_unlock(&(fat32_sb->mutex));
+		Mutex_Unlock(&(fat32Superblock->mutex));
 		return true;
-	} else if (id > 1 &&
-			   (ino_t)id <= dynarray_len(fat32_sb->opened_inodes) + 1) {
-		if (fat32_sb->opened_inodes[id - 2] != NULL) {
-			memcpy(buf, fat32_sb->opened_inodes[id - 2],
-				   sizeof(struct vfs_inode));
-			mutex_unlock(&(fat32_sb->mutex));
+	} else if (id > 1 && (ino_t)id <= DYNARRAY_LENGTH(fat32Superblock->openedInodes) + 1) {
+		if (fat32Superblock->openedInodes[id - 2] != NULL) {
+			memcpy(buf, fat32Superblock->openedInodes[id - 2], sizeof(struct VFS_Inode));
+			Mutex_Unlock(&(fat32Superblock->mutex));
 			return true;
 		}
 	}
-	mutex_unlock(&(fat32_sb->mutex));
+	Mutex_Unlock(&(fat32Superblock->mutex));
 	return false;
 }
 
-static void fat32_drop_inode(unused struct vfs_superblock *sb,
-							 struct vfs_inode *ino, unused ino_t id) {
-	fat32_clean_inode(ino);
+static void FAT32_DropInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *ino, UNUSED ino_t id) {
+	FAT32_CleanInode(ino);
 	if (id == 1) {
 		return;
 	}
-	struct fat32_superblock *fat32_sb = (struct fat32_superblock *)(sb->ctx);
-	mutex_lock(&(fat32_sb->mutex));
-	fat32_sb->opened_inodes =
-		pdynarray_remove_pointer(fat32_sb->opened_inodes, id - 2);
-	mutex_unlock(&(fat32_sb->mutex));
+	struct FAT32_Superblock *fat32Superblock = (struct FAT32_Superblock *)(sb->ctx);
+	Mutex_Lock(&(fat32Superblock->mutex));
+	fat32Superblock->openedInodes = POINTER_DYNARRAY_REMOVE_POINTER(fat32Superblock->openedInodes, id - 2);
+	Mutex_Unlock(&(fat32Superblock->mutex));
 }
 
-static ino_t fat32_dir_get_child(struct vfs_inode *inode, const char *name) {
-	struct fat32_inode *inode_ctx = (struct fat32_inode *)(inode->ctx);
-	size_t hash = strhash(name);
-	for (size_t i = 0; i < dynarray_len(inode_ctx->entries); ++i) {
-		if (inode_ctx->entries[i] == NULL) {
+static ino_t FAT32_GetDirectoryChild(struct VFS_Inode *inode, const char *name) {
+	struct FAT32_Inode *inodeContext = (struct FAT32_Inode *)(inode->ctx);
+	USIZE hash = GetStringHash(name);
+	for (USIZE i = 0; i < DYNARRAY_LENGTH(inodeContext->entries); ++i) {
+		if (inodeContext->entries[i] == NULL) {
 			continue;
 		}
-		if (inode_ctx->entries[i]->hash != hash) {
+		if (inodeContext->entries[i]->hash != hash) {
 			continue;
 		}
-		if (!streq(inode_ctx->entries[i]->name, name)) {
+		if (!StringsEqual(inodeContext->entries[i]->name, name)) {
 			continue;
 		}
-		ino_t ino = fat32_add_inode(inode_ctx->sb, inode_ctx->entries[i]);
+		ino_t ino = FAT32_AddInode(inodeContext->sb, inodeContext->entries[i]);
 		return ino;
 	}
 	return 0;
 }
 
-static struct fd *fat32_open_reg_file(struct vfs_inode *inode, int perm) {
+static struct File *FAT32_OpenRegularFile(struct VFS_Inode *inode, int perm) {
 	if (((perm & VFS_O_RDWR) != 0) || ((perm & VFS_O_WRONLY) != 0)) {
 		return NULL;
 	}
-	struct fd *fd = ALLOC_OBJ(struct fd);
+	struct File *fd = ALLOC_OBJ(struct File);
 	if (fd == NULL) {
 		return NULL;
 	}
-	fd->ops = &fat32_reg_file_ops;
-	struct fat32_reg_file_ctx *reg_file_ctx =
-		ALLOC_OBJ(struct fat32_reg_file_ctx);
-	if (reg_file_ctx == NULL) {
+	fd->ops = &FAT32_RegularFileOperations;
+	struct FAT32_RegularFileContext *regFileContext = ALLOC_OBJ(struct FAT32_RegularFileContext);
+	if (regFileContext == NULL) {
 		FREE_OBJ(fd);
 		return NULL;
 	}
-	fd->ctx = (void *)reg_file_ctx;
-	reg_file_ctx->stream.current_cluster =
-		((struct fat32_inode *)inode->ctx)->first_cluster;
-	reg_file_ctx->stream.offset_in_cluster = 0;
+	fd->ctx = (void *)regFileContext;
+	regFileContext->stream.currentCluster = ((struct FAT32_Inode *)inode->ctx)->firstCluster;
+	regFileContext->stream.offsetInCluster = 0;
 	fd->offset = 0;
 	return fd;
 }
 
-static struct fd *fat32_open_dir_file(unused struct vfs_inode *inode,
-									  int perm) {
+static struct File *FAT32_OpenDirectory(UNUSED struct VFS_Inode *inode, int perm) {
 	if (((perm & VFS_O_RDWR) != 0) || ((perm & VFS_O_WRONLY) != 0)) {
 		return NULL;
 	}
-	struct fd *fd = ALLOC_OBJ(struct fd);
+	struct File *fd = ALLOC_OBJ(struct File);
 	if (fd == NULL) {
 		return NULL;
 	}
-	fd->ops = &fat32_dir_file_ops;
+	fd->ops = &FAT32_DirectoryFileOperations;
 	fd->offset = 0;
 	return fd;
 }
 
-static off_t fat32_reg_file_lseek(struct fd *file, off_t offset, int whence) {
-	struct fat32_reg_file_ctx *ctx = (struct fat32_reg_file_ctx *)file->ctx;
-	struct fat32_inode *inode =
-		(struct fat32_inode *)(file->dentry->inode->ctx);
+static off_t FAT32_LseekInRegularFile(struct File *file, off_t offset, int whence) {
+	struct FAT32_RegularFileContext *ctx = (struct FAT32_RegularFileContext *)file->ctx;
+	struct FAT32_Inode *inode = (struct FAT32_Inode *)(file->dentry->inode->ctx);
 	if (whence == SEEK_CUR) {
-		if (file->offset + offset >= (int64_t)(inode->file_size)) {
+		if (file->offset + offset >= (INT64)(inode->fileSize)) {
 			return -1;
 		}
-		off_t result = fat32_skip_in_stream(inode->sb, &(ctx->stream), offset);
+		off_t result = FAT32_SkipInStream(inode->sb, &(ctx->stream), offset);
 		return file->offset + result;
 	} else if (whence == SEEK_SET || whence == SEEK_END) {
 		if (whence == SEEK_END) {
 			if (offset > 0) {
 				return -1;
 			}
-			if (offset < -(int64_t)(inode->file_size)) {
+			if (offset < -(INT64)(inode->fileSize)) {
 				return -1;
 			}
-			offset = (int64_t)(inode->file_size) - offset;
+			offset = (INT64)(inode->fileSize) - offset;
 		}
-		if (offset >= (int64_t)(inode->file_size)) {
+		if (offset >= (INT64)(inode->fileSize)) {
 			return -1;
 		}
-		ctx->stream.current_cluster = inode->first_cluster;
-		ctx->stream.offset_in_cluster = 0;
-		off_t result = fat32_skip_in_stream(inode->sb, &(ctx->stream), offset);
+		ctx->stream.currentCluster = inode->firstCluster;
+		ctx->stream.offsetInCluster = 0;
+		off_t result = FAT32_SkipInStream(inode->sb, &(ctx->stream), offset);
 		return result;
 	}
 	return -1;
 }
 
-static int fat32_reg_file_read(struct fd *file, int size, char *buf) {
-	struct fat32_reg_file_ctx *ctx = (struct fat32_reg_file_ctx *)file->ctx;
-	struct fat32_inode *inode =
-		(struct fat32_inode *)(file->dentry->inode->ctx);
+static int FAT32_RegularFileRead(struct File *file, int size, char *buf) {
+	struct FAT32_RegularFileContext *ctx = (struct FAT32_RegularFileContext *)file->ctx;
+	struct FAT32_Inode *inode = (struct FAT32_Inode *)(file->dentry->inode->ctx);
 	if (size < 0) {
 		return -1;
 	}
-	if ((uint32_t)file->offset + (uint32_t)size >= inode->file_size) {
-		size = inode->file_size - file->offset;
+	if ((UINT32)file->offset + (UINT32)size >= inode->fileSize) {
+		size = inode->fileSize - file->offset;
 	}
-	int result =
-		fat32_read_stream(inode->sb, &(ctx->stream), (size_t)size, buf);
+	int result = FAT32_ReadFromStream(inode->sb, &(ctx->stream), (USIZE)size, buf);
 	file->offset += result;
 	return result;
 }
 
-static int fat32_dir_file_readdir(struct fd *file, struct fd_dirent *buf) {
-	struct fat32_inode *inode =
-		(struct fat32_inode *)(file->dentry->inode->ctx);
+static int FAT32_ReadDirectoryEntries(struct File *file, struct DirectoryEntry *buf) {
+	struct FAT32_Inode *inode = (struct FAT32_Inode *)(file->dentry->inode->ctx);
 	while (true) {
-		if (file->offset >= dynarray_len(inode->entries)) {
+		if (file->offset >= DYNARRAY_LENGTH(inode->entries)) {
 			return 0;
 		}
 		if (inode->entries[file->offset] != NULL) {
-			struct fat32_directory_entry *entry = inode->entries[file->offset];
-			memcpy(buf->dt_name, entry->name, 256);
-			buf->dt_ino = 0;
+			struct FAT32_DirectoryEntry *entry = inode->entries[file->offset];
+			memcpy(buf->dtName, entry->name, 256);
+			buf->dtIno = 0;
 			file->offset++;
 			return 1;
 		}
@@ -746,112 +699,107 @@ static int fat32_dir_file_readdir(struct fd *file, struct fd_dirent *buf) {
 	return 0;
 }
 
-static void fat32_close_file(struct fd *file) { vfs_finalize(file); }
+static void FAT32_CloseFile(struct File *file) {
+	VFS_FinalizeFile(file);
+}
 
-static struct vfs_superblock *fat32_mount(const char *device_path) {
-	struct vfs_superblock *result = ALLOC_OBJ(struct vfs_superblock);
+static struct VFS_Superblock *FAT32_Mount(const char *device_path) {
+	struct VFS_Superblock *result = ALLOC_OBJ(struct VFS_Superblock);
 	if (result == NULL) {
 		return NULL;
 	}
-	struct fat32_superblock *fat32_sb = ALLOC_OBJ(struct fat32_superblock);
-	if (fat32_sb == NULL) {
-		goto fail_free_result;
+	struct FAT32_Superblock *fat32Superblock = ALLOC_OBJ(struct FAT32_Superblock);
+	if (fat32Superblock == NULL) {
+		goto failFreeResult;
 	}
-	result->type = &fat32_superblock_type;
-	result->ctx = (void *)fat32_sb;
-	struct fd *device = vfs_open(device_path, VFS_O_RDWR);
+	result->type = &FAT32_SuperblockType;
+	result->ctx = (void *)fat32Superblock;
+	struct File *device = VFS_Open(device_path, VFS_O_RDWR);
 	if (device == NULL) {
-		goto fail_free_sb;
+		goto failFreeSuperblock;
 	}
-	fat32_sb->device = device;
-	if (!fd_readat(device, 0, sizeof(struct fat32_bpb),
-				   (char *)&(fat32_sb->bpb))) {
-		goto fail_close_device;
+	fat32Superblock->device = device;
+	if (!File_Readat(device, 0, sizeof(struct FAT32_BIOSBootRecord), (char *)&(fat32Superblock->bpb))) {
+		goto failCloseDevice;
 	}
-	if (!fd_readat(device, sizeof(struct fat32_bpb), sizeof(struct fat32_ebp),
-				   (char *)&(fat32_sb->ebp))) {
-		goto fail_close_device;
+	if (!File_Readat(device, sizeof(struct FAT32_BIOSBootRecord), sizeof(struct FAT32_ExtendedBootRecord),
+					 (char *)&(fat32Superblock->ebp))) {
+		goto failCloseDevice;
 	}
-	uint64_t fsinfo_offset =
-		fat32_sb->bpb.bytes_per_sector * fat32_sb->ebp.fs_info_sector;
-	if (!fd_readat(device, fsinfo_offset, sizeof(struct fat32_fsinfo),
-				   (char *)&(fat32_sb->fsinfo))) {
-		goto fail_close_device;
+	UINT64 fsinfo_offset = fat32Superblock->bpb.bytesPerSector * fat32Superblock->ebp.fsInfoSector;
+	if (!File_Readat(device, fsinfo_offset, sizeof(struct FAT32_FSInfo), (char *)&(fat32Superblock->fsinfo))) {
+		goto failCloseDevice;
 	}
-	if (fat32_sb->ebp.bootable_signature != 0xaa55) {
-		goto fail_close_device;
-	} else if (fat32_sb->fsinfo.lead_signature != 0x41615252) {
-		goto fail_close_device;
-	} else if (fat32_sb->fsinfo.another_signature != 0x61417272) {
-		goto fail_close_device;
-	} else if (fat32_sb->fsinfo.trail_signature != 0xAA550000) {
-		goto fail_close_device;
+	if (fat32Superblock->ebp.bootableSignature != 0xaa55) {
+		goto failCloseDevice;
+	} else if (fat32Superblock->fsinfo.lead_signature != 0x41615252) {
+		goto failCloseDevice;
+	} else if (fat32Superblock->fsinfo.anotherSignature != 0x61417272) {
+		goto failCloseDevice;
+	} else if (fat32Superblock->fsinfo.trailSignature != 0xAA550000) {
+		goto failCloseDevice;
 	}
-	fat32_sb->fat_length =
-		(fat32_sb->ebp.sectors_per_fat * fat32_sb->bpb.bytes_per_sector) / 4;
-	fat32_sb->cluster_size =
-		fat32_sb->bpb.bytes_per_sector * fat32_sb->bpb.sectors_per_cluster;
-	fat32_sb->fat_offset =
-		fat32_sb->bpb.reserved_sectors * fat32_sb->bpb.bytes_per_sector;
-	fat32_sb->clusters_offset =
-		fat32_sb->fat_offset + fat32_sb->ebp.sectors_per_fat *
-								   fat32_sb->bpb.bytes_per_sector *
-								   fat32_sb->bpb.fat_count;
-	fat32_sb->opened_inodes = dynarray_make(struct vfs_inode *);
-	if (fat32_sb->opened_inodes == NULL) {
-		goto fail_close_device;
+	fat32Superblock->fatLength = (fat32Superblock->ebp.sectorsPerFAT * fat32Superblock->bpb.bytesPerSector) / 4;
+	fat32Superblock->clusterSize = fat32Superblock->bpb.bytesPerSector * fat32Superblock->bpb.sectorsPerCluster;
+	fat32Superblock->fatOffset = fat32Superblock->bpb.reservedSectors * fat32Superblock->bpb.bytesPerSector;
+	fat32Superblock->clustersOffset = fat32Superblock->fatOffset + fat32Superblock->ebp.sectorsPerFAT *
+																	   fat32Superblock->bpb.bytesPerSector *
+																	   fat32Superblock->bpb.fatCount;
+	fat32Superblock->openedInodes = DYNARRAY_NEW(struct VFS_Inode *);
+	if (fat32Superblock->openedInodes == NULL) {
+		goto failCloseDevice;
 	}
-	mutex_init(&(fat32_sb->mutex));
+	Mutex_Initialize(&(fat32Superblock->mutex));
 	return result;
-fail_close_device:
-	fd_close(device);
-fail_free_sb:
-	FREE_OBJ(fat32_sb);
-fail_free_result:
+failCloseDevice:
+	File_Close(device);
+failFreeSuperblock:
+	FREE_OBJ(fat32Superblock);
+failFreeResult:
 	FREE_OBJ(result);
 	return NULL;
 }
 
-void fat32_umount(struct vfs_superblock *sb) {
-	struct fat32_superblock *fat32_sb = (struct fat32_superblock *)(sb->ctx);
-	fd_close(fat32_sb->device);
-	dynarray_dispose(fat32_sb->opened_inodes);
+void FAT32_Unmount(struct VFS_Superblock *sb) {
+	struct FAT32_Superblock *fat32Superblock = (struct FAT32_Superblock *)(sb->ctx);
+	File_Close(fat32Superblock->device);
+	DYNARRAY_DISPOSE(fat32Superblock->openedInodes);
 }
 
-void fat32_init() {
-	fat32_dir_file_ops.close = fat32_close_file;
-	fat32_dir_file_ops.flush = NULL;
-	fat32_dir_file_ops.lseek = NULL;
-	fat32_dir_file_ops.write = NULL;
-	fat32_dir_file_ops.readdir = fat32_dir_file_readdir;
+void FAT32_Initialize() {
+	FAT32_DirectoryFileOperations.close = FAT32_CloseFile;
+	FAT32_DirectoryFileOperations.flush = NULL;
+	FAT32_DirectoryFileOperations.lseek = NULL;
+	FAT32_DirectoryFileOperations.write = NULL;
+	FAT32_DirectoryFileOperations.readdir = FAT32_ReadDirectoryEntries;
 
-	fat32_reg_file_ops.close = fat32_close_file;
-	fat32_dir_file_ops.flush = NULL;
-	fat32_reg_file_ops.write = NULL;
-	fat32_reg_file_ops.lseek = fat32_reg_file_lseek;
-	fat32_reg_file_ops.read = fat32_reg_file_read;
+	FAT32_RegularFileOperations.close = FAT32_CloseFile;
+	FAT32_DirectoryFileOperations.flush = NULL;
+	FAT32_RegularFileOperations.write = NULL;
+	FAT32_RegularFileOperations.lseek = FAT32_LseekInRegularFile;
+	FAT32_RegularFileOperations.read = FAT32_RegularFileRead;
 
-	fat32_dir_inode_ops.get_child = fat32_dir_get_child;
-	fat32_dir_inode_ops.link = NULL;
-	fat32_dir_inode_ops.mkdir = NULL;
-	fat32_dir_inode_ops.open = fat32_open_dir_file;
-	fat32_dir_inode_ops.unlink = NULL;
+	FAT32_DirectoryInodeOperations.getChild = FAT32_GetDirectoryChild;
+	FAT32_DirectoryInodeOperations.link = NULL;
+	FAT32_DirectoryInodeOperations.mkdir = NULL;
+	FAT32_DirectoryInodeOperations.open = FAT32_OpenDirectory;
+	FAT32_DirectoryInodeOperations.unlink = NULL;
 
-	fat32_file_inode_ops.get_child = NULL;
-	fat32_file_inode_ops.link = NULL;
-	fat32_file_inode_ops.mkdir = NULL;
-	fat32_file_inode_ops.open = fat32_open_reg_file;
-	fat32_file_inode_ops.unlink = NULL;
+	FAT32_FileInodeOperations.getChild = NULL;
+	FAT32_FileInodeOperations.link = NULL;
+	FAT32_FileInodeOperations.mkdir = NULL;
+	FAT32_FileInodeOperations.open = FAT32_OpenRegularFile;
+	FAT32_FileInodeOperations.unlink = NULL;
 
-	fat32_superblock_type.drop_inode = NULL;
-	memset(fat32_superblock_type.fs_name, 0, VFS_MAX_NAME_LENGTH);
-	memcpy(fat32_superblock_type.fs_name, "fat32", 6);
-	fat32_superblock_type.fs_name_hash = strhash("fat32");
-	fat32_superblock_type.get_inode = fat32_get_inode;
-	fat32_superblock_type.get_root_inode = NULL;
-	fat32_superblock_type.sync = NULL;
-	fat32_superblock_type.drop_inode = fat32_drop_inode;
-	fat32_superblock_type.umount = NULL;
-	fat32_superblock_type.mount = fat32_mount;
-	vfs_register_filesystem(&fat32_superblock_type);
+	FAT32_SuperblockType.dropInode = NULL;
+	memset(FAT32_SuperblockType.fsName, 0, VFS_MAX_NAME_LENGTH);
+	memcpy(FAT32_SuperblockType.fsName, "fat32", 6);
+	FAT32_SuperblockType.fsNameHash = GetStringHash("fat32");
+	FAT32_SuperblockType.getInode = FAT32_GetInode;
+	FAT32_SuperblockType.getRootInode = NULL;
+	FAT32_SuperblockType.sync = NULL;
+	FAT32_SuperblockType.dropInode = FAT32_DropInode;
+	FAT32_SuperblockType.umount = NULL;
+	FAT32_SuperblockType.mount = FAT32_Mount;
+	VFS_RegisterFilesystem(&FAT32_SuperblockType);
 };

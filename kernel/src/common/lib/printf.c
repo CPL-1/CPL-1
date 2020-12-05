@@ -1,39 +1,39 @@
 #include <common/lib/printf.h>
 #include <hal/drivers/tty.h>
 
-char char_from_digit(uint8_t digit) {
+static char printf_GetCharFromDigit(UINT8 digit) {
 	if (digit >= 10) {
 		return 'a' - 10 + digit;
 	}
 	return '0' + digit;
 }
 
-size_t putui(uint64_t val, uint8_t base, bool rec, char *buf, size_t size) {
+static USIZE printf_PrintUnsignedInteger(UINT64 val, UINT8 base, bool rec, char *buf, USIZE size) {
 	if (val == 0 && rec) {
 		return 0;
 	}
-	size_t used = putui(val / base, base, true, buf, size);
+	USIZE used = printf_PrintUnsignedInteger(val / base, base, true, buf, size);
 	if (used >= size) {
 		return used;
 	}
-	buf[used] = char_from_digit(val % base);
+	buf[used] = printf_GetCharFromDigit(val % base);
 	return used + 1;
 }
 
-size_t puti(int64_t val, int8_t base, char *buf, size_t size) {
+static USIZE printf_PrintInteger(INT64 val, INT8 base, char *buf, USIZE size) {
 	if (size == 0) {
 		return 0;
 	}
 	if (val < 0) {
 		buf[0] = '-';
-		return putui((uint64_t)-val, base, false, buf + 1, size - 1) + 1;
+		return printf_PrintUnsignedInteger((UINT64)-val, base, false, buf + 1, size - 1) + 1;
 	}
-	return putui((uint64_t)val, base, false, buf, size);
+	return printf_PrintUnsignedInteger((UINT64)val, base, false, buf, size);
 }
 
-size_t puts(const char *str, char *buf, size_t size) {
-	size_t pos = 0;
-	for (uint64_t i = 0; str[i] != '\0'; ++i) {
+static USIZE printf_PrintString(const char *str, char *buf, USIZE size) {
+	USIZE pos = 0;
+	for (UINT64 i = 0; str[i] != '\0'; ++i) {
 		if (pos >= size) {
 			return pos;
 		}
@@ -43,39 +43,39 @@ size_t puts(const char *str, char *buf, size_t size) {
 	return pos;
 }
 
-size_t putp(uintptr_t pointer, int depth, char *buf, size_t size) {
+static USIZE printf_PrintPointer(UINTN pointer, int depth, char *buf, USIZE size) {
 	if (depth == 0) {
 		return 0;
 	}
 	if (size == 0) {
 		return 0;
 	}
-	size_t used = putp(pointer / 16, depth - 1, buf, size);
+	USIZE used = printf_PrintPointer(pointer / 16, depth - 1, buf, size);
 	if (size == used) {
 		return used;
 	}
-	buf[used] = char_from_digit(pointer % 16);
+	buf[used] = printf_GetCharFromDigit(pointer % 16);
 	return used + 1;
 }
 
-size_t printf(const char *fmt, ...) {
+USIZE printf(const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	size_t result = va_printf(fmt, args);
+	USIZE result = va_printf(fmt, args);
 	va_end(args);
 	return result;
 }
 
-size_t sprintf(const char *fmt, char *buf, size_t size, ...) {
+USIZE sprintf(const char *fmt, char *buf, USIZE size, ...) {
 	va_list args;
 	va_start(args, size);
-	size_t result = va_sprintf(fmt, buf, size, args);
+	USIZE result = va_sprintf(fmt, buf, size, args);
 	va_end(args);
 	return result;
 }
 
-size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
-	size_t pos = 0;
+USIZE va_sprintf(const char *fmt, char *buf, USIZE size, va_list args) {
+	USIZE pos = 0;
 	for (int i = 0; fmt[i] != '\0'; ++i) {
 		if (pos >= size) {
 			return size;
@@ -91,17 +91,16 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 				pos++;
 				break;
 			case 'd':
-				pos += puti(va_arg(args, int32_t), 10, buf + pos, size - pos);
+				pos += printf_PrintInteger((INT64)va_arg(args, INT32), 10, buf + pos, size - pos);
 				break;
 			case 'u':
-				pos += putui(va_arg(args, uint32_t), 10, false, buf + pos,
-							 size - pos);
+				pos += printf_PrintUnsignedInteger((UINT64)va_arg(args, UINT32), 10, false, buf + pos, size - pos);
 				break;
 			case 'p':
-				pos += putp(va_arg(args, uintptr_t), 8, buf + pos, size - pos);
+				pos += printf_PrintPointer((UINT64)va_arg(args, UINTN), sizeof(UINTN) * 2, buf + pos, size - pos);
 				break;
 			case 's':
-				pos += puts(va_arg(args, char *), buf + pos, size - pos);
+				pos += printf_PrintString(va_arg(args, char *), buf + pos, size - pos);
 				break;
 			case 'c':
 				buf[pos] = (char)va_arg(args, int);
@@ -111,12 +110,10 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 				++i;
 				switch (fmt[i]) {
 				case 'u':
-					pos += putui(va_arg(args, uint64_t), 10, false, buf + pos,
-								 size - pos);
+					pos += printf_PrintUnsignedInteger(va_arg(args, UINT64), 10, false, buf + pos, size - pos);
 					break;
 				case 'd':
-					pos +=
-						puti(va_arg(args, int64_t), 10, buf + pos, size - pos);
+					pos += printf_PrintInteger(va_arg(args, INT64), 10, buf + pos, size - pos);
 					break;
 				default:
 					break;
@@ -129,16 +126,16 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 	return pos;
 }
 
-void write(const char *str, uint64_t size) {
-	for (uint64_t i = 0; i < size; ++i) {
-		hal_tty_putc(str[i]);
+void printf_WriteStrinig(const char *str, UINT64 size) {
+	for (UINT64 i = 0; i < size; ++i) {
+		HAL_TTY_PrintCharacter(str[i]);
 	}
-	hal_tty_flush();
+	HAL_TTY_Flush();
 }
 
-size_t va_printf(const char *str, va_list args) {
+USIZE va_printf(const char *str, va_list args) {
 	char buf[1024];
-	size_t count = va_sprintf(str, buf, 1024, args);
-	write(buf, count);
+	USIZE count = va_sprintf(str, buf, 1024, args);
+	printf_WriteStrinig(buf, count);
 	return count;
 }

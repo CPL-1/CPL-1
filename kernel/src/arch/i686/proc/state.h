@@ -4,11 +4,11 @@
 #include <common/misc/utils.h>
 
 struct i686_cpu_state {
-	uint32_t ds, gs, fs, es;
-	uint32_t edi, esi, ebp;
-	uint32_t : 32;
-	uint32_t ebx, edx, ecx, eax;
-	uint32_t eip, cs, eflags, esp, ss;
-} packed;
+	UINT32 ds, gs, fs, es;
+	UINT32 edi, esi, ebp;
+	UINT32 : 32;
+	UINT32 ebx, edx, ecx, eax;
+	UINT32 eip, cs, eflags, esp, ss;
+} PACKED;
 
 #endif

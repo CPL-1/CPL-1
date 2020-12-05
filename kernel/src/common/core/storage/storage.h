@@ -5,37 +5,36 @@
 #include <common/core/proc/mutex.h>
 #include <common/misc/utils.h>
 
-struct storage_dev {
-	size_t sector_size;
-	size_t max_rw_sectors_count;
-	uint64_t sectors_count;
+struct Storage_Device {
+	USIZE sectorSize;
+	USIZE maxRWSectorsCount;
+	UINT64 sectorsCount;
 	void *ctx;
-	bool (*rw_lba)(void *ctx, char *buf, uint64_t lba, size_t count,
-				   bool write);
-	struct mutex mutex;
+	bool (*rw_lba)(void *ctx, char *buf, UINT64 lba, USIZE count, bool write);
+	struct Mutex mutex;
 	char name[256];
-	enum {
+	enum
+	{
 		STORAGE_NUMERIC_PART_NAMING,
 		STORAGE_P_NUMERIC_PART_NAMING,
 		STORAGE_NO_PART_ENUMERATION,
-	} partitioning_scheme;
-	enum {
+	} partitioningScheme;
+	enum
+	{
 		STORAGE_NOT_OPENED,
 		STORAGE_OPENED_PARTITION,
 		STORAGE_OPENED,
-	} opened_mode;
-	size_t partitions_opened_count;
+	} openedMode;
+	USIZE partitions_opened_count;
 };
 
-bool storage_init(struct storage_dev *storage);
-bool storage_lock_try_open_partition(struct storage_dev *storage);
-void storage_lock_close_partition(struct storage_dev *storage);
-bool storage_rw(struct storage_dev *storage, uint64_t offset, size_t size,
-				char *buf, bool write);
-void storage_flush(struct storage_dev *storage);
-struct fd *storage_fd_open(struct vfs_inode *inode, int perm);
-struct vfs_inode *storage_make_inode(struct storage_dev *storage);
-void storage_make_part_name(struct storage_dev *storage, char *buf,
-							unsigned int part_id);
+bool storageInit(struct Storage_Device *storage);
+bool Storage_LockTryOpenPartition(struct Storage_Device *storage);
+void Storage_LockClosePartition(struct Storage_Device *storage);
+bool storageRW(struct Storage_Device *storage, UINT64 offset, USIZE size, char *buf, bool write);
+void storageFlush(struct Storage_Device *storage);
+struct File *storageFileOpen(struct VFS_Inode *inode, int perm);
+struct VFS_Inode *storageMakeInode(struct Storage_Device *storage);
+void storageMakePartitionName(struct Storage_Device *storage, char *buf, unsigned int part_id);
 
 #endif

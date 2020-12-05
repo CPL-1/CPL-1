@@ -5,17 +5,23 @@
 
 #define PROC_KERNEL_STACK_SIZE 4096
 
-struct proc_process {
-	struct proc_id pid, ppid;
-	struct proc_process *next, *prev;
-	struct proc_process *wait_queue_head;
-	struct proc_process *wait_queue_tail;
-	struct proc_process *next_in_queue;
-	char *process_state;
-	struct virt_address_space *address_space;
-	uintptr_t kernel_stack;
-	int return_code;
-	enum { SLEEPING, RUNNING, WAITING_FOR_CHILD_TERM, ZOMBIE } state;
+struct Proc_Process {
+	struct Proc_ProcessID pid, ppid;
+	struct Proc_Process *next, *prev;
+	struct Proc_Process *waitQueueHead;
+	struct Proc_Process *waitQueueTail;
+	struct Proc_Process *nextInQueue;
+	char *processState;
+	struct VirtualMM_AddressSpace *address_space;
+	UINTN kernelStack;
+	int returnCode;
+	enum
+	{
+		SLEEPING,
+		RUNNING,
+		WAITING_FOR_CHILD_TERM,
+		ZOMBIE
+	} state;
 };
 
 #endif

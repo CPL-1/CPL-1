@@ -1,12 +1,12 @@
-#ifndef __PRINTF_H_INCLUDED__
-#define __PRINTF_H_INCLUDED__
+#ifndef __printf_H_INCLUDED__
+#define __printf_H_INCLUDED__
 
+#include <common/misc/types.h>
 #include <stdarg.h>
-#include <stddef.h>
 
-size_t printf(const char *fmt, ...);
-size_t sprintf(const char *fmt, char *buf, size_t size, ...);
-size_t va_printf(const char *fmt, va_list args);
-size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args);
+USIZE printf(const char *fmt, ...);
+USIZE sprintf(const char *fmt, char *buf, USIZE size, ...);
+USIZE va_printf(const char *fmt, va_list args);
+USIZE va_sprintf(const char *fmt, char *buf, USIZE size, va_list args);
 
 #endif

@@ -3,10 +3,10 @@
 
 #include <common/misc/utils.h>
 
-uintptr_t hal_phys_krnl_alloc_area(uintptr_t size);
-void hal_phys_krnl_free_area(uintptr_t area, size_t size);
+UINTN HAL_PhysicalMM_KernelAllocArea(UINTN size);
+void HAL_PhysicalMM_KernelFreeArea(UINTN area, USIZE size);
 
-uintptr_t hal_phys_user_alloc_frame();
-void hal_phys_user_free_frame(uintptr_t frame);
+UINTN HAL_PhysicalMM_UserAllocFrame();
+void HAL_PhysicalMM_UserFreeFrame(UINTN frame);
 
 #endif

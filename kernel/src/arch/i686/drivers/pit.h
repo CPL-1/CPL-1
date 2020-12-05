@@ -4,6 +4,6 @@
 #include <common/misc/utils.h>
 #include <hal/proc/timer.h>
 
-void i686_pit_init(uint32_t freq);
+void i686_PIT8253_Initialize(UINT32 freq);
 
 #endif

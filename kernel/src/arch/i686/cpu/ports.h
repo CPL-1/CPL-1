@@ -3,32 +3,32 @@
 
 #include <common/misc/utils.h>
 
-static inline void outb(uint16_t port, uint8_t val) {
+static INLINE void i686_Ports_WriteByte(UINT16 port, UINT8 val) {
 	asm volatile("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline uint8_t inb(uint16_t port) {
-	uint8_t ret;
+static INLINE UINT8 i686_Ports_ReadByte(UINT16 port) {
+	UINT8 ret;
 	asm volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
 	return ret;
 }
 
-static inline void outw(uint16_t port, uint16_t val) {
+static INLINE void i686_Ports_WriteWord(UINT16 port, UINT16 val) {
 	asm volatile("outw %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline uint16_t inw(uint16_t port) {
-	uint16_t ret;
+static INLINE UINT16 i686_Ports_ReadWord(UINT16 port) {
+	UINT16 ret;
 	asm volatile("inw %1, %0" : "=a"(ret) : "Nd"(port));
 	return ret;
 }
 
-static inline void outl(uint16_t port, uint32_t val) {
+static INLINE void i686_Ports_WriteDoubleWord(UINT16 port, UINT32 val) {
 	asm volatile("outl %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline uint32_t inl(uint16_t port) {
-	uint32_t ret;
+static INLINE UINT32 i686_Ports_ReadDoubleWord(UINT16 port) {
+	UINT32 ret;
 	asm volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
 	return ret;
 };

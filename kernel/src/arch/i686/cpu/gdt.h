@@ -3,7 +3,7 @@
 
 #include <common/misc/utils.h>
 
-void i686_gdt_init();
-uint16_t i686_gdt_get_tss_segment();
+void i686_GDT_Initialize();
+UINT16 i686_GDT_GetTSSSegment();
 
 #endif

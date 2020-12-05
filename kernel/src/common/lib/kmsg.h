@@ -3,10 +3,11 @@
 
 #include <common/misc/utils.h>
 
-void kmsg_init_done(const char *mod);
-void kmsg_ok(const char *mode, const char *text);
-void kmsg_warn(const char *mod, const char *text);
-void kmsg_err(const char *mod, const char *text);
-void kmsg_log(const char *mod, const char *text);
+void KernelLog_InitDoneMsg(const char *mod);
+void KernelLog_OkMsg(const char *mode, const char *fmt, ...);
+void KernelLog_WarnMsg(const char *mod, const char *fmt, ...);
+void KernelLog_ErrorMsg(const char *mod, const char *fmt, ...);
+void KernelLog_InfoMsg(const char *mod, const char *fmt, ...);
+void KernelLog_Print(const char *fmt, ...);
 
 #endif

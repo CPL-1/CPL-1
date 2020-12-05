@@ -4,6 +4,6 @@
 #include <common/core/fd/vfs.h>
 #include <common/misc/utils.h>
 
-struct vfs_superblock *rootfs_make_superblock();
+struct VFS_Superblock *RootFS_MakeSuperblock();
 
 #endif

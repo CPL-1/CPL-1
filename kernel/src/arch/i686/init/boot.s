@@ -1,37 +1,37 @@
 bits 32
 
-global i686_stivale_start
-extern i686_kernel_main
+global i686_Stivale_EntryPoint
+extern i686_KernelInit_DoInitialization
 
 KERNEL_MAPPING_BASE: equ 0xc0000000
 
 section .bss
 align 4096
-i686_stack_bottom:
+i686_BootStackBottom:
 resb 65536
-i686_stack_top:
-i686_stack_top_phys: equ i686_stack_top - KERNEL_MAPPING_BASE
-i686_boot_page_dir:
+i686_BootStackTop:
+i686_BootStackTopPhys: equ i686_BootStackTop - KERNEL_MAPPING_BASE
+i686_BootPageTableDirectory:
 resb 4096
-i686_boot_page_dir_phys: equ i686_boot_page_dir - KERNEL_MAPPING_BASE
-i686_boot_page_table:
+i686_BootPageTableDirectoryPhys: equ i686_BootPageTableDirectory - KERNEL_MAPPING_BASE
+i686_BootPageTable:
 resb 4096
-i686_boot_page_table_phys: equ i686_boot_page_table - KERNEL_MAPPING_BASE
+i686_BootPageTablePhys: equ i686_BootPageTable - KERNEL_MAPPING_BASE
 
 section .stivalehdr
-dd i686_stack_top_phys
+dd i686_BootStackTopPhys
 dd 0
-dw 0
+dw 1
 dw 0
 dw 0
 dw 0
 dq 0
 
 section .inittext
-i686_stivale_start:
+i686_Stivale_EntryPoint:
     pop ebx
     pop ebx
-    mov edi, i686_boot_page_table_phys
+    mov edi, i686_BootPageTablePhys
     xor esi, esi
     mov ecx, 1024
 .mapping_loop:
@@ -45,11 +45,11 @@ i686_stivale_start:
     dec ecx
     jmp .mapping_loop
 .mapping_done:
-    mov ebp, i686_boot_page_table_phys
+    mov ebp, i686_BootPageTablePhys
     or ebp, 0b11
-    mov dword [i686_boot_page_dir_phys], ebp
-    mov dword [i686_boot_page_dir_phys + 768 * 4], ebp
-    mov ecx, i686_boot_page_dir_phys
+    mov dword [i686_BootPageTableDirectoryPhys], ebp
+    mov dword [i686_BootPageTableDirectoryPhys + 768 * 4], ebp
+    mov ecx, i686_BootPageTableDirectoryPhys
     mov cr3, ecx
     mov ecx, cr0
     or ecx, 0x80010000
@@ -58,9 +58,9 @@ i686_stivale_start:
 
 section .text
 i686_higher_half_start:
-    mov esp, i686_stack_top
+    mov esp, i686_BootStackTop
     push ebx
-    call i686_kernel_main
+    call i686_KernelInit_DoInitialization
     pop ebx
     cli
 .halted:

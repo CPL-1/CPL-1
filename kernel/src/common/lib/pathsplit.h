@@ -3,15 +3,15 @@
 
 #include <common/misc/utils.h>
 
-struct path_splitter {
+struct PathSplitter {
 	char *copy;
-	size_t size;
-	size_t pos;
+	USIZE size;
+	USIZE pos;
 };
 
-bool path_splitter_init(const char *str, struct path_splitter *splitter);
-const char *path_splitter_get(struct path_splitter *splitter);
-const char *path_splitter_advance(struct path_splitter *splitter);
-void path_splitter_dispose(struct path_splitter *splitter);
+bool PathSplitter_Init(const char *str, struct PathSplitter *splitter);
+const char *PathSplitter_Get(struct PathSplitter *splitter);
+const char *PathSplitter_Advance(struct PathSplitter *splitter);
+void PathSplitter_Dispose(struct PathSplitter *splitter);
 
 #endif

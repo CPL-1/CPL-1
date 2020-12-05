@@ -4,7 +4,8 @@
 #include <common/core/fd/fd.h>
 #include <common/core/proc/mutex.h>
 
-enum {
+enum
+{
 	VFS_DT_UNKNOWN = 0,
 	VFS_DT_FIFO = 1,
 	VFS_DT_CHR = 2,
@@ -16,78 +17,83 @@ enum {
 	VFS_DT_WHT = 14,
 };
 
-enum { VFS_O_RDONLY = 0, VFS_O_WRONLY = 1, VFS_O_RDWR = 2, VFS_O_ACCMODE = 3 };
+enum
+{
+	VFS_O_RDONLY = 0,
+	VFS_O_WRONLY = 1,
+	VFS_O_RDWR = 2,
+	VFS_O_ACCMODE = 3
+};
 
-struct vfs_dentry {
+struct VFS_Dentry {
 	char name[VFS_MAX_NAME_LENGTH + 1];
-	size_t hash;
-	size_t ref_count;
-	struct vfs_inode *inode;
-	struct mutex mutex;
-	struct vfs_dentry *parent, *head, *prev, *next;
+	USIZE hash;
+	USIZE refCount;
+	struct VFS_Inode *inode;
+	struct Mutex mutex;
+	struct VFS_Dentry *parent, *head, *prev, *next;
 };
 
-struct vfs_inode_ops {
-	ino_t (*get_child)(struct vfs_inode *inode, const char *name);
-	struct fd *(*open)(struct vfs_inode *inode, int perm);
-	int (*mkdir)(struct vfs_inode *inode, const char *name);
-	int (*link)(struct vfs_inode *inode, ino_t id);
-	int (*unlink)(struct vfs_inode *inode, const char *name);
+struct VFS_InodeOperations {
+	ino_t (*getChild)(struct VFS_Inode *inode, const char *name);
+	struct File *(*open)(struct VFS_Inode *inode, int perm);
+	int (*mkdir)(struct VFS_Inode *inode, const char *name);
+	int (*link)(struct VFS_Inode *inode, ino_t id);
+	int (*unlink)(struct VFS_Inode *inode, const char *name);
 };
 
-struct vfs_stat {
-	mode_t st_type;
-	off_t st_size;
-	blksize_t st_blksize;
-	blkcnt_t st_blkcnt;
+struct VFS_Stat {
+	mode_t stType;
+	off_t stSize;
+	blksize_t stBlksize;
+	blkcnt_t stBlkcnt;
 };
 
-struct vfs_inode {
+struct VFS_Inode {
 	bool dirty;
 	ino_t id;
 	void *ctx;
-	size_t ref_count;
-	struct vfs_inode *prev_in_cache, *next_in_cache;
-	struct vfs_stat stat;
-	struct vfs_superblock *mount;
-	struct vfs_superblock *sb;
-	struct vfs_inode_ops *ops;
-	struct mutex mutex;
+	USIZE refCount;
+	struct VFS_Inode *prevInCache, *nextInCache;
+	struct VFS_Stat stat;
+	struct VFS_Superblock *mount;
+	struct VFS_Superblock *sb;
+	struct VFS_InodeOperations *ops;
+	struct Mutex mutex;
 };
 
-struct vfs_superblock_type {
-	char fs_name[255];
-	size_t fs_name_hash;
-	struct vfs_superblock *(*mount)(const char *device_path);
-	bool (*get_inode)(struct vfs_superblock *sb, struct vfs_inode *buf, ino_t id);
-	void (*drop_inode)(struct vfs_superblock *sb, struct vfs_inode *buf, ino_t id);
-	void (*sync)(struct vfs_superblock *sb);
-	void (*umount)(struct vfs_superblock *sb);
-	ino_t (*get_root_inode)(struct vfs_superblock *sb);
-	struct vfs_superblock_type *prev, *next;
+struct VFS_Superblock_type {
+	char fsName[255];
+	USIZE fsNameHash;
+	struct VFS_Superblock *(*mount)(const char *device_path);
+	bool (*getInode)(struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id);
+	void (*dropInode)(struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id);
+	void (*sync)(struct VFS_Superblock *sb);
+	void (*umount)(struct VFS_Superblock *sb);
+	ino_t (*getRootInode)(struct VFS_Superblock *sb);
+	struct VFS_Superblock_type *prev, *next;
 };
 
 #define VFS_ICACHE_MODULO 25
-struct vfs_superblock {
-	struct vfs_dentry *root;
+struct VFS_Superblock {
+	struct VFS_Dentry *root;
 	void *ctx;
-	struct vfs_superblock_type *type;
-	struct vfs_superblock *next;
-	struct vfs_inode *inode_lists[VFS_ICACHE_MODULO];
-	struct vfs_superblock *prev_mounted, *next_mounted;
-	struct vfs_dentry *mount_location;
-	struct mutex mutex;
+	struct VFS_Superblock_type *type;
+	struct VFS_Superblock *next;
+	struct VFS_Inode *inodeLists[VFS_ICACHE_MODULO];
+	struct VFS_Superblock *prevMounted, *nextMounted;
+	struct VFS_Dentry *mountLocation;
+	struct Mutex mutex;
 };
 
-void vfs_init(struct vfs_superblock *sb);
+void VFS_Initialize(struct VFS_Superblock *sb);
 
-bool vfs_mount_initialized(const char *path, struct vfs_superblock *sb);
-bool vfs_mount_user(const char *path, const char *devpath,
-					const char *fs_type_name);
-bool vfs_unmount(const char *path);
-void vfs_register_filesystem(struct vfs_superblock_type *type);
+bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb);
+bool VFS_UserMount(const char *path, const char *devpath, const char *fs_type_name);
+bool VFS_UserUnmount(const char *path);
+void VFS_RegisterFilesystem(struct VFS_Superblock_type *type);
 
-struct fd *vfs_open(const char *path, int perm);
-void vfs_finalize(struct fd *fd);
+struct File *VFS_Open(const char *path, int perm);
+void VFS_FinalizeFile(struct File *fd);
 
 #endif

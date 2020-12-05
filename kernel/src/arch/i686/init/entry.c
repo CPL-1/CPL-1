@@ -30,113 +30,104 @@
 #include <hal/proc/intlock.h>
 #include <hal/proc/isrhandler.h>
 
-void print_pci(struct i686_pci_address addr, struct i686_pci_id id,
-			   void *context) {
-	(void)context;
-	hal_tty_set_color(0x0f);
-	printf("         |> ");
-	hal_tty_set_color(0x07);
-	printf("bus: %d, slot: %d, function: %d, vendor_id: %d, device_id: %d\n",
-		   addr.bus, addr.slot, addr.function, id.vendor_id, id.device_id);
+void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_PCI_ID id, UNUSED void *context) {
+	KernelLog_Print("PCI device found at bus: %d, slot: %d, function: %d, "
+					"vendor_id: %d, device_id: %d",
+					addr.bus, addr.slot, addr.function, id.vendor_id, id.device_id);
 }
 
-void urm_thread() {
+void i686_KernelInit_URMThreadFunction() {
 	while (true) {
-		while (proc_dispose_queue_poll()) {
+		while (Proc_PollDisposeQueue()) {
 		}
-		asm volatile("pause");
-		proc_yield();
+		ASM volatile("pause");
+		Proc_Yield();
 	}
 }
 
-void kernel_init_process();
+void i686_KernelInit_ExecuteInitProcess();
 
-void i686_kernel_main(uint32_t mb_offset) {
-	i686_tty_init();
-	kmsg_log("i686 Kernel Init",
-			 "Preparing to unleash the real power of your CPU...");
-	kmsg_init_done("i686 VGA Text Display Driver");
-	i686_cr3_init();
-	kmsg_init_done("i686 Root Page Table Manager");
-	i686_gdt_init();
-	kmsg_init_done("i686 GDT Loader");
-	i686_tss_init();
-	kmsg_init_done("i686 TSS Loader");
-	i686_stivale_init(mb_offset);
-	kmsg_init_done("i686 Stivale v1.0 Tables Parser");
-	i686_phys_init();
-	kmsg_init_done("i686 Physical Memory Allocator");
-	i686_virt_kernel_mapping_init();
-	kmsg_init_done("i686 Virtual Memory Mapper");
-	heap_init();
-	kmsg_init_done("Kernel Heap Heap");
-	i686_iowait_init();
-	kmsg_init_done("i686 IO Wait Subsystem");
-	i686_idt_init();
-	kmsg_init_done("i686 IDT Loader");
-	i686_pic_init();
-	kmsg_init_done("i686 8259 Programmable Interrupt Controller Driver");
-	i686_pit_init(25);
-	kmsg_init_done("8253/8254 Programmable Interval Timer Driver");
-	i686_priv_init();
-	kmsg_init_done("i686 Privilege Manager");
-	ring1_switch();
-	kmsg_ok("i686 Ring 1 Initializer", "Executing in Ring 1!");
-	proc_init();
-	kmsg_init_done("Process Manager & Scheduler");
-	vfs_init(rootfs_make_superblock());
-	kmsg_log("i686 Kernel Init", "Starting Init Process...");
-	struct proc_id init_id = proc_new_process(proc_my_id());
-	struct proc_process *init_data = proc_get_data(init_id);
-	struct i686_cpu_state *init_state =
-		(struct i686_cpu_state *)(init_data->process_state);
-	init_state->ds = init_state->es = init_state->gs = init_state->fs =
-		init_state->ss = 0x21;
-	init_state->cs = 0x19;
-	init_state->eip = (uint32_t)kernel_init_process;
-	init_state->esp = init_data->kernel_stack + PROC_KERNEL_STACK_SIZE;
-	init_state->eflags = (1 << 9) | (1 << 12);
-	init_data->address_space = virt_new_address_space();
-	if (init_data->address_space == NULL) {
-		kmsg_err("i686 Kernel Init", "Failed to allocate address space object");
+void i686_KernelInit_DoInitialization(UINT32 mb_offset) {
+	i686_Stivale_Initialize(mb_offset);
+	KernelLog_InfoMsg("i686 Kernel Init", "Preparing to unleash the real power of your CPU...");
+	KernelLog_InitDoneMsg("i686 Stivale v1.0 Tables Parser");
+	i686_CR3_Initialize();
+	KernelLog_InitDoneMsg("i686 Root Page Table Manager");
+	i686_GDT_Initialize();
+	KernelLog_InitDoneMsg("i686 GDT Loader");
+	i686_TSS_Initialize();
+	KernelLog_InitDoneMsg("i686 TSS Loader");
+	i686_PhysicalMM_Initialize();
+	KernelLog_InitDoneMsg("i686 Physical Memory Allocator");
+	i686_VirtualMM_InitializeKernelMap();
+	KernelLog_InitDoneMsg("i686 Virtual Memory Mapper");
+	i686_TTY_Initialize();
+	KernelLog_InitDoneMsg("i686 Terminal");
+	Heap_Initialize();
+	KernelLog_InitDoneMsg("Kernel Heap Heap");
+	i686_IOWait_Initialize();
+	KernelLog_InitDoneMsg("i686 IO Wait Subsystem");
+	i686_IDT_Initialize();
+	KernelLog_InitDoneMsg("i686 IDT Loader");
+	i686_PIC8259_Initialize();
+	KernelLog_InitDoneMsg("i686 8259 Programmable Interrupt Controller Driver");
+	i686_PIT8253_Initialize(25);
+	KernelLog_InitDoneMsg("8253/8254 Programmable Interval Timer Driver");
+	i686_Ring0Executor_Initialize();
+	KernelLog_InitDoneMsg("i686 Privilege Manager");
+	Ring1_Switch();
+	KernelLog_OkMsg("i686 Ring 1 Initializer", "Executing in Ring 1!");
+	Proc_Initialize();
+	KernelLog_InitDoneMsg("Process Manager & Scheduler");
+	VFS_Initialize(RootFS_MakeSuperblock());
+	KernelLog_InfoMsg("i686 Kernel Init", "Starting Init Process...");
+	struct Proc_ProcessID initID = Proc_MakeNewProcess(Proc_GetProcessID());
+	struct Proc_Process *initData = Proc_GetProcessData(initID);
+	struct i686_cpu_state *initState = (struct i686_cpu_state *)(initData->processState);
+	initState->ds = initState->es = initState->gs = initState->fs = initState->ss = 0x21;
+	initState->cs = 0x19;
+	initState->eip = (UINT32)i686_KernelInit_ExecuteInitProcess;
+	initState->esp = initData->kernelStack + PROC_KERNEL_STACK_SIZE;
+	initState->eflags = (1 << 9) | (1 << 12);
+	initData->address_space = VirtualMM_MakeNewAddressSpace();
+	if (initData->address_space == NULL) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate address space object");
 	}
-	proc_continue(init_id);
-	urm_thread();
+	Proc_Resume(initID);
+	i686_KernelInit_URMThreadFunction();
 }
 
-void kernel_init_process() {
-	kmsg_log("i686 Kernel Init", "Executing in a separate init process");
-	kmsg_log("Entry Process", "Enumerating PCI Bus...");
-	i686_pci_enumerate(print_pci, NULL);
-	kmsg_init_done("Virtual File System");
-	devfs_init();
-	kmsg_init_done("Device File System");
-	fat32_init();
-	kmsg_init_done("FAT32 File System");
-	vfs_mount_user("/dev/", NULL, "devfs");
-	kmsg_log("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
-	i686_iowait_enable_used_irq();
-	kmsg_log("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
-	detect_hardware();
-	kmsg_init_done("i686 Hardware Autodetection Routine");
-	vfs_mount_user("/", "/dev/nvme0n1p1", "fat32");
-	kmsg_log("i686 Kernel Init", "Mounted FAT32 Filesystem on /");
-	kmsg_log("i686 Kernel Init", "Testing FAT32 directory iteration...");
-	struct fd *fd = vfs_open("/", VFS_O_RDONLY);
-	struct fd_dirent dirent;
-	while (fd_readdir(fd, &dirent, 1) == 1) {
-		printf("         * %s\n", dirent.dt_name);
+void i686_KernelInit_ExecuteInitProcess() {
+	KernelLog_InfoMsg("i686 Kernel Init", "Executing in a separate init process");
+	KernelLog_InfoMsg("Entry Process", "Enumerating PCI Bus...");
+	i686_PCI_Enumerate(i686_KernelInit_DisplayPCIDevice, NULL);
+	KernelLog_InitDoneMsg("Virtual File System");
+	DevFS_Initialize();
+	KernelLog_InitDoneMsg("Device File System");
+	FAT32_Initialize();
+	KernelLog_InitDoneMsg("FAT32 File System");
+	VFS_UserMount("/dev/", NULL, "devfs");
+	KernelLog_InfoMsg("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
+	i686_IOWait_UnmaskUsedIRQ();
+	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
+	i686_DetectHardware();
+	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");
+	VFS_UserMount("/", "/dev/nvme0n1p1", "fat32");
+	KernelLog_InfoMsg("i686 Kernel Init", "Mounted FAT32 Filesystem on /");
+	KernelLog_InfoMsg("i686 Kernel Init", "Testing FAT32 directory iteration...");
+	struct File *fd = VFS_Open("/", VFS_O_RDONLY);
+	struct DirectoryEntry dirent;
+	while (File_Readdir(fd, &dirent, 1) == 1) {
+		KernelLog_Print("* %s", dirent.dtName);
 	}
-	fd_close(fd);
-	kmsg_log("i686 Kernel Init", "Testing FAT32 file reading routines...");
-	fd =
-		vfs_open("/folder_lmao/another_folder/yet_another_folder/test_file.txt",
-				 VFS_O_RDONLY);
+	File_Close(fd);
+	KernelLog_InfoMsg("i686 Kernel Init", "Testing FAT32 file reading routines...");
+	fd = VFS_Open("/folder_lmao/another_folder/yet_another_folder/test_file.txt", VFS_O_RDONLY);
 	char buf[513];
 	while (true) {
-		int read = fd_read(fd, 512, buf);
+		int read = File_Read(fd, 512, buf);
 		if (read == -1) {
-			break;
+			KernelLog_ErrorMsg("i686 Kernel Init", "Failed to read test file");
 		}
 		buf[read] = '\0';
 		printf("%s", buf);
@@ -144,15 +135,15 @@ void kernel_init_process() {
 			break;
 		}
 	}
-	fd_close(fd);
-	kmsg_log("i686 Kernel Init", "Testing reading kernel binary from disk");
-	char *buf2 = heap_alloc(272384);
+	File_Close(fd);
+	KernelLog_InfoMsg("i686 Kernel Init", "Testing reading kernel binary from disk");
+	char *buf2 = Heap_AllocateMemory(0x100000);
 	if (buf2 == NULL) {
-		while (true)
-			;
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate memory for kernel binary reading test");
 	}
-	fd = vfs_open("/boot/kernel.elf", VFS_O_RDONLY);
-	printf("Done %u\n", fd_read(fd, 272384, buf2));
+	fd = VFS_Open("/boot/kernel.elf", VFS_O_RDONLY);
+	int result = File_Read(fd, 0x100000, buf2);
+	KernelLog_Print("Kernel binary reading done. Size: %u bytes", result);
 	while (true)
 		;
 }

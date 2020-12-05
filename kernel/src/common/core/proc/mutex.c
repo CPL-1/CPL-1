@@ -4,72 +4,72 @@
 #include <common/lib/kmsg.h>
 #include <hal/proc/intlock.h>
 
-void mutex_init(struct mutex *mutex) {
-	mutex->queue_head = mutex->queue_tail = NULL;
+void Mutex_Initialize(struct Mutex *mutex) {
+	mutex->queueHead = mutex->queueTail = NULL;
 	mutex->locked = false;
 }
 
-void mutex_lock(struct mutex *mutex) {
-	if (!proc_is_initialized()) {
+void Mutex_Lock(struct Mutex *mutex) {
+	if (!Proc_IsInitialized()) {
 		return;
 	}
-	hal_intlock_lock();
-	struct proc_process *process = proc_get_data(proc_my_id());
+	HAL_InterruptLock_Lock();
+	struct Proc_Process *process = Proc_GetProcessData(Proc_GetProcessID());
 	if (process == NULL) {
-		kmsg_err("Mutex Manager", "Failed to get current process data");
+		KernelLog_ErrorMsg("Mutex Manager", "Failed to get current process data");
 	}
 	if (!(mutex->locked)) {
 		mutex->locked = true;
-		hal_intlock_unlock();
+		HAL_InterruptLock_Unlock();
 		return;
 	}
-	if (mutex->queue_head == NULL) {
-		mutex->queue_head = mutex->queue_tail = process;
+	if (mutex->queueHead == NULL) {
+		mutex->queueHead = mutex->queueTail = process;
 	} else {
-		mutex->queue_tail->next = process;
+		mutex->queueTail->next = process;
 	}
-	process->next_in_queue = NULL;
-	proc_pause_self(true);
+	process->nextInQueue = NULL;
+	Proc_SuspendSelf(true);
 }
 
-void mutex_unlock(struct mutex *mutex) {
-	if (!proc_is_initialized()) {
+void Mutex_Unlock(struct Mutex *mutex) {
+	if (!Proc_IsInitialized()) {
 		return;
 	}
-	hal_intlock_lock();
-	if (mutex->queue_head == NULL) {
+	HAL_InterruptLock_Lock();
+	if (mutex->queueHead == NULL) {
 		mutex->locked = false;
-		hal_intlock_unlock();
+		HAL_InterruptLock_Unlock();
 		return;
-	} else if (mutex->queue_head == mutex->queue_tail) {
-		struct proc_process *process = mutex->queue_head;
-		mutex->queue_head = mutex->queue_tail = NULL;
-		hal_intlock_unlock();
-		proc_continue(process->pid);
+	} else if (mutex->queueHead == mutex->queueTail) {
+		struct Proc_Process *process = mutex->queueTail;
+		mutex->queueHead = mutex->queueTail = NULL;
+		HAL_InterruptLock_Unlock();
+		Proc_Resume(process->pid);
 	} else {
-		struct proc_process *process = mutex->queue_head;
-		mutex->queue_head = mutex->queue_head->next;
-		hal_intlock_unlock();
-		proc_continue(process->pid);
+		struct Proc_Process *process = mutex->queueHead;
+		mutex->queueHead = mutex->queueHead->next;
+		HAL_InterruptLock_Unlock();
+		Proc_Resume(process->pid);
 	}
 }
 
-bool mutex_is_queued(struct mutex *mutex) {
-	if (!proc_is_initialized()) {
+bool Mutex_IsAnyProcessWaiting(struct Mutex *mutex) {
+	if (!Proc_IsInitialized()) {
 		return false;
 	}
-	hal_intlock_lock();
-	bool result = mutex->queue_head != NULL;
-	hal_intlock_unlock();
+	HAL_InterruptLock_Lock();
+	bool result = mutex->queueHead != NULL;
+	HAL_InterruptLock_Unlock();
 	return result;
 }
 
-bool mutex_is_locked(struct mutex *mutex) {
-	if (!proc_is_initialized()) {
+bool Mutex_IsLocked(struct Mutex *mutex) {
+	if (!Proc_IsInitialized()) {
 		return false;
 	}
-	hal_intlock_lock();
+	HAL_InterruptLock_Lock();
 	bool result = mutex->locked;
-	hal_intlock_unlock();
+	HAL_InterruptLock_Unlock();
 	return result;
 }

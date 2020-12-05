@@ -3,7 +3,6 @@
 
 #include <hal/proc/isrhandler.h>
 
-hal_isr_handler_t i686_isr_handler_new(hal_isr_handler_t entry_point,
-									   void *ctx);
+HAL_ISR_Handler i686_ISR_MakeNewISRHandler(HAL_ISR_Handler entry_point, void *ctx);
 
 #endif

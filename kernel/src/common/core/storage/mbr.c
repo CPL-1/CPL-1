@@ -4,43 +4,40 @@
 #include <common/core/storage/partdev.h>
 #include <common/core/storage/storage.h>
 
-bool mbr_check_disk(struct storage_dev *dev) {
+bool MBR_CheckDisk(struct Storage_Device *dev) {
 	char magic[3];
 	magic[2] = '\0';
-	if (!storage_rw(dev, 510, 2, magic, false)) {
+	if (!storageRW(dev, 510, 2, magic, false)) {
 		return false;
 	}
-	return streq(magic, "\x55\xaa");
+	return StringsEqual(magic, "\x55\xaa");
 }
 
 struct mbr_entry {
-	uint32_t status : 8;
-	uint32_t start_head : 8;
-	uint32_t start_cylinder : 10;
-	uint32_t start_sector : 6;
-	uint32_t code : 8;
-	uint32_t end_head : 8;
-	uint32_t end_cylinder : 10;
-	uint32_t end_sector : 6;
-	uint32_t starting_lba : 32;
-	uint32_t lba_size : 32;
-} packed little_endian noalign;
+	UINT32 status : 8;
+	UINT32 startHead : 8;
+	UINT32 startCylinder : 10;
+	UINT32 startSector : 6;
+	UINT32 code : 8;
+	UINT32 endHead : 8;
+	UINT32 endCylinder : 10;
+	UINT32 endSector : 6;
+	UINT32 startingLba : 32;
+	UINT32 lbaSize : 32;
+} PACKED LITTLE_ENDIAN NOALIGN;
 
-bool mbr_enumerate_partitions(struct storage_dev *dev) {
+bool MBR_EnumeratePartitions(struct Storage_Device *dev) {
 	struct mbr_entry entries[4];
-	if (!storage_rw(dev, 0x1be, sizeof(entries), (char *)entries, false)) {
-		printf("Here (32)\n");
+	if (!storageRW(dev, 0x1be, sizeof(entries), (char *)entries, false)) {
 		return false;
 	}
-	struct vfs_inode *partdevs[4];
-	for (size_t i = 0; i < 4; ++i) {
-		if (entries[i].code != 0x05 && entries[i].code != 0x0f &&
-			entries[i].code != 0x00) {
-			partdevs[i] = partdev_make(
-				dev, (uint64_t)(entries[i].starting_lba) * dev->sector_size,
-				(uint64_t)(entries[i].lba_size) * dev->sector_size);
+	struct VFS_Inode *partdevs[4];
+	for (USIZE i = 0; i < 4; ++i) {
+		if (entries[i].code != 0x05 && entries[i].code != 0x0f && entries[i].code != 0x00) {
+			partdevs[i] = PartDev_MakePartitionDevice(dev, (UINT64)(entries[i].startingLba) * dev->sectorSize,
+													  (UINT64)(entries[i].lbaSize) * dev->sectorSize);
 			if (partdevs[i] == NULL) {
-				for (size_t j = 0; j < i; ++j) {
+				for (USIZE j = 0; j < i; ++j) {
 					if (partdevs[j] != NULL) {
 						FREE_OBJ(partdevs[j]);
 					}
@@ -52,14 +49,14 @@ bool mbr_enumerate_partitions(struct storage_dev *dev) {
 			partdevs[i] = NULL;
 		}
 	}
-	for (size_t i = 0; i < 4; ++i) {
+	for (USIZE i = 0; i < 4; ++i) {
 		if (partdevs[i] == NULL) {
 			continue;
 		}
 		char buf[256];
 		memset(buf, 0, 256);
-		storage_make_part_name(dev, buf, i);
-		if (!devfs_register_inode(buf, partdevs[i])) {
+		storageMakePartitionName(dev, buf, i);
+		if (!DevFS_RegisterInode(buf, partdevs[i])) {
 			FREE_OBJ(partdevs[i]);
 		}
 	}

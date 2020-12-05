@@ -4,7 +4,7 @@ all: clean build
 ../x86/limine/limine-install:
 	cd ../x86/limine && make limine-install
 
-build: ../x86/limine/limine-install
+CPL-1_i686.hdd: ../x86/limine/limine-install
 	cd ../../kernel/build/i686 && make build -j`nproc` && cp kernel.elf ../../../build/i686/kernel.elf
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	parted -s CPL-1_i686.hdd mklabel msdos
@@ -24,22 +24,24 @@ build: ../x86/limine/limine-install
 	rm -rf loopback_dev
 	../x86/limine/limine-install ../x86/limine/limine.bin CPL-1_i686.hdd
 
+build: CPL-1_i686.hdd
+
 clean:
 	cd ../../kernel/build/i686 && make clean
 	rm -rf kernel.elf
 	rm -rf CPL-1_i686.hdd
 
-run:
+run: CPL-1_i686.hdd
 	qemu-system-i386 -no-reboot -no-shutdown -boot c \
 	-drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
 	-device nvme,drive=NVME1,serial=nvme-1 --enable-kvm -debugcon stdio
 
-run-with-ints:
+run-with-ints: CPL-1_i686.hdd
 	qemu-system-i386 -no-reboot -no-shutdown -boot c \
 	-drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
 	-device nvme,drive=NVME1,serial=nvme-1 -debugcon stdio -d int
 	
-debug:
+debug: CPL-1_i686.hdd
 	qemu-system-i386 -d int -no-reboot -no-shutdown -boot c \
 	-s -S -daemonize -drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
 	-device nvme,drive=NVME1,serial=nvme-1 -singlestep

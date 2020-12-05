@@ -1,35 +1,37 @@
 #ifndef __PROC_H_INCLUDED__
 #define __PROC_H_INCLUDED__
 
-#define MAX_PROC_COUNT 4096
-#define INVALID_PROC_ID                                                        \
-	(struct proc_id) { .id = MAX_PROC_COUNT, .instance_number = 0 }
+#define PROC_MAX_PROCESS_COUNT 4096
+#define PROC_INVALID_PROC_ID                                                                                           \
+	(struct Proc_ProcessID) {                                                                                          \
+		.id = PROC_MAX_PROCESS_COUNT, .instance_number = 0                                                             \
+	}
 
-struct proc_id {
-	uint64_t id;
-	uint64_t instance_number;
+struct Proc_ProcessID {
+	UINT64 id;
+	UINT64 instance_number;
 };
 
-static inline bool proc_is_valid_proc_id(struct proc_id id) {
-	return id.id != MAX_PROC_COUNT;
+static INLINE bool proc_is_valid_Proc_ProcessID(struct Proc_ProcessID id) {
+	return id.id != PROC_MAX_PROCESS_COUNT;
 }
 
-void proc_init();
-bool proc_is_initialized();
+void Proc_Initialize();
+bool Proc_IsInitialized();
 
-struct proc_id proc_new_process(struct proc_id parent);
+struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent);
 
-void proc_yield();
-struct proc_id proc_my_id();
-void proc_pause_self(bool override_state);
-void proc_pause(struct proc_id id, bool override_state);
-void proc_continue(struct proc_id id);
-struct proc_process *proc_wait_for_child_term();
-struct proc_process *proc_get_data(struct proc_id id);
+void Proc_Yield();
+struct Proc_ProcessID Proc_GetProcessID();
+void Proc_SuspendSelf(bool overrideState);
+void Proc_Suspend(struct Proc_ProcessID id, bool overrideState);
+void Proc_Resume(struct Proc_ProcessID id);
+struct Proc_Process *Proc_WaitForChildTermination();
+struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id);
 
-void proc_exit(int exit_code);
-void proc_dispose(struct proc_process *process);
+void Proc_Exit(int exitCode);
+void Proc_Dispose(struct Proc_Process *process);
 
-bool proc_dispose_queue_poll();
+bool Proc_PollDisposeQueue();
 
 #endif

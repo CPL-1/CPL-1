@@ -3,7 +3,8 @@
 
 #include <common/misc/utils.h>
 
-enum {
+enum
+{
 	I686_PCI_COMMAND = 0x04,
 	I686_PCI_HEADER_TYPE = 0x0e,
 	I686_PCI_VENDOR_ID = 0x00,
@@ -23,44 +24,39 @@ enum {
 	I686_PCI_STATUS = 0x06,
 };
 
-struct i686_pci_id {
-	uint16_t vendor_id;
-	uint16_t device_id;
+struct i686_PCI_ID {
+	UINT16 vendor_id;
+	UINT16 device_id;
 };
 
-struct i686_pci_address {
-	uint8_t bus;
-	uint8_t slot;
-	uint8_t function;
+struct i686_PCI_Address {
+	UINT8 bus;
+	UINT8 slot;
+	UINT8 function;
 };
 
 struct i686_pci_bar {
-	uint32_t address;
-	uint32_t size;
+	UINT32 address;
+	UINT32 size;
 
-	bool is_mmio;
-	bool disable_cache;
+	bool isMMIO;
+	bool disableCache;
 };
 
-typedef void (*i686_pci_enumerator_t)(struct i686_pci_address addr,
-									  struct i686_pci_id id, void *ctx);
+typedef void (*i686_pci_enumerator_t)(struct i686_PCI_Address addr, struct i686_PCI_ID id, void *ctx);
 
-void i686_pci_enable_bus_mastering(struct i686_pci_address address);
-bool i686_pci_read_bar(struct i686_pci_address address, int index,
-					   struct i686_pci_bar *bar);
+void i686_PCI_EnableBusMastering(struct i686_PCI_Address address);
+bool i686_PCI_ReadBAR(struct i686_PCI_Address address, int index, struct i686_pci_bar *bar);
 
-uint8_t i686_pci_inb(struct i686_pci_address address, uint8_t field);
-uint16_t i686_pci_inw(struct i686_pci_address address, uint8_t field);
-uint32_t i686_pci_inl(struct i686_pci_address address, uint8_t field);
+UINT8 i686_PCI_ReadByte(struct i686_PCI_Address address, UINT8 field);
+UINT16 i686_PCI_ReadWord(struct i686_PCI_Address address, UINT8 field);
+UINT32 i686_PCI_ReadDoubleWord(struct i686_PCI_Address address, UINT8 field);
 
-void i686_pci_outb(struct i686_pci_address address, uint8_t field,
-				   uint8_t value);
-void i686_pci_outw(struct i686_pci_address address, uint8_t field,
-				   uint16_t value);
-void i686_pci_outl(struct i686_pci_address address, uint8_t field,
-				   uint32_t value);
+void i686_PCI_WriteByte(struct i686_PCI_Address address, UINT8 field, UINT8 value);
+void i686_PCI_WriteWord(struct i686_PCI_Address address, UINT8 field, UINT16 value);
+void i686_PCI_WriteDoubleWord(struct i686_PCI_Address address, UINT8 field, UINT32 value);
 
-void i686_pci_enumerate(i686_pci_enumerator_t enumerator, void *ctx);
-uint16_t i686_pci_get_type(struct i686_pci_address address);
+void i686_PCI_Enumerate(i686_pci_enumerator_t enumerator, void *ctx);
+UINT16 i686_PCI_GetDeviceType(struct i686_PCI_Address address);
 
 #endif

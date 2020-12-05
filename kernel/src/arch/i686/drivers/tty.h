@@ -3,6 +3,7 @@
 
 #include <common/misc/utils.h>
 
-void i686_tty_init();
+void i686_TTY_Initialize();
+void i686_TTY_InitFramebuffer();
 
 #endif

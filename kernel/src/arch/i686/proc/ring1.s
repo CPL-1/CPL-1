@@ -1,7 +1,7 @@
 bits 32
 
-global ring1_switch
-ring1_switch:
+global Ring1_Switch
+Ring1_Switch:
     push eax
     pushfd
     pop eax

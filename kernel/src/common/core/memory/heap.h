@@ -3,11 +3,11 @@
 
 #include <common/misc/utils.h>
 
-void heap_init();
-void *heap_alloc(size_t size);
-void heap_free(void *area, size_t size);
+void Heap_Initialize();
+void *Heap_AllocateMemory(USIZE size);
+void Heap_FreeMemory(void *area, USIZE size);
 
-#define ALLOC_OBJ(t) (t *)heap_alloc(sizeof(t))
-#define FREE_OBJ(p) heap_free(p, sizeof(typeof(*(p))))
+#define ALLOC_OBJ(t) (t *)Heap_AllocateMemory(sizeof(t))
+#define FREE_OBJ(p) Heap_FreeMemory(p, sizeof(typeof(*(p))))
 
 #endif

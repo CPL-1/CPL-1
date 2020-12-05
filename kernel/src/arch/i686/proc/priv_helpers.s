@@ -1,11 +1,11 @@
 bits 32
 
-global i686_priv_call_ring0
-global i686_priv_call_ring0_isr
+global i686_Ring0Executor_Invoke
+global i686_Ring0Executor_InvokeISRHandler
 
 section .text
 
-i686_priv_call_ring0:
+i686_Ring0Executor_Invoke:
     pop edx
     pop ecx
     int 0xff
@@ -13,7 +13,7 @@ i686_priv_call_ring0:
     push edx
     ret
 
-i686_priv_call_ring0_isr:
+i686_Ring0Executor_InvokeISRHandler:
     pusha
 
     push es

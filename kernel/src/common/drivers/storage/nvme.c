@@ -16,68 +16,69 @@
 #define NVME_MAX_MDTS 8
 #define NVME_QUEUE_PHYS_CONTIG (1 << 0) | (1 << 1)
 
-static uint32_t nvme_controllers_detected = 0;
+static UINT32 NVME_ControllersDetected = 0;
 
-struct nvme_cap_register {
-	uint32_t mqes : 16;
-	uint32_t cqr : 1;
-	uint32_t ams_is_weighted_rr_supported : 1;
-	uint32_t ams_vendor_specific : 1;
-	uint32_t : 5;
-	uint32_t to : 8;
-	uint32_t dstrd : 4;
-	uint32_t nssrs : 1;
-	uint32_t css_is_nvm_supported : 1;
-	uint32_t : 6;
-	uint32_t css_is_only_admin_supported : 1;
-	uint32_t bps : 1;
-	uint32_t : 2;
-	uint32_t mpsmin : 4;
-	uint32_t mpsmax : 4;
-	uint32_t pmrs : 1;
-	uint32_t cmbs : 1;
-	uint32_t : 6;
-} packed_align(8) little_endian;
+struct NVME_CAPRegister {
+	UINT32 mqes : 16;
+	UINT32 cqr : 1;
+	UINT32 amsIsWeightedRRSupported : 1;
+	UINT32 amsVendorSpecific : 1;
+	UINT32 : 5;
+	UINT32 to : 8;
+	UINT32 dstrd : 4;
+	UINT32 nssrs : 1;
+	UINT32 cssIsNvmSupported : 1;
+	UINT32 : 6;
+	UINT32 cssIsOnlyAdminSupported : 1;
+	UINT32 bps : 1;
+	UINT32 : 2;
+	UINT32 mpsmin : 4;
+	UINT32 mpsmax : 4;
+	UINT32 pmrs : 1;
+	UINT32 cmbs : 1;
+	UINT32 : 6;
+} PACKED_ALIGN(8) LITTLE_ENDIAN;
 
-struct nvme_cc_register {
-	uint32_t en : 1;
-	uint32_t : 3;
-	uint32_t css : 3;
-	uint32_t mps : 4;
-	uint32_t ams : 3;
-	uint32_t shn : 2;
-	uint32_t iosqes : 4;
-	uint32_t iocqes : 4;
-	uint32_t : 8;
-} packed_align(4) little_endian;
+struct NVME_CC_Register {
+	UINT32 en : 1;
+	UINT32 : 3;
+	UINT32 css : 3;
+	UINT32 mps : 4;
+	UINT32 ams : 3;
+	UINT32 shn : 2;
+	UINT32 iosqes : 4;
+	UINT32 iocqes : 4;
+	UINT32 : 8;
+} PACKED_ALIGN(4) LITTLE_ENDIAN;
 
-struct nvme_csts_register {
-	uint32_t rdy : 1;
-	uint32_t cfs : 1;
-	uint32_t shst : 2;
-	uint32_t nssro : 1;
-	uint32_t pp : 1;
-	uint32_t : 26;
-} packed_align(4) little_endian;
+struct NVME_CSTSRegister {
+	UINT32 rdy : 1;
+	UINT32 cfs : 1;
+	UINT32 shst : 2;
+	UINT32 nssro : 1;
+	UINT32 pp : 1;
+	UINT32 : 26;
+} PACKED_ALIGN(4) LITTLE_ENDIAN;
 
-struct nvme_aqa_register {
-	uint32_t asqs : 12;
-	uint32_t : 4;
-	uint32_t acqs : 12;
-	uint32_t : 4;
-} packed_align(4) little_endian;
+struct NVME_AQARegister {
+	UINT32 asqs : 12;
+	UINT32 : 4;
+	UINT32 acqs : 12;
+	UINT32 : 4;
+} PACKED_ALIGN(4) LITTLE_ENDIAN;
 
-struct nvme_asq_register {
-	uint64_t : 12;
-	uint64_t page : 52;
-} packed_align(8) little_endian;
+struct NVME_ASQRegister {
+	UINT64 : 12;
+	UINT64 page : 52;
+} PACKED_ALIGN(8) LITTLE_ENDIAN;
 
-struct nvme_acq_register {
-	uint64_t : 12;
-	uint64_t page : 52;
-} packed_align(8) little_endian;
+struct NVME_ACQRegister {
+	UINT64 : 12;
+	UINT64 page : 52;
+} PACKED_ALIGN(8) LITTLE_ENDIAN;
 
-enum nvme_admin_opcode {
+enum NVME_AdminOpcode
+{
 	NVME_CREATE_SUBMISSION_QUEUE = 0x01,
 	NVME_CREATE_COMPLETITION_QUEUE = 0x05,
 	NVME_IDENTIFY = 0x06,
@@ -85,396 +86,384 @@ enum nvme_admin_opcode {
 	NVME_GET_FEATURES = 0x0a
 };
 
-enum nvme_io_opcode { NVME_CMD_WRITE = 0x01, NVME_CMD_READ = 0x02 };
+enum NVME_IOOpcode
+{
+	NVME_CMD_WRITE = 0x01,
+	NVME_CMD_READ = 0x02
+};
 
-union nvme_sq_entry {
+union NVME_SQEntry {
 	struct {
-		uint8_t opcode;
-		uint8_t flags;
-		uint16_t command_id;
-		uint32_t nsid;
-		uint64_t : 64;
-		uint64_t : 64;
-		uint64_t prp1;
-		uint64_t prp2;
-		uint32_t cns;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-	} packed little_endian identify;
+		UINT8 opcode;
+		UINT8 flags;
+		UINT16 commandID;
+		UINT32 nsid;
+		UINT64 : 64;
+		UINT64 : 64;
+		UINT64 prp1;
+		UINT64 prp2;
+		UINT32 cns;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+	} PACKED LITTLE_ENDIAN identify;
 	struct {
-		uint8_t opcode;
-		uint8_t flags;
-		uint16_t command_id;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint64_t prp1;
-		uint64_t : 64;
-		uint16_t sqid;
-		uint16_t qsize;
-		uint16_t sq_flags;
-		uint16_t cqid;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-	} packed little_endian create_sq;
+		UINT8 opcode;
+		UINT8 flags;
+		UINT16 commandID;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT64 prp1;
+		UINT64 : 64;
+		UINT16 sqid;
+		UINT16 qsize;
+		UINT16 sqFlags;
+		UINT16 cqid;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+	} PACKED LITTLE_ENDIAN createSQ;
 	struct {
-		uint8_t opcode;
-		uint8_t flags;
-		uint16_t command_id;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint64_t prp1;
-		uint64_t : 64;
-		uint16_t cqid;
-		uint16_t qsize;
-		uint16_t cq_flags;
-		uint16_t irq_vector;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-		uint32_t : 32;
-	} packed little_endian create_cq;
+		UINT8 opcode;
+		UINT8 flags;
+		UINT16 commandID;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT64 prp1;
+		UINT64 : 64;
+		UINT16 cqid;
+		UINT16 qsize;
+		UINT16 cqFlags;
+		UINT16 irqVector;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+		UINT32 : 32;
+	} PACKED LITTLE_ENDIAN createCQ;
 	struct {
-		uint8_t opcode;
-		uint8_t flags;
-		uint16_t command_id;
-		uint32_t nsid;
-		uint64_t rsvd2;
-		uint64_t metadata;
-		uint64_t prp1;
-		uint64_t prp2;
-		uint64_t slba;
-		uint16_t length;
-		uint16_t control;
-		uint32_t dsmgmt;
-		uint32_t reftag;
-		uint16_t apptag;
-		uint16_t appmask;
-	} packed little_endian rw;
-} packed little_endian;
+		UINT8 opcode;
+		UINT8 flags;
+		UINT16 commandID;
+		UINT32 nsid;
+		UINT64 rsvd2;
+		UINT64 metadata;
+		UINT64 prp1;
+		UINT64 prp2;
+		UINT64 slba;
+		UINT16 length;
+		UINT16 control;
+		UINT32 dsmgmt;
+		UINT32 reftag;
+		UINT16 apptag;
+		UINT16 appmask;
+	} PACKED LITTLE_ENDIAN rw;
+} PACKED LITTLE_ENDIAN;
 
-struct nvme_cq_entry {
-	uint32_t command_specific;
-	uint32_t reserved;
-	uint16_t submission_queue_head_pointer;
-	uint16_t submission_queue_identifier;
-	uint16_t command_identifier;
-	uint16_t phase_bit : 1;
-	uint16_t status : 15;
-} packed little_endian;
+struct NVME_CQEntry {
+	UINT32 commandSpecific;
+	UINT32 reserved;
+	UINT16 submissionQueueHeadPointer;
+	UINT16 submissionQueueIdentifier;
+	UINT16 commandIdentifier;
+	UINT16 phaseBit : 1;
+	UINT16 status : 15;
+} PACKED LITTLE_ENDIAN;
 
-struct nvme_id_power_state {
-	uint16_t max_power;
-	uint8_t rsvd2;
-	uint8_t flags;
-	uint32_t entry_lat;
-	uint32_t exit_lat;
-	uint8_t read_tput;
-	uint8_t read_lat;
-	uint8_t write_tput;
-	uint8_t write_lat;
-	uint16_t idle_power;
-	uint8_t idle_scale;
-	uint8_t rsvd19;
-	uint16_t active_power;
-	uint8_t active_work_scale;
-	uint8_t rsvd23[9];
-} packed little_endian;
+struct NVME_IDPowerState {
+	UINT16 max_power;
+	UINT8 rsvd2;
+	UINT8 flags;
+	UINT32 entryLat;
+	UINT32 exitLat;
+	UINT8 readTput;
+	UINT8 readLat;
+	UINT8 writeTput;
+	UINT8 writeLat;
+	UINT16 idlePower;
+	UINT8 idleScale;
+	UINT8 rsvd19;
+	UINT16 activePower;
+	UINT8 activeWorkScale;
+	UINT8 rsvd23[9];
+} PACKED LITTLE_ENDIAN;
 
-struct nvme_identify_info {
-	uint16_t vid;
-	uint16_t ssvid;
+struct NVME_IdentifyInfo {
+	UINT16 vid;
+	UINT16 ssvid;
 	char sn[20];
 	char mn[40];
 	char fr[8];
-	uint8_t rab;
-	uint8_t ieee[3];
-	uint8_t mic;
-	uint8_t mdts;
-	uint16_t cntlid;
-	uint32_t ver;
-	uint8_t rsvd84[172];
-	uint16_t oacs;
-	uint8_t acl;
-	uint8_t aerl;
-	uint8_t frmw;
-	uint8_t lpa;
-	uint8_t elpe;
-	uint8_t npss;
-	uint8_t avscc;
-	uint8_t apsta;
-	uint16_t wctemp;
-	uint16_t cctemp;
-	uint8_t rsvd270[242];
-	uint8_t sqes;
-	uint8_t cqes;
-	uint8_t rsvd514[2];
-	uint32_t nn;
-	uint16_t oncs;
-	uint16_t fuses;
-	uint8_t fna;
-	uint8_t vwc;
-	uint16_t awun;
-	uint16_t awupf;
-	uint8_t nvscc;
-	uint8_t rsvd531;
-	uint16_t acwu;
-	uint8_t rsvd534[2];
-	uint32_t sgls;
-	uint8_t rsvd540[1508];
-	struct nvme_id_power_state psd[32];
-	uint8_t vs[1024];
-} packed little_endian;
+	UINT8 rab;
+	UINT8 ieee[3];
+	UINT8 mic;
+	UINT8 mdts;
+	UINT16 cntlid;
+	UINT32 ver;
+	UINT8 rsvd84[172];
+	UINT16 oacs;
+	UINT8 acl;
+	UINT8 aerl;
+	UINT8 frmw;
+	UINT8 lpa;
+	UINT8 elpe;
+	UINT8 npss;
+	UINT8 avscc;
+	UINT8 apsta;
+	UINT16 wctemp;
+	UINT16 cctemp;
+	UINT8 rsvd270[242];
+	UINT8 sqes;
+	UINT8 cqes;
+	UINT8 rsvd514[2];
+	UINT32 nn;
+	UINT16 oncs;
+	UINT16 fuses;
+	UINT8 fna;
+	UINT8 vwc;
+	UINT16 awun;
+	UINT16 awupf;
+	UINT8 nvscc;
+	UINT8 rsvd531;
+	UINT16 acwu;
+	UINT8 rsvd534[2];
+	UINT32 sgls;
+	UINT8 rsvd540[1508];
+	struct NVME_IDPowerState psd[32];
+	UINT8 vs[1024];
+} PACKED LITTLE_ENDIAN;
 
-struct nvme_lbaf {
-	uint16_t ms;
-	uint8_t ds;
-	uint8_t rp;
-} little_endian;
+struct NVME_LBAF {
+	UINT16 ms;
+	UINT8 ds;
+	UINT8 rp;
+} LITTLE_ENDIAN;
 
-struct nvme_namespace_info {
-	uint64_t nsze;
-	uint64_t ncap;
-	uint64_t nuse;
-	uint8_t nsfeat;
-	uint8_t nlbaf;
-	uint8_t flbas;
-	uint8_t mc;
-	uint8_t dpc;
-	uint8_t dps;
-	uint8_t nmic;
-	uint8_t rescap;
-	uint8_t fpi;
-	uint8_t rsvd33;
-	uint16_t nawun;
-	uint16_t nawupf;
-	uint16_t nacwu;
-	uint16_t nabsn;
-	uint16_t nabo;
-	uint16_t nabspf;
-	uint16_t rsvd46;
-	uint64_t nvmcap[2];
-	uint8_t rsvd64[40];
-	uint8_t nguid[16];
-	uint8_t eui64[8];
-	struct nvme_lbaf lbaf[16];
-	uint8_t rsvd192[192];
-	uint8_t vs[3712];
-} packed little_endian;
+struct NVME_NamespaceInfo {
+	UINT64 nsze;
+	UINT64 ncap;
+	UINT64 nuse;
+	UINT8 nsfeat;
+	UINT8 nlbaf;
+	UINT8 flbas;
+	UINT8 mc;
+	UINT8 dpc;
+	UINT8 dps;
+	UINT8 nmic;
+	UINT8 rescap;
+	UINT8 fpi;
+	UINT8 rsvd33;
+	UINT16 nawun;
+	UINT16 nawupf;
+	UINT16 nacwu;
+	UINT16 nabsn;
+	UINT16 nabo;
+	UINT16 nabspf;
+	UINT16 rsvd46;
+	UINT64 nvmcap[2];
+	UINT8 rsvd64[40];
+	UINT8 nguid[16];
+	UINT8 eui64[8];
+	struct NVME_LBAF lbaf[16];
+	UINT8 rsvd192[192];
+	UINT8 vs[3712];
+} PACKED LITTLE_ENDIAN;
 
-struct nvme_drive {
+struct NVMEDrive {
 	struct hal_nvme_controller *controller;
-	volatile uint32_t *bar0;
-	union nvme_sq_entry *admin_submission_queue;
-	volatile struct nvme_cq_entry *admin_completition_queue;
-	union nvme_sq_entry *submission_queue;
-	volatile struct nvme_cq_entry *completition_queue;
-	volatile uint16_t *admin_submission_doorbell;
-	volatile uint16_t *admin_completition_doorbell;
-	volatile uint16_t *submission_doorbell;
-	volatile uint16_t *completition_doorbell;
-	struct nvme_identify_info *identify_info;
-	size_t admin_submission_queue_head;
-	size_t admin_completition_queue_head;
-	size_t submission_queue_head;
-	size_t completition_queue_head;
+	volatile UINT32 *bar0;
+	union NVME_SQEntry *adminSubmissionQueue;
+	volatile struct NVME_CQEntry *adminCompletitionQueue;
+	union NVME_SQEntry *submissionQueue;
+	volatile struct NVME_CQEntry *completitionQueue;
+	volatile UINT16 *adminSubmissionDoorbell;
+	volatile UINT16 *adminCompletitionDoorbell;
+	volatile UINT16 *submissionDoorbell;
+	volatile UINT16 *completitionDoorbell;
+	struct NVME_IdentifyInfo *identifyInfo;
+	USIZE adminSubmissionQueueHead;
+	USIZE adminCompletitionQueueHead;
+	USIZE submissionQueueHead;
+	USIZE completitionQueueHead;
 	struct nvme_drive_namespace *namespaces;
-	uint64_t *prps;
-	struct mutex mutex;
-	uint32_t id;
-	bool admin_phase_bit;
-	bool phase_bit;
-	bool fallback_to_polling;
+	UINT64 *prps;
+	struct Mutex mutex;
+	UINT32 id;
+	bool adminPhaseBit;
+	bool phaseBit;
+	bool fallbackToPolling;
 };
 
 struct nvme_drive_namespace {
-	struct storage_dev cache;
-	struct nvme_drive *drive;
-	struct nvme_namespace_info *info;
-	size_t namespace_id;
-	uint64_t block_size;
-	uint64_t transfer_blocks_max;
-	uint64_t blocks_count;
+	struct Storage_Device cache;
+	struct NVMEDrive *drive;
+	struct NVME_NamespaceInfo *info;
+	USIZE namespaceID;
+	UINT64 block_size;
+	UINT64 transferBlocksMax;
+	UINT64 blocks_count;
 };
 
-static struct nvme_cap_register
-nvme_read_cap_register(volatile uint32_t *bar0) {
-	struct nvme_cap_register result = {0};
-	uint64_t *as_pointer = (uint64_t *)&result;
-	*as_pointer = ((uint64_t)bar0[1] << 32ULL) | (uint64_t)bar0[0];
+static struct NVME_CAPRegister NVME_ReadCapRegister(volatile UINT32 *bar0) {
+	struct NVME_CAPRegister result = {0};
+	UINT64 *asPointer = (UINT64 *)&result;
+	*asPointer = ((UINT64)bar0[1] << 32ULL) | (UINT64)bar0[0];
 	return result;
 }
 
-static struct nvme_cc_register nvme_read_cc_register(volatile uint32_t *bar0) {
-	struct nvme_cc_register result = {0};
-	uint32_t *as_pointer = (uint32_t *)&result;
-	*as_pointer = bar0[5];
+static struct NVME_CC_Register NVME_ReadCCRegister(volatile UINT32 *bar0) {
+	struct NVME_CC_Register result = {0};
+	UINT32 *asPointer = (UINT32 *)&result;
+	*asPointer = bar0[5];
 	return result;
 }
 
-static struct nvme_csts_register
-nvme_read_csts_register(volatile uint32_t *bar0) {
-	struct nvme_csts_register result = {0};
-	uint32_t *as_pointer = (uint32_t *)&result;
-	*as_pointer = bar0[7];
+static struct NVME_CSTSRegister NVME_ReadCSTSRegister(volatile UINT32 *bar0) {
+	struct NVME_CSTSRegister result = {0};
+	UINT32 *asPointer = (UINT32 *)&result;
+	*asPointer = bar0[7];
 	return result;
 }
 
-static struct nvme_aqa_register
-nvme_read_aqa_register(volatile uint32_t *bar0) {
-	struct nvme_aqa_register result = {0};
-	uint32_t *as_pointer = (uint32_t *)&result;
-	*as_pointer = bar0[9];
+static struct NVME_AQARegister NVME_ReadAQARegister(volatile UINT32 *bar0) {
+	struct NVME_AQARegister result = {0};
+	UINT32 *asPointer = (UINT32 *)&result;
+	*asPointer = bar0[9];
 	return result;
 }
 
-static struct nvme_asq_register
-nvme_read_asq_register(volatile uint32_t *bar0) {
-	struct nvme_asq_register result = {0};
-	uint64_t *as_pointer = (uint64_t *)&result;
-	*as_pointer = ((uint64_t)bar0[11] << 32ULL) | (uint64_t)bar0[10];
+static struct NVME_ASQRegister NVME_ReadASQRegister(volatile UINT32 *bar0) {
+	struct NVME_ASQRegister result = {0};
+	UINT64 *asPointer = (UINT64 *)&result;
+	*asPointer = ((UINT64)bar0[11] << 32ULL) | (UINT64)bar0[10];
 	return result;
 }
 
-static struct nvme_acq_register
-nvme_read_acq_register(volatile uint32_t *bar0) {
-	struct nvme_acq_register result = {0};
-	uint64_t *as_pointer = (uint64_t *)&result;
-	*as_pointer = ((uint64_t)bar0[13] << 32ULL) | (uint64_t)bar0[12];
+static struct NVME_ACQRegister NVME_ReadACQRegister(volatile UINT32 *bar0) {
+	struct NVME_ACQRegister result = {0};
+	UINT64 *asPointer = (UINT64 *)&result;
+	*asPointer = ((UINT64)bar0[13] << 32ULL) | (UINT64)bar0[12];
 	return result;
 }
 
-static void nvme_write_cc_register(volatile uint32_t *bar0,
-								   struct nvme_cc_register cc) {
-	uint32_t *as_pointer = (uint32_t *)&cc;
-	bar0[5] = *as_pointer;
+static void NVME_WriteCCRegister(volatile UINT32 *bar0, struct NVME_CC_Register cc) {
+	UINT32 *asPointer = (UINT32 *)&cc;
+	bar0[5] = *asPointer;
 }
 
-static void nvme_write_aqa_register(volatile uint32_t *bar0,
-									struct nvme_aqa_register aqa) {
-	uint32_t *as_pointer = (uint32_t *)&aqa;
-	bar0[9] = *as_pointer;
+static void NVME_WriteAQARegister(volatile UINT32 *bar0, struct NVME_AQARegister aqa) {
+	UINT32 *asPointer = (UINT32 *)&aqa;
+	bar0[9] = *asPointer;
 }
 
-static void nvme_write_asq_register(volatile uint32_t *bar0,
-									struct nvme_asq_register cap) {
-	uint64_t *as_pointer = (uint64_t *)&cap;
-	bar0[10] = (uint32_t)(*as_pointer & 0xFFFFFFFF);
-	bar0[11] = (uint32_t)((*as_pointer >> 32ULL) & 0xFFFFFFFF);
+static void NVME_WriteASQRegister(volatile UINT32 *bar0, struct NVME_ASQRegister cap) {
+	UINT64 *asPointer = (UINT64 *)&cap;
+	bar0[10] = (UINT32)(*asPointer & 0xFFFFFFFF);
+	bar0[11] = (UINT32)((*asPointer >> 32ULL) & 0xFFFFFFFF);
 }
 
-static void nvme_write_acq_register(volatile uint32_t *bar0,
-									struct nvme_acq_register cap) {
-	uint64_t *as_pointer = (uint64_t *)&cap;
-	bar0[12] = (uint32_t)(*as_pointer & 0xFFFFFFFF);
-	bar0[13] = (uint32_t)((*as_pointer >> 32ULL) & 0xFFFFFFFF);
+static void NVME_WriteACQRegister(volatile UINT32 *bar0, struct NVME_ACQRegister cap) {
+	UINT64 *asPointer = (UINT64 *)&cap;
+	bar0[12] = (UINT32)(*asPointer & 0xFFFFFFFF);
+	bar0[13] = (UINT32)((*asPointer >> 32ULL) & 0xFFFFFFFF);
 }
 
-static void nvme_enable_interrupts(volatile uint32_t *bar0) { bar0[0x03] = 0; }
+static void NVME_EnableInterrupts(volatile UINT32 *bar0) {
+	bar0[0x03] = 0;
+}
 
-unused static void nvme_disable_interrupts(volatile uint32_t *bar0) {
+UNUSED static void NVME_DisableInterrupts(volatile UINT32 *bar0) {
 	bar0[0x03] = 0xffffffff;
 }
 
-static uint16_t nvme_execute_admin_cmd(struct nvme_drive *drive,
-									   union nvme_sq_entry command) {
-	drive->admin_submission_queue[drive->admin_submission_queue_head] = command;
-	drive->admin_submission_queue_head++;
-	if (drive->admin_submission_queue_head == NVME_SUBMISSION_QUEUE_SIZE) {
-		drive->admin_submission_queue_head = 0;
+static UINT16 NVME_ExecuteAdminCmd(struct NVMEDrive *drive, union NVME_SQEntry command) {
+	drive->adminSubmissionQueue[drive->adminSubmissionQueueHead] = command;
+	drive->adminSubmissionQueueHead++;
+	if (drive->adminSubmissionQueueHead == NVME_SUBMISSION_QUEUE_SIZE) {
+		drive->adminSubmissionQueueHead = 0;
 	}
-	volatile struct nvme_cq_entry *completition_entry =
-		drive->admin_completition_queue + drive->admin_completition_queue_head;
-	completition_entry->phase_bit = drive->admin_phase_bit;
+	volatile struct NVME_CQEntry *completitionEntry = drive->adminCompletitionQueue + drive->adminCompletitionQueueHead;
+	completitionEntry->phaseBit = drive->adminPhaseBit;
 
-	*(drive->admin_submission_doorbell) = drive->admin_submission_queue_head;
+	*(drive->adminSubmissionDoorbell) = drive->adminSubmissionQueueHead;
 
-	while (completition_entry->phase_bit == drive->admin_phase_bit) {
-		struct nvme_csts_register csts;
-		csts = nvme_read_csts_register(drive->bar0);
+	while (completitionEntry->phaseBit == drive->adminPhaseBit) {
+		struct NVME_CSTSRegister csts;
+		csts = NVME_ReadCSTSRegister(drive->bar0);
 		if (csts.cfs == 1) {
-			kmsg_err("NVME Driver",
-					 "Fatal error occured while executing admin command\n");
+			KernelLog_ErrorMsg("NVME Driver", "Fatal error occured while executing admin command");
 		}
 	}
 
-	drive->admin_completition_queue_head++;
-	if (drive->admin_completition_queue_head == NVME_COMPLETITION_QUEUE_SIZE) {
-		drive->admin_completition_queue_head = 0;
-		drive->admin_phase_bit = !(drive->admin_phase_bit);
+	drive->adminCompletitionQueueHead++;
+	if (drive->adminCompletitionQueueHead == NVME_COMPLETITION_QUEUE_SIZE) {
+		drive->adminCompletitionQueueHead = 0;
+		drive->adminPhaseBit = !(drive->adminPhaseBit);
 	}
 
-	*(drive->admin_completition_doorbell) =
-		drive->admin_completition_queue_head;
-	return drive->admin_completition_queue->status;
+	*(drive->adminCompletitionDoorbell) = drive->adminCompletitionQueueHead;
+	return drive->adminCompletitionQueue->status;
 }
 
-static void nvme_recieve_notify(struct nvme_drive *drive) {
-	drive->completition_queue_head++;
-	if (drive->completition_queue_head == NVME_COMPLETITION_QUEUE_SIZE) {
-		drive->completition_queue_head = 0;
-		drive->phase_bit = !(drive->phase_bit);
+static void NVME_NotifyOnRecieve(struct NVMEDrive *drive) {
+	drive->completitionQueueHead++;
+	if (drive->completitionQueueHead == NVME_COMPLETITION_QUEUE_SIZE) {
+		drive->completitionQueueHead = 0;
+		drive->phaseBit = !(drive->phaseBit);
 	}
 
-	*(drive->completition_doorbell) = drive->completition_queue_head;
+	*(drive->completitionDoorbell) = drive->completitionQueueHead;
 }
 
-static uint16_t nvme_execute_io_cmd(struct nvme_drive *drive,
-									union nvme_sq_entry command) {
-	drive->submission_queue[drive->submission_queue_head] = command;
-	drive->submission_queue_head++;
-	if (drive->submission_queue_head == NVME_SUBMISSION_QUEUE_SIZE) {
-		drive->submission_queue_head = 0;
+static UINT16 NVMEExecuteIOCommand(struct NVMEDrive *drive, union NVME_SQEntry command) {
+	drive->submissionQueue[drive->submissionQueueHead] = command;
+	drive->submissionQueueHead++;
+	if (drive->submissionQueueHead == NVME_SUBMISSION_QUEUE_SIZE) {
+		drive->submissionQueueHead = 0;
 	}
-	volatile struct nvme_cq_entry *completition_entry =
-		drive->completition_queue + drive->completition_queue_head;
+	volatile struct NVME_CQEntry *completitionEntry = drive->completitionQueue + drive->completitionQueueHead;
 
-	struct nvme_csts_register csts;
+	struct NVME_CSTSRegister csts;
 
-	if (!drive->fallback_to_polling) {
-		hal_intlock_lock();
-		completition_entry->phase_bit = drive->phase_bit;
-		*(drive->submission_doorbell) = drive->submission_queue_head;
-		drive->controller->wait_for_event(drive->controller->ctx);
-		csts = nvme_read_csts_register(drive->bar0);
+	if (!drive->fallbackToPolling) {
+		HAL_InterruptLock_Lock();
+		completitionEntry->phaseBit = drive->phaseBit;
+		*(drive->submissionDoorbell) = drive->submissionQueueHead;
+		drive->controller->waitForEvent(drive->controller->ctx);
+		csts = NVME_ReadCSTSRegister(drive->bar0);
 		if (csts.cfs == 1) {
-			kmsg_err("NVME Driver",
-					 "Fatal error occured while executing IO command");
+			KernelLog_ErrorMsg("NVME Driver", "Fatal error occured while executing IO command");
 		}
 	} else {
-		completition_entry->phase_bit = drive->phase_bit;
-		*(drive->submission_doorbell) = drive->submission_queue_head;
-		while (completition_entry->phase_bit == drive->phase_bit) {
-			struct nvme_csts_register csts;
-			csts = nvme_read_csts_register(drive->bar0);
+		completitionEntry->phaseBit = drive->phaseBit;
+		*(drive->submissionDoorbell) = drive->submissionQueueHead;
+		while (completitionEntry->phaseBit == drive->phaseBit) {
+			struct NVME_CSTSRegister csts;
+			csts = NVME_ReadCSTSRegister(drive->bar0);
 			if (csts.cfs == 1) {
-				kmsg_err("NVME Driver",
-						 "Fatal error occured while executing IO command");
+				KernelLog_ErrorMsg("NVME Driver", "Fatal error occured while executing IO command");
 			}
 		}
-		nvme_recieve_notify(drive);
+		NVME_NotifyOnRecieve(drive);
 	}
-	return drive->completition_queue->status;
+	return drive->completitionQueue->status;
 }
 
-static bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf,
-						uint64_t lba, size_t count, bool write) {
-	mutex_lock(&(drive->mutex));
+static bool nvme_rw_lba(struct NVMEDrive *drive, USIZE ns, void *buf, UINT64 lba, USIZE count, bool write) {
+	Mutex_Lock(&(drive->mutex));
 	struct nvme_drive_namespace *namespace = drive->namespaces + (ns - 1);
-	size_t block_size = namespace->block_size;
-	uintptr_t page_offset = (uintptr_t)buf & (hal_virt_page_size - 1);
+	USIZE block_size = namespace->block_size;
+	UINTN page_offset = (UINTN)buf & (HAL_VirtualMM_PageSize - 1);
 
-	unused union nvme_sq_entry rw_command;
+	UNUSED union NVME_SQEntry rw_command;
 	rw_command.rw.opcode = write ? NVME_CMD_WRITE : NVME_CMD_READ;
 	rw_command.rw.flags = 0;
 	rw_command.rw.control = 0;
@@ -486,322 +475,279 @@ static bool nvme_rw_lba(struct nvme_drive *drive, size_t ns, void *buf,
 	rw_command.rw.slba = lba;
 	rw_command.rw.nsid = ns;
 	rw_command.rw.length = count - 1;
-	uintptr_t aligned_down = ALIGN_DOWN((uintptr_t)buf, hal_virt_page_size);
-	uintptr_t aligned_up =
-		ALIGN_UP((uintptr_t)(buf + count * block_size), hal_virt_page_size);
-	size_t prp_entries_count =
-		((aligned_up - aligned_down) / hal_virt_page_size) - 1;
+	UINTN alignedDown = ALIGN_DOWN((UINTN)buf, HAL_VirtualMM_PageSize);
+	UINTN alignedUp = ALIGN_UP((UINTN)(buf + count * block_size), HAL_VirtualMM_PageSize);
+	USIZE prpEntriesCount = ((alignedUp - alignedDown) / HAL_VirtualMM_PageSize) - 1;
 
-	if (prp_entries_count == 0) {
-		rw_command.rw.prp1 =
-			(uint64_t)((uintptr_t)buf - hal_virt_kernel_mapping_base);
-	} else if (prp_entries_count == 1) {
-		rw_command.rw.prp1 =
-			(uint64_t)((uintptr_t)buf - hal_virt_kernel_mapping_base);
+	if (prpEntriesCount == 0) {
+		rw_command.rw.prp1 = (UINT64)((UINTN)buf - HAL_VirtualMM_KernelMappingBase);
+	} else if (prpEntriesCount == 1) {
+		rw_command.rw.prp1 = (UINT64)((UINTN)buf - HAL_VirtualMM_KernelMappingBase);
 		rw_command.rw.prp2 =
-			(uint64_t)((uintptr_t)buf - hal_virt_kernel_mapping_base -
-					   page_offset + hal_virt_page_size);
+			(UINT64)((UINTN)buf - HAL_VirtualMM_KernelMappingBase - page_offset + HAL_VirtualMM_PageSize);
 	} else {
-		rw_command.rw.prp1 =
-			(uint64_t)((uintptr_t)buf - hal_virt_kernel_mapping_base);
-		rw_command.rw.prp2 =
-			(uint64_t)((uintptr_t)(drive->prps) - hal_virt_kernel_mapping_base);
-		for (size_t i = 0; i < prp_entries_count; ++i) {
+		rw_command.rw.prp1 = (UINT64)((UINTN)buf - HAL_VirtualMM_KernelMappingBase);
+		rw_command.rw.prp2 = (UINT64)((UINTN)(drive->prps) - HAL_VirtualMM_KernelMappingBase);
+		for (USIZE i = 0; i < prpEntriesCount; ++i) {
 			drive->prps[i] =
-				(uint64_t)((uintptr_t)buf - hal_virt_kernel_mapping_base -
-						   page_offset + (i + 1) * hal_virt_page_size);
+				(UINT64)((UINTN)buf - HAL_VirtualMM_KernelMappingBase - page_offset + (i + 1) * HAL_VirtualMM_PageSize);
 		}
 	}
 
-	uint16_t status = nvme_execute_io_cmd(drive, rw_command);
-	mutex_unlock(&(drive->mutex));
+	UINT16 status = NVMEExecuteIOCommand(drive, rw_command);
+	Mutex_Unlock(&(drive->mutex));
 	return status == 0;
 }
 
-static bool nvme_namespace_rw_lba(void *ctx, char *buf, uint64_t lba,
-								  size_t count, bool write) {
+static bool nvme_namespace_rw_lba(void *ctx, char *buf, UINT64 lba, USIZE count, bool write) {
 	struct nvme_drive_namespace *namespace = (struct nvme_drive_namespace *)ctx;
-	return nvme_rw_lba(namespace->drive, namespace->namespace_id, buf, lba,
-					   count, write);
+	return nvme_rw_lba(namespace->drive, namespace->namespaceID, buf, lba, count, write);
 }
 
-bool nvme_init(struct hal_nvme_controller *controller) {
-	struct nvme_drive *nvme_drive_info = ALLOC_OBJ(struct nvme_drive);
-	if (nvme_drive_info == NULL) {
+bool NVME_Initialize(struct hal_nvme_controller *controller) {
+	struct NVMEDrive *nvmeDriveInfo = ALLOC_OBJ(struct NVMEDrive);
+	if (nvmeDriveInfo == NULL) {
 		return false;
 	}
-	nvme_drive_info->admin_completition_queue_head = 0;
-	nvme_drive_info->admin_submission_queue_head = 0;
-	nvme_drive_info->completition_queue_head = 0;
-	nvme_drive_info->submission_queue_head = 0;
-	nvme_drive_info->controller = controller;
-	nvme_drive_info->id = nvme_controllers_detected;
-	nvme_drive_info->fallback_to_polling = true;
-	nvme_controllers_detected++;
-	mutex_init(&(nvme_drive_info->mutex));
+	nvmeDriveInfo->adminCompletitionQueueHead = 0;
+	nvmeDriveInfo->adminSubmissionQueueHead = 0;
+	nvmeDriveInfo->completitionQueueHead = 0;
+	nvmeDriveInfo->submissionQueueHead = 0;
+	nvmeDriveInfo->controller = controller;
+	nvmeDriveInfo->id = NVME_ControllersDetected;
+	nvmeDriveInfo->fallbackToPolling = true;
+	NVME_ControllersDetected++;
+	Mutex_Initialize(&(nvmeDriveInfo->mutex));
 
-	uintptr_t mapping_paddr =
-		ALIGN_DOWN(controller->offset, hal_virt_page_size);
-	size_t mapping_size =
-		ALIGN_UP(controller->size + (controller->offset - mapping_paddr),
-				 hal_virt_page_size);
-	uintptr_t mapping = hal_virt_get_io_mapping(mapping_paddr, mapping_size,
-												controller->disable_cache);
+	UINTN mappingPaddr = ALIGN_DOWN(controller->offset, HAL_VirtualMM_PageSize);
+	USIZE mappingSize = ALIGN_UP(controller->size + (controller->offset - mappingPaddr), HAL_VirtualMM_PageSize);
+	UINTN mapping = HAL_VirtualMM_GetIOMapping(mappingPaddr, mappingSize, controller->disableCache);
 	if (mapping == 0) {
-		kmsg_warn("NVME Driver", "Failed to map BAR0");
+		KernelLog_WarnMsg("NVME Driver", "Failed to map BAR0");
 		return false;
 	}
-	volatile uint32_t *bar0 =
-		(volatile uint32_t *)(mapping + (controller->offset - mapping_paddr));
-	nvme_drive_info->bar0 = bar0;
+	volatile UINT32 *bar0 = (volatile UINT32 *)(mapping + (controller->offset - mappingPaddr));
+	nvmeDriveInfo->bar0 = bar0;
 
-	struct nvme_cc_register cc;
-	struct nvme_csts_register csts;
-	struct nvme_cap_register cap;
-	struct nvme_aqa_register aqa;
-	struct nvme_asq_register asq;
-	struct nvme_acq_register acq;
+	struct NVME_CC_Register cc;
+	struct NVME_CSTSRegister csts;
+	struct NVME_CAPRegister cap;
+	struct NVME_AQARegister aqa;
+	struct NVME_ASQRegister asq;
+	struct NVME_ACQRegister acq;
 
-	cc = nvme_read_cc_register(bar0);
+	cc = NVME_ReadCCRegister(bar0);
 	cc.en = 0;
-	nvme_write_cc_register(bar0, cc);
-	csts = nvme_read_csts_register(bar0);
+	NVME_WriteCCRegister(bar0, cc);
+	csts = NVME_ReadCSTSRegister(bar0);
 	while (csts.rdy != 0) {
-		csts = nvme_read_csts_register(bar0);
+		csts = NVME_ReadCSTSRegister(bar0);
 	}
-	kmsg_log("NVME Driver", "NVME Controller disabled");
+	KernelLog_InfoMsg("NVME Driver", "NVME Controller disabled");
 
-	cap = nvme_read_cap_register(bar0);
-	if (!cap.css_is_nvm_supported) {
-		kmsg_warn("NVME Driver",
-				  "NVME controller doesn't support NVM command set");
+	cap = NVME_ReadCapRegister(bar0);
+	if (!cap.cssIsNvmSupported) {
+		KernelLog_WarnMsg("NVME Driver", "NVME controller doesn't support NVM command set");
 		return false;
 	}
-	if (cap.mpsmin > (MATH_LOG2_ROUNDUP(hal_virt_page_size) - 12)) {
-		kmsg_warn("NVME Driver",
-				  "NVME controller doesn't support host page size");
+	if (cap.mpsmin > (MATH_LOG2_ROUNDUP(HAL_VirtualMM_PageSize) - 12)) {
+		KernelLog_WarnMsg("NVME Driver", "NVME controller doesn't support host page size");
 		return false;
 	}
-	if (cap.mpsmax < (MATH_LOG2_ROUNDUP(hal_virt_page_size) - 12)) {
-		kmsg_warn("NVME Driver",
-				  "NVME controller doesn't support host page size");
+	if (cap.mpsmax < (MATH_LOG2_ROUNDUP(HAL_VirtualMM_PageSize) - 12)) {
+		KernelLog_WarnMsg("NVME Driver", "NVME controller doesn't support host page size");
 	}
-	size_t submission_queue_size =
-		ALIGN_UP(sizeof(union nvme_sq_entry) * NVME_SUBMISSION_QUEUE_SIZE,
-				 hal_virt_page_size);
-	union nvme_sq_entry *admin_submission_queue =
-		(union nvme_sq_entry *)heap_alloc(submission_queue_size);
-	union nvme_sq_entry *submission_queue =
-		(union nvme_sq_entry *)heap_alloc(submission_queue_size);
+	USIZE submissionQueueSize =
+		ALIGN_UP(sizeof(union NVME_SQEntry) * NVME_SUBMISSION_QUEUE_SIZE, HAL_VirtualMM_PageSize);
+	union NVME_SQEntry *adminSubmissionQueue = (union NVME_SQEntry *)Heap_AllocateMemory(submissionQueueSize);
+	union NVME_SQEntry *submissionQueue = (union NVME_SQEntry *)Heap_AllocateMemory(submissionQueueSize);
 
-	size_t completition_queue_size =
-		ALIGN_UP(sizeof(struct nvme_cq_entry) * NVME_COMPLETITION_QUEUE_SIZE,
-				 hal_virt_page_size);
-	struct nvme_cq_entry *admin_completition_queue =
-		(struct nvme_cq_entry *)heap_alloc(completition_queue_size);
-	struct nvme_cq_entry *completition_queue =
-		(struct nvme_cq_entry *)heap_alloc(completition_queue_size);
+	USIZE completitionQueueSize =
+		ALIGN_UP(sizeof(struct NVME_CQEntry) * NVME_COMPLETITION_QUEUE_SIZE, HAL_VirtualMM_PageSize);
+	struct NVME_CQEntry *adminCompletitionQueue = (struct NVME_CQEntry *)Heap_AllocateMemory(completitionQueueSize);
+	struct NVME_CQEntry *completitionQueue = (struct NVME_CQEntry *)Heap_AllocateMemory(completitionQueueSize);
 
-	if (admin_submission_queue == NULL || admin_completition_queue == NULL ||
-		submission_queue == NULL || completition_queue == NULL) {
-		kmsg_warn("NVME Driver",
-				  "Failed to allocate queues for NVME controller");
+	if (adminSubmissionQueue == NULL || adminCompletitionQueue == NULL || submissionQueue == NULL ||
+		completitionQueue == NULL) {
+		KernelLog_WarnMsg("NVME Driver", "Failed to allocate queues for NVME controller");
 		return false;
 	}
-	nvme_drive_info->admin_submission_queue = admin_submission_queue;
-	nvme_drive_info->admin_completition_queue = admin_completition_queue;
-	nvme_drive_info->submission_queue = submission_queue;
-	nvme_drive_info->completition_queue = completition_queue;
-	nvme_drive_info->admin_phase_bit = false;
-	nvme_drive_info->phase_bit = false;
-	memset(admin_submission_queue, 0, submission_queue_size);
-	memset(admin_completition_queue, 0, completition_queue_size);
-	memset(submission_queue, 0, submission_queue_size);
-	memset(completition_queue, 0, completition_queue_size);
-	kmsg_log("NVME Driver", "NVME controller admin queues allocated");
+	nvmeDriveInfo->adminSubmissionQueue = adminSubmissionQueue;
+	nvmeDriveInfo->adminCompletitionQueue = adminCompletitionQueue;
+	nvmeDriveInfo->submissionQueue = submissionQueue;
+	nvmeDriveInfo->completitionQueue = completitionQueue;
+	nvmeDriveInfo->adminPhaseBit = false;
+	nvmeDriveInfo->phaseBit = false;
+	memset(adminSubmissionQueue, 0, submissionQueueSize);
+	memset(adminCompletitionQueue, 0, completitionQueueSize);
+	memset(submissionQueue, 0, submissionQueueSize);
+	memset(completitionQueue, 0, completitionQueueSize);
+	KernelLog_InfoMsg("NVME Driver", "NVME controller admin queues allocated");
 
-	uintptr_t admin_submission_queue_physical =
-		(uintptr_t)admin_submission_queue - hal_virt_kernel_mapping_base;
-	uintptr_t admin_completition_queue_physical =
-		(uintptr_t)admin_completition_queue - hal_virt_kernel_mapping_base;
-	uintptr_t submission_queue_physical =
-		(uintptr_t)submission_queue - hal_virt_kernel_mapping_base;
-	uintptr_t completition_queue_physical =
-		(uintptr_t)completition_queue - hal_virt_kernel_mapping_base;
+	UINTN adminSubmissionQueuePhysical = (UINTN)adminSubmissionQueue - HAL_VirtualMM_KernelMappingBase;
+	UINTN adminCompletitionQueuePhysical = (UINTN)adminCompletitionQueue - HAL_VirtualMM_KernelMappingBase;
+	UINTN submissionQueuePhysical = (UINTN)submissionQueue - HAL_VirtualMM_KernelMappingBase;
+	UINTN completitionQueuePhysical = (UINTN)completitionQueue - HAL_VirtualMM_KernelMappingBase;
 
-	asq = nvme_read_asq_register(bar0);
-	acq = nvme_read_acq_register(bar0);
-	asq.page = admin_submission_queue_physical / hal_virt_page_size;
-	acq.page = admin_completition_queue_physical / hal_virt_page_size;
-	nvme_write_asq_register(bar0, asq);
-	nvme_write_acq_register(bar0, acq);
+	asq = NVME_ReadASQRegister(bar0);
+	acq = NVME_ReadACQRegister(bar0);
+	asq.page = adminSubmissionQueuePhysical / HAL_VirtualMM_PageSize;
+	acq.page = adminCompletitionQueuePhysical / HAL_VirtualMM_PageSize;
+	NVME_WriteASQRegister(bar0, asq);
+	NVME_WriteACQRegister(bar0, acq);
 
-	aqa = nvme_read_aqa_register(bar0);
+	aqa = NVME_ReadAQARegister(bar0);
 	aqa.acqs = NVME_COMPLETITION_QUEUE_SIZE - 1;
 	aqa.asqs = NVME_SUBMISSION_QUEUE_SIZE - 1;
-	nvme_write_aqa_register(bar0, aqa);
+	NVME_WriteAQARegister(bar0, aqa);
 
-	cc = nvme_read_cc_register(bar0);
+	cc = NVME_ReadCCRegister(bar0);
 	cc.ams = 0;
-	cc.mps = (MATH_LOG2_ROUNDUP(hal_virt_page_size) - 12);
+	cc.mps = (MATH_LOG2_ROUNDUP(HAL_VirtualMM_PageSize) - 12);
 	cc.css = 0;
 	cc.shn = 0;
 	cc.iocqes = 4;
 	cc.iosqes = 6;
-	nvme_write_cc_register(bar0, cc);
+	NVME_WriteCCRegister(bar0, cc);
 
-	cc = nvme_read_cc_register(bar0);
+	cc = NVME_ReadCCRegister(bar0);
 	cc.en = 1;
-	nvme_write_cc_register(bar0, cc);
+	NVME_WriteCCRegister(bar0, cc);
 
-	csts = nvme_read_csts_register(bar0);
+	csts = NVME_ReadCSTSRegister(bar0);
 	while (csts.rdy != 1) {
 		if (csts.cfs != 0) {
-			kmsg_err("NVME Driver", "Error while enabling controller");
+			KernelLog_ErrorMsg("NVME Driver", "Error while enabling controller");
 		}
-		csts = nvme_read_csts_register(bar0);
+		csts = NVME_ReadCSTSRegister(bar0);
 	}
 
-	kmsg_log("NVME Driver", "NVME Controller reenabled");
+	KernelLog_InfoMsg("NVME Driver", "NVME Controller reenabled");
 
-	uintptr_t doorbell_size = 1 << (2 + cap.dstrd);
-	uintptr_t doorbells_base = (uint32_t)bar0 + 0x1000;
-	nvme_drive_info->admin_submission_doorbell =
-		(volatile uint16_t *)(doorbells_base + doorbell_size * 0);
-	nvme_drive_info->admin_completition_doorbell =
-		(volatile uint16_t *)(doorbells_base + doorbell_size * 1);
-	nvme_drive_info->submission_doorbell =
-		(volatile uint16_t *)(doorbells_base + doorbell_size * 2);
-	nvme_drive_info->completition_doorbell =
-		(volatile uint16_t *)(doorbells_base + doorbell_size * 3);
+	USIZE doorbellSize = 1 << (2 + cap.dstrd);
+	UINTN doorbellsBase = (UINT32)bar0 + 0x1000;
+	nvmeDriveInfo->adminSubmissionDoorbell = (volatile UINT16 *)(doorbellsBase + doorbellSize * 0);
+	nvmeDriveInfo->adminCompletitionDoorbell = (volatile UINT16 *)(doorbellsBase + doorbellSize * 1);
+	nvmeDriveInfo->submissionDoorbell = (volatile UINT16 *)(doorbellsBase + doorbellSize * 2);
+	nvmeDriveInfo->completitionDoorbell = (volatile UINT16 *)(doorbellsBase + doorbellSize * 3);
 
-	union nvme_sq_entry identify_command = {0};
-	identify_command.identify.opcode = NVME_IDENTIFY;
-	identify_command.identify.nsid = 0;
-	identify_command.identify.cns = 1;
-	struct nvme_identify_info *identify_info =
-		ALLOC_OBJ(struct nvme_identify_info);
-	if (identify_info == NULL) {
-		kmsg_warn("NVME Driver", "Failed to allocate identify info object");
+	union NVME_SQEntry identifyCommand = {0};
+	identifyCommand.identify.opcode = NVME_IDENTIFY;
+	identifyCommand.identify.nsid = 0;
+	identifyCommand.identify.cns = 1;
+	struct NVME_IdentifyInfo *identifyInfo = ALLOC_OBJ(struct NVME_IdentifyInfo);
+	if (identifyInfo == NULL) {
+		KernelLog_WarnMsg("NVME Driver", "Failed to allocate identify info object");
 		return false;
 	}
-	identify_command.identify.prp1 =
-		(uintptr_t)identify_info - hal_virt_kernel_mapping_base;
-	identify_command.identify.prp2 = 0;
-	if (nvme_execute_admin_cmd(nvme_drive_info, identify_command) != 0) {
-		kmsg_warn("NVME Driver", "Failed to execute identify command");
+	identifyCommand.identify.prp1 = (UINTN)identifyInfo - HAL_VirtualMM_KernelMappingBase;
+	identifyCommand.identify.prp2 = 0;
+	if (NVME_ExecuteAdminCmd(nvmeDriveInfo, identifyCommand) != 0) {
+		KernelLog_WarnMsg("NVME Driver", "Failed to execute identify command");
 		return false;
 	}
-	nvme_drive_info->identify_info = (struct nvme_identify_info *)identify_info;
-	kmsg_log("NVME Driver", "Identify command executed successfully");
+	nvmeDriveInfo->identifyInfo = (struct NVME_IdentifyInfo *)identifyInfo;
+	KernelLog_InfoMsg("NVME Driver", "Identify command executed successfully");
 
-	union nvme_sq_entry create_queue_command = {0};
+	union NVME_SQEntry createQueueCommand = {0};
 
-	create_queue_command.create_cq.opcode = NVME_CREATE_COMPLETITION_QUEUE;
-	create_queue_command.create_cq.prp1 = completition_queue_physical;
-	create_queue_command.create_cq.cqid = 1;
-	create_queue_command.create_cq.qsize = NVME_COMPLETITION_QUEUE_SIZE - 1;
-	create_queue_command.create_cq.cq_flags = NVME_QUEUE_PHYS_CONTIG;
-	create_queue_command.create_cq.irq_vector = 0;
-	if (nvme_execute_admin_cmd(nvme_drive_info, create_queue_command) != 0) {
-		kmsg_warn("NVME Driver", "Failed to create completition queue");
+	createQueueCommand.createCQ.opcode = NVME_CREATE_COMPLETITION_QUEUE;
+	createQueueCommand.createCQ.prp1 = completitionQueuePhysical;
+	createQueueCommand.createCQ.cqid = 1;
+	createQueueCommand.createCQ.qsize = NVME_COMPLETITION_QUEUE_SIZE - 1;
+	createQueueCommand.createCQ.cqFlags = NVME_QUEUE_PHYS_CONTIG;
+	createQueueCommand.createCQ.irqVector = 0;
+	if (NVME_ExecuteAdminCmd(nvmeDriveInfo, createQueueCommand) != 0) {
+		KernelLog_WarnMsg("NVME Driver", "Failed to create completition queue");
 		return false;
 	}
-	kmsg_log("NVME Driver", "Created completition queue");
+	KernelLog_InfoMsg("NVME Driver", "Created completition queue");
 
-	create_queue_command.create_sq.opcode = NVME_CREATE_SUBMISSION_QUEUE;
-	create_queue_command.create_sq.prp1 = submission_queue_physical;
-	create_queue_command.create_sq.cqid = 1;
-	create_queue_command.create_sq.sqid = 1;
-	create_queue_command.create_sq.qsize = NVME_SUBMISSION_QUEUE_SIZE - 1;
-	create_queue_command.create_sq.sq_flags = NVME_QUEUE_PHYS_CONTIG;
-	if (nvme_execute_admin_cmd(nvme_drive_info, create_queue_command) != 0) {
-		kmsg_warn("NVME Driver", "Failed to create submission queue");
+	createQueueCommand.createSQ.opcode = NVME_CREATE_SUBMISSION_QUEUE;
+	createQueueCommand.createSQ.prp1 = submissionQueuePhysical;
+	createQueueCommand.createSQ.cqid = 1;
+	createQueueCommand.createSQ.sqid = 1;
+	createQueueCommand.createSQ.qsize = NVME_SUBMISSION_QUEUE_SIZE - 1;
+	createQueueCommand.createSQ.sqFlags = NVME_QUEUE_PHYS_CONTIG;
+	if (NVME_ExecuteAdminCmd(nvmeDriveInfo, createQueueCommand) != 0) {
+		KernelLog_WarnMsg("NVME Driver", "Failed to create submission queue");
 		return false;
 	}
-	kmsg_log("NVME Driver", "Created submission queue");
+	KernelLog_InfoMsg("NVME Driver", "Created submission queue");
 
-	size_t namespaces_count = identify_info->nn;
-	printf("         NVME Drive namespaces count: %u\n", identify_info->nn);
+	USIZE namespacesCount = identifyInfo->nn;
+	KernelLog_InfoMsg("NVME Driver", "NVME Drive namespaces count: %u", identifyInfo->nn);
 	struct nvme_drive_namespace *namespaces =
-		(struct nvme_drive_namespace *)heap_alloc(
-			sizeof(struct nvme_drive_namespace) * namespaces_count);
+		(struct nvme_drive_namespace *)Heap_AllocateMemory(sizeof(struct nvme_drive_namespace) * namespacesCount);
 	if (namespaces == NULL) {
-		kmsg_warn("NVME Driver", "Failed to allocate namespaces objects");
+		KernelLog_WarnMsg("NVME Driver", "Failed to allocate namespaces objects");
 		return false;
 	}
-	nvme_drive_info->namespaces = namespaces;
+	nvmeDriveInfo->namespaces = namespaces;
 
-	size_t max_size = 1 << (12 + nvme_drive_info->identify_info->mdts);
-	if (nvme_drive_info->identify_info->mdts > NVME_MAX_MDTS ||
-		max_size == 4096) {
-		max_size = 1 << (12 + NVME_MAX_MDTS);
+	USIZE maxSize = 1 << (12 + nvmeDriveInfo->identifyInfo->mdts);
+	if (nvmeDriveInfo->identifyInfo->mdts > NVME_MAX_MDTS || maxSize == 4096) {
+		maxSize = 1 << (12 + NVME_MAX_MDTS);
 	}
-	printf("         Max transfer size: %u\n", max_size);
+	KernelLog_InfoMsg("NVME Driver", "Max transfer size: %u", maxSize);
 
-	uint64_t *prps = heap_alloc((max_size / hal_virt_page_size) * 8);
+	UINT64 *prps = Heap_AllocateMemory((maxSize / HAL_VirtualMM_PageSize) * 8);
 	if (prps == NULL) {
-		kmsg_warn("NVME Driver", "Failed to allocate PRP list");
+		KernelLog_WarnMsg("NVME Driver", "Failed to allocate PRP list");
 		return false;
 	}
 
-	nvme_drive_info->prps = prps;
+	nvmeDriveInfo->prps = prps;
 
-	for (size_t i = 0; i < namespaces_count; ++i) {
+	for (USIZE i = 0; i < namespacesCount; ++i) {
 		struct nvme_drive_namespace *namespace = namespaces + i;
-		namespace->namespace_id = i + 1;
-		namespace->drive = nvme_drive_info;
-		namespace->info = ALLOC_OBJ(struct nvme_namespace_info);
+		namespace->namespaceID = i + 1;
+		namespace->drive = nvmeDriveInfo;
+		namespace->info = ALLOC_OBJ(struct NVME_NamespaceInfo);
 		if (namespace->info == NULL) {
-			kmsg_warn("NVME Driver",
-					  "Failed to allocate namespace info object");
+			KernelLog_WarnMsg("NVME Driver", "Failed to allocate namespace info object");
 			return false;
 		}
 
-		union nvme_sq_entry get_namespace_info_command = {0};
-		get_namespace_info_command.identify.opcode = NVME_IDENTIFY;
-		get_namespace_info_command.identify.nsid = i + 1;
-		get_namespace_info_command.identify.cns = 0;
-		get_namespace_info_command.identify.prp1 =
-			(uintptr_t) namespace->info - hal_virt_kernel_mapping_base;
-		if (nvme_execute_admin_cmd(nvme_drive_info,
-								   get_namespace_info_command) != 0) {
-			kmsg_warn("NVME Driver", "Failed to read namespace info");
+		union NVME_SQEntry getNamespaceInfoCommand = {0};
+		getNamespaceInfoCommand.identify.opcode = NVME_IDENTIFY;
+		getNamespaceInfoCommand.identify.nsid = i + 1;
+		getNamespaceInfoCommand.identify.cns = 0;
+		getNamespaceInfoCommand.identify.prp1 = (UINTN) namespace->info - HAL_VirtualMM_KernelMappingBase;
+		if (NVME_ExecuteAdminCmd(nvmeDriveInfo, getNamespaceInfoCommand) != 0) {
+			KernelLog_WarnMsg("NVME Driver", "Failed to read namespace info");
 			return false;
 		}
-		kmsg_log("NVME Driver", "Successfully read NVME namespace info");
+		KernelLog_InfoMsg("NVME Driver", "Successfully read NVME namespace info");
 
-		uint8_t format_used = namespace->info->flbas & 0b11;
-		size_t block_size = 1 << namespace->info->lbaf[format_used].ds;
-		size_t transfer_blocks_max = max_size / block_size;
+		UINT8 formatUsed = namespace->info->flbas & 0b11;
+		USIZE blockSize = 1 << namespace->info->lbaf[formatUsed].ds;
+		USIZE transferBlocksMax = maxSize / blockSize;
 
-		namespace->block_size = block_size;
-		namespace->transfer_blocks_max = transfer_blocks_max;
+		namespace->block_size = blockSize;
+		namespace->transferBlocksMax = transferBlocksMax;
 		namespace->blocks_count = namespace->info->nsze;
 
-		namespace->cache.sector_size = namespace->block_size;
-		namespace->cache.max_rw_sectors_count = namespace->transfer_blocks_max;
-		namespace->cache.sectors_count = namespace->blocks_count;
+		namespace->cache.sectorSize = namespace->block_size;
+		namespace->cache.maxRWSectorsCount = namespace->transferBlocksMax;
+		namespace->cache.sectorsCount = namespace->blocks_count;
 		namespace->cache.rw_lba = nvme_namespace_rw_lba;
 		namespace->cache.ctx = (void *)namespace;
 		memset(namespace->cache.name, 0, 256);
-		sprintf("nvme%un%u\0", namespace->cache.name, 256, nvme_drive_info->id,
-				i + 1);
-		namespace->cache.partitioning_scheme = STORAGE_P_NUMERIC_PART_NAMING;
-		if (!storage_init(&(namespace->cache))) {
-			kmsg_warn("NVME Driver",
-					  "Failed to add drive object to storage stack");
+		sprintf("nvme%un%u\0", namespace->cache.name, 256, nvmeDriveInfo->id, i + 1);
+		namespace->cache.partitioningScheme = STORAGE_P_NUMERIC_PART_NAMING;
+		if (!storageInit(&(namespace->cache))) {
+			KernelLog_WarnMsg("NVME Driver", "Failed to add drive object to storage stack");
 			return false;
 		}
 
-		printf("         Drive namespace %u initialized!\n", i + 1);
+		KernelLog_InfoMsg("NVME Driver", "Drive namespace %u initialized!", i + 1);
 	}
 
-	nvme_drive_info->fallback_to_polling = !controller->event_init(
-		controller->ctx, (void (*)(void *))nvme_recieve_notify,
-		(void *)nvme_drive_info);
-	if (!(nvme_drive_info->fallback_to_polling)) {
-		nvme_enable_interrupts(bar0);
+	nvmeDriveInfo->fallbackToPolling =
+		!controller->initEvent(controller->ctx, (void (*)(void *))NVME_NotifyOnRecieve, (void *)nvmeDriveInfo);
+	if (!(nvmeDriveInfo->fallbackToPolling)) {
+		NVME_EnableInterrupts(bar0);
 	}
 
 	return true;

@@ -3,13 +3,13 @@
 
 #include <common/misc/utils.h>
 
-#define ISR_FLAGS 0xAE
+#define I686_ISR_FLAGS 0xAE
 
-void i686_idt_init();
-void i686_idt_install_handler(uint8_t index, uint32_t entry, uint8_t flags);
+void i686_IDT_Initialize();
+void i686_IDT_InstallHandler(UINT8 index, UINT32 entry, UINT8 flags);
 
-static inline void i686_idt_install_isr(uint8_t index, uint32_t entry) {
-	i686_idt_install_handler(index, entry, ISR_FLAGS);
+static INLINE void i686_IDT_InstallISR(UINT8 index, UINT32 entry) {
+	i686_IDT_InstallHandler(index, entry, I686_ISR_FLAGS);
 }
 
 #endif

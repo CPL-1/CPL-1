@@ -3,9 +3,9 @@
 
 #include <common/misc/utils.h>
 
-void hal_tty_putc(char c);
-void hal_tty_flush();
-void hal_tty_set_color(uint8_t color);
+void HAL_TTY_PrintCharacter(char c);
+void HAL_TTY_Flush();
+void HAL_TTY_SetColor(UINT8 color);
 void hal_tty_clear();
 
 #endif

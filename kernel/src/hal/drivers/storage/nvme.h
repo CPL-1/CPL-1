@@ -5,12 +5,12 @@
 
 struct hal_nvme_controller {
 	void *ctx;
-	uintptr_t offset;
-	size_t size;
-	bool disable_cache;
-	void (*wait_for_event)(void *ctx);
-	bool (*event_init)(void *ctx, void (*event_callback)(void *),
-					   void *private_ctx);
+	UINTN offset;
+	USIZE size;
+	bool disableCache;
+	void (*waitForEvent)(void *ctx);
+	bool (*initEvent)(void *ctx, void (*event_callback)(void *),
+					  void *private_ctx);
 };
 
 #endif

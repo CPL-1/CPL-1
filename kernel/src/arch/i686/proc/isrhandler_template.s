@@ -1,9 +1,9 @@
 bits 32
 
-global i686_isr_with_ctx_template_begin
-global i686_isr_with_ctx_template_end
+global i686_ISR_TemplateBegin
+global i686_ISR_TemplateEnd
 
-i686_isr_with_ctx_template_begin:
+i686_ISR_TemplateBegin:
     pusha
 
     push es
@@ -31,4 +31,4 @@ i686_isr_with_ctx_template_begin:
 
     popa
     iretd
-i686_isr_with_ctx_template_end:
+i686_ISR_TemplateEnd:
