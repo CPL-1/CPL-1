@@ -107,7 +107,7 @@ bool VFS_IsInodeLoaded(struct VFS_Superblock *sb, ino_t id) {
 bool VFS_DropMount(struct VFS_Dentry *dentry) {
 	struct VFS_Superblock *sb = dentry->inode->sb;
 	struct VFS_Dentry *mountLocation = sb->mountLocation;
-	USIZE a = 0;
+	size_t a = 0;
 	if ((a = ATOMIC_DECREMENT(&(dentry->refCount))) > 1) {
 		Mutex_Unlock(&(dentry->mutex));
 		return false;
@@ -186,7 +186,7 @@ struct VFS_Dentry *VFS_WalkToDentryParent(struct VFS_Dentry *dentry) {
 }
 
 struct VFS_Dentry *VFS_GetLoadedDentryChild(struct VFS_Dentry *dentry, const char *name) {
-	USIZE hash = GetStringHash(name);
+	size_t hash = GetStringHash(name);
 	struct VFS_Dentry *current = dentry->head;
 	while (current != NULL) {
 		if (current->hash != hash) {
@@ -202,7 +202,7 @@ struct VFS_Dentry *VFS_GetLoadedDentryChild(struct VFS_Dentry *dentry, const cha
 }
 
 struct VFS_Dentry *VFS_DentryLoadChild(struct VFS_Dentry *dentry, const char *name) {
-	USIZE nameLength = strlen(name);
+	size_t nameLength = strlen(name);
 	if (nameLength > 255) {
 		return NULL;
 	}
@@ -366,7 +366,7 @@ bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) 
 		VFS_Dentry_DropRecursively(dir);
 		return false;
 	}
-	for (USIZE i = 0; i < VFS_ICACHE_MODULO; ++i) {
+	for (size_t i = 0; i < VFS_ICACHE_MODULO; ++i) {
 		sb->inodeLists[i] = NULL;
 	}
 	Mutex_Initialize(&(sb->mutex));
@@ -459,7 +459,7 @@ bool VFS_UserUnmount(const char *path) {
 }
 
 void VFS_Initialize(struct VFS_Superblock *sb) {
-	for (USIZE i = 0; i < VFS_ICACHE_MODULO; ++i) {
+	for (size_t i = 0; i < VFS_ICACHE_MODULO; ++i) {
 		sb->inodeLists[i] = NULL;
 	}
 	ino_t rootInode = 1;

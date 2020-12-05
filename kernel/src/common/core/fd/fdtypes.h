@@ -3,10 +3,10 @@
 
 #include <common/misc/utils.h>
 
-typedef UINT32 ino_t;
-typedef INT64 off_t;
-typedef INT64 blksize_t;
-typedef INT64 blkcnt_t;
+typedef uint32_t ino_t;
+typedef int64_t off_t;
+typedef int64_t blksize_t;
+typedef int64_t blkcnt_t;
 typedef int mode_t;
 
 #endif

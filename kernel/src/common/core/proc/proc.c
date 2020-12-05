@@ -13,7 +13,7 @@
 
 #define PROC_MOD_NAME "Process Manager & Scheduler"
 
-static UINT64 Proc_InstanceCountsByID[PROC_MAX_PROCESS_COUNT];
+static uint64_t Proc_InstanceCountsByID[PROC_MAX_PROCESS_COUNT];
 static struct Proc_Process *Proc_ProcessesByID[PROC_MAX_PROCESS_COUNT];
 static struct Proc_Process *Proc_CurrentProcess;
 static struct Proc_Process *Proc_DeallocQueueHead;
@@ -27,7 +27,7 @@ bool Proc_IsInitialized() {
 }
 
 struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id) {
-	USIZE array_index = id.id;
+	size_t array_index = id.id;
 	if (array_index >= PROC_MAX_PROCESS_COUNT) {
 		return NULL;
 	}
@@ -47,7 +47,7 @@ struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id) {
 
 static struct Proc_ProcessID Proc_AllocateProcessID(struct Proc_Process *process) {
 	struct Proc_ProcessID result;
-	for (USIZE i = 0; i < PROC_MAX_PROCESS_COUNT; ++i) {
+	for (size_t i = 0; i < PROC_MAX_PROCESS_COUNT; ++i) {
 		HAL_InterruptLock_Lock();
 		if (Proc_ProcessesByID[i] == NULL) {
 			Proc_ProcessesByID[i] = process;
@@ -68,7 +68,7 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	if (process == NULL) {
 		goto fail;
 	}
-	UINTN stack = (UINTN)Heap_AllocateMemory(PROC_KERNEL_STACK_SIZE);
+	uintptr_t stack = (uintptr_t)Heap_AllocateMemory(PROC_KERNEL_STACK_SIZE);
 	if (stack == 0) {
 		goto free_process_obj;
 	}
@@ -226,7 +226,7 @@ void Proc_PreemptCallback(UNUSED void *ctx, char *frame) {
 }
 
 void Proc_Initialize() {
-	for (USIZE i = 0; i < PROC_MAX_PROCESS_COUNT; ++i) {
+	for (size_t i = 0; i < PROC_MAX_PROCESS_COUNT; ++i) {
 		Proc_ProcessesByID[i] = NULL;
 		Proc_InstanceCountsByID[i] = 0;
 	}
@@ -251,7 +251,7 @@ void Proc_Initialize() {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to allocate process address space object");
 	}
 	Proc_DeallocQueueHead = NULL;
-	HAL_ISRStacks_SetISRStack((UINTN)(Proc_SchedulerStack) + PROC_SCHEDULER_STACK_SIZE);
+	HAL_ISRStacks_SetISRStack((uintptr_t)(Proc_SchedulerStack) + PROC_SCHEDULER_STACK_SIZE);
 	if (!HAL_Timer_SetCallback((HAL_ISR_Handler)Proc_PreemptCallback)) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to set timer callback");
 	}

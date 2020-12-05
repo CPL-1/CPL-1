@@ -9,13 +9,13 @@ bool PathSplitter_Init(const char *str, struct PathSplitter *splitter) {
 	if (splitter->copy == NULL) {
 		return false;
 	}
-	for (USIZE i = 0; i < splitter->size; ++i) {
+	for (size_t i = 0; i < splitter->size; ++i) {
 		splitter->copy[i] = str[i];
 		if (str[i] != splitter->copy[i]) {
 			KernelLog_ErrorMsg("Path Split", "Bruh");
 		}
 	}
-	for (USIZE i = 0; i < splitter->size; ++i) {
+	for (size_t i = 0; i < splitter->size; ++i) {
 		if (splitter->copy[i] == '/') {
 			splitter->copy[i] = '\0';
 		}

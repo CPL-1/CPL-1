@@ -4,7 +4,7 @@
 #include <common/misc/utils.h>
 
 void i686_CR3_Initialize();
-void i686_CR3_Set(UINT32 val);
-UINT32 i686_CR3_Get();
+void i686_CR3_Set(uint32_t val);
+uint32_t i686_CR3_Get();
 
 #endif

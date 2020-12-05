@@ -7,25 +7,25 @@
 #include <stdarg.h>
 #include <stdatomic.h>
 
-static INLINE void *memset(void *ptr, int value, USIZE size) {
+static INLINE void *memset(void *ptr, int value, size_t size) {
 	char *writable_ptr = (char *)ptr;
-	for (USIZE i = 0; i < size; ++i) {
+	for (size_t i = 0; i < size; ++i) {
 		writable_ptr[i] = (char)value;
 	}
 	return ptr;
 }
 
-static INLINE void *memcpy(void *dst, const void *src, USIZE size) {
+static INLINE void *memcpy(void *dst, const void *src, size_t size) {
 	char *writable_dst = (char *)dst;
 	const char *readable_dst = (const char *)src;
-	for (USIZE i = 0; i < size; ++i) {
+	for (size_t i = 0; i < size; ++i) {
 		writable_dst[i] = readable_dst[i];
 	}
 	return dst;
 }
 
-static INLINE USIZE strlen(const char *str) {
-	USIZE result = 0;
+static INLINE size_t strlen(const char *str) {
+	size_t result = 0;
 	while (*str++ != '\0') {
 		result++;
 	}
@@ -33,11 +33,11 @@ static INLINE USIZE strlen(const char *str) {
 }
 
 static INLINE bool StringsEqual(const char *str1, const char *str2) {
-	USIZE len = strlen(str1);
+	size_t len = strlen(str1);
 	if (strlen(str2) != len) {
 		return false;
 	}
-	for (USIZE i = 0; i < len; ++i) {
+	for (size_t i = 0; i < len; ++i) {
 		if (str1[i] != str2[i]) {
 			return false;
 		}
@@ -45,10 +45,10 @@ static INLINE bool StringsEqual(const char *str1, const char *str2) {
 	return true;
 }
 
-static INLINE USIZE GetStringHash(const char *str) {
-	USIZE result = 5381;
-	for (USIZE i = 0; str[i] != '\0'; ++i) {
-		result = ((result << 5) + result) + ((UINT8)str[i]);
+static INLINE size_t GetStringHash(const char *str) {
+	size_t result = 5381;
+	for (size_t i = 0; str[i] != '\0'; ++i) {
+		result = ((result << 5) + result) + ((uint8_t)str[i]);
 	}
 	return result;
 }

@@ -63,7 +63,7 @@ void Storage_LockClosePartition(struct Storage_Device *storage) {
 	Mutex_Unlock(&(storage->mutex));
 }
 
-static bool StorageRWOneSector(struct Storage_Device *storage, UINT64 lba, USIZE start, USIZE end, char *buf,
+static bool StorageRWOneSector(struct Storage_Device *storage, uint64_t lba, size_t start, size_t end, char *buf,
 							   bool write) {
 	char *tmp_buf = Heap_AllocateMemory(storage->sectorSize);
 	if (tmp_buf == NULL) {
@@ -90,11 +90,11 @@ static bool StorageRWOneSector(struct Storage_Device *storage, UINT64 lba, USIZE
 	return true;
 }
 
-static bool StorageRWRange(struct Storage_Device *storage, UINT64 lba, UINT64 count, char *buf, bool write) {
-	UINT64 current_offset = lba;
+static bool StorageRWRange(struct Storage_Device *storage, uint64_t lba, uint64_t count, char *buf, bool write) {
+	uint64_t current_offset = lba;
 	while (current_offset < lba + count) {
-		USIZE buffer_offset = (current_offset - lba) * storage->sectorSize;
-		UINT64 remaining = lba + count - current_offset;
+		size_t buffer_offset = (current_offset - lba) * storage->sectorSize;
+		uint64_t remaining = lba + count - current_offset;
 		if (remaining > storage->maxRWSectorsCount) {
 			remaining = storage->maxRWSectorsCount;
 		}
@@ -106,19 +106,19 @@ static bool StorageRWRange(struct Storage_Device *storage, UINT64 lba, UINT64 co
 	return true;
 }
 
-bool storageRW(struct Storage_Device *storage, UINT64 offset, USIZE size, char *buf, bool write) {
-	if ((offset + (UINT64)size) < offset) {
+bool storageRW(struct Storage_Device *storage, uint64_t offset, size_t size, char *buf, bool write) {
+	if ((offset + (uint64_t)size) < offset) {
 		return false;
 	}
-	if ((offset + (UINT64)size) >= storage->sectorSize * storage->sectorsCount) {
+	if ((offset + (uint64_t)size) >= storage->sectorSize * storage->sectorsCount) {
 		return false;
 	}
 	Mutex_Lock(&(storage->mutex));
-	UINT64 sector_size = (UINT64)(storage->sectorSize);
-	UINT64 start_lba = offset / sector_size;
-	UINT64 end_lba = (offset + size) / sector_size;
-	USIZE start_lba_offset = offset - start_lba * sector_size;
-	USIZE ending_lba_offset = (offset + size) - end_lba * sector_size;
+	uint64_t sector_size = (uint64_t)(storage->sectorSize);
+	uint64_t start_lba = offset / sector_size;
+	uint64_t end_lba = (offset + size) / sector_size;
+	size_t start_lba_offset = offset - start_lba * sector_size;
+	size_t ending_lba_offset = (offset + size) - end_lba * sector_size;
 	if (start_lba == end_lba) {
 		bool result = StorageRWOneSector(storage, start_lba, start_lba_offset, ending_lba_offset, buf, write);
 		Mutex_Unlock(&(storage->mutex));
@@ -128,7 +128,7 @@ bool storageRW(struct Storage_Device *storage, UINT64 offset, USIZE size, char *
 		Mutex_Unlock(&(storage->mutex));
 		return result;
 	} else {
-		USIZE large_zone_offset = 0;
+		size_t large_zone_offset = 0;
 		if (start_lba_offset != 0) {
 			if (!StorageRWOneSector(storage, start_lba, start_lba_offset, sector_size, buf, write)) {
 				Mutex_Unlock(&(storage->mutex));
@@ -167,7 +167,7 @@ int storageFDCallbackRW(struct File *file, int size, char *buf, bool write) {
 	if ((pos + (off_t)size) >= (off_t)(storage->sectorSize * storage->sectorsCount)) {
 		return -1;
 	}
-	if (!storageRW(storage, (UINT64)pos, (USIZE)size, buf, write)) {
+	if (!storageRW(storage, (uint64_t)pos, (size_t)size, buf, write)) {
 		return -1;
 	}
 	return size;
@@ -269,8 +269,8 @@ bool storageInit(struct Storage_Device *storage) {
 
 void storageMakePartitionName(struct Storage_Device *storage, char *buf, unsigned int part_id) {
 	if (storage->partitioningScheme == STORAGE_NUMERIC_PART_NAMING) {
-		sprintf("%s%lu\0", buf, 256, storage->name, (UINT64)(part_id + 1));
+		sprintf("%s%lu\0", buf, 256, storage->name, (uint64_t)(part_id + 1));
 	} else if (storage->partitioningScheme == STORAGE_P_NUMERIC_PART_NAMING) {
-		sprintf("%sp%lu\0", buf, 256, storage->name, (UINT64)(part_id + 1));
+		sprintf("%sp%lu\0", buf, 256, storage->name, (uint64_t)(part_id + 1));
 	}
 }

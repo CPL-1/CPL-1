@@ -27,8 +27,8 @@ enum
 
 struct VFS_Dentry {
 	char name[VFS_MAX_NAME_LENGTH + 1];
-	USIZE hash;
-	USIZE refCount;
+	size_t hash;
+	size_t refCount;
 	struct VFS_Inode *inode;
 	struct Mutex mutex;
 	struct VFS_Dentry *parent, *head, *prev, *next;
@@ -53,7 +53,7 @@ struct VFS_Inode {
 	bool dirty;
 	ino_t id;
 	void *ctx;
-	USIZE refCount;
+	size_t refCount;
 	struct VFS_Inode *prevInCache, *nextInCache;
 	struct VFS_Stat stat;
 	struct VFS_Superblock *mount;
@@ -64,7 +64,7 @@ struct VFS_Inode {
 
 struct VFS_Superblock_type {
 	char fsName[255];
-	USIZE fsNameHash;
+	size_t fsNameHash;
 	struct VFS_Superblock *(*mount)(const char *device_path);
 	bool (*getInode)(struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id);
 	void (*dropInode)(struct VFS_Superblock *sb, struct VFS_Inode *buf, ino_t id);

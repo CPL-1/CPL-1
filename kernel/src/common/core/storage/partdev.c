@@ -6,8 +6,8 @@
 #include <common/core/storage/storage.h>
 
 struct PartDev_InodeData {
-	UINT64 start;
-	UINT64 count;
+	uint64_t start;
+	uint64_t count;
 	struct Storage_Device *storage;
 };
 
@@ -22,7 +22,7 @@ static int partdev_fd_rw(struct File *file, int size, char *buf, bool write) {
 	if (endOffset < 0) {
 		return -1;
 	}
-	if (endOffset < file->offset || (UINT64)endOffset > inoData->count) {
+	if (endOffset < file->offset || (uint64_t)endOffset > inoData->count) {
 		return -1;
 	}
 	if (!storageRW(inoData->storage, inoData->start + file->offset, size, buf, write)) {
@@ -39,7 +39,7 @@ static off_t partdev_fd_callback_lseek(struct File *file, off_t offset, int when
 		return -1;
 	}
 	struct PartDev_InodeData *inoData = (struct PartDev_InodeData *)(file->ctx);
-	if ((UINT64)offset > inoData->count) {
+	if ((uint64_t)offset > inoData->count) {
 		return -1;
 	}
 	return offset;
@@ -99,7 +99,7 @@ static struct VFS_InodeOperations partdev_inode_ops = {
 	.unlink = NULL,
 };
 
-struct VFS_Inode *PartDev_MakePartitionDevice(struct Storage_Device *storage, UINT64 start, UINT64 count) {
+struct VFS_Inode *PartDev_MakePartitionDevice(struct Storage_Device *storage, uint64_t start, uint64_t count) {
 	struct VFS_Inode *partInode = ALLOC_OBJ(struct VFS_Inode);
 	if (partInode == NULL) {
 		return NULL;

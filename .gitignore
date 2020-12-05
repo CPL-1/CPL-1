@@ -53,3 +53,4 @@ dkms.conf
 
 # Disk images
 *.img
+*.hdd

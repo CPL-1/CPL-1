@@ -1,7 +1,7 @@
 #include <common/misc/utils.h>
 #include <hal/proc/intlock.h>
 
-static USIZE i686_InterruptLock_LocksCount = 0;
+static size_t i686_InterruptLock_LocksCount = 0;
 
 void HAL_InterruptLock_Lock() {
 	ASM volatile("cli");

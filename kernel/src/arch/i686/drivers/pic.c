@@ -14,8 +14,8 @@
 #define ICW1_INIT 0x10
 #define ICW4_8086 0x01
 
-static UINT8 i686_PIC8259_PrimaryMask = 0xff;
-static UINT8 i686_PIC8259_SecondaryMask = 0xff;
+static uint8_t i686_PIC8259_PrimaryMask = 0xff;
+static uint8_t i686_PIC8259_SecondaryMask = 0xff;
 
 void i686_PIC8259_Initialize() {
 	i686_Ports_WriteByte(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
@@ -39,14 +39,14 @@ void i686_PIC8259_Initialize() {
 	i686_PIC8259_EnableIRQ(2);
 }
 
-void i686_PIC8259_NotifyOnIRQTerm(UINT8 no) {
+void i686_PIC8259_NotifyOnIRQTerm(uint8_t no) {
 	if (no >= 8) {
 		i686_Ports_WriteByte(PIC2_COMMAND, PIC_EOI);
 	}
 	i686_Ports_WriteByte(PIC1_COMMAND, PIC_EOI);
 }
 
-void i686_PIC8259_EnableIRQ(UINT8 no) {
+void i686_PIC8259_EnableIRQ(uint8_t no) {
 	if (no >= 8) {
 		no -= 8;
 		i686_PIC8259_SecondaryMask &= ~(1 << no);
@@ -57,7 +57,7 @@ void i686_PIC8259_EnableIRQ(UINT8 no) {
 	}
 }
 
-void i686_PIC8259_DisableIRQ(UINT8 no) {
+void i686_PIC8259_DisableIRQ(uint8_t no) {
 	if (no >= 8) {
 		no -= 8;
 		i686_PIC8259_SecondaryMask |= (1 << no);

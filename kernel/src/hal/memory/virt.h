@@ -11,23 +11,23 @@ enum
 	HAL_VIRT_FLAGS_USER_ACCESSIBLE = 8,
 };
 
-extern UINTN HAL_VirtualMM_KernelMappingBase;
-extern UINTN HAL_VirtualMM_UserAreaStart;
-extern UINTN HAL_VirtualMM_UserAreaEnd;
-extern USIZE HAL_VirtualMM_PageSize;
+extern uintptr_t HAL_VirtualMM_KernelMappingBase;
+extern uintptr_t HAL_VirtualMM_UserAreaStart;
+extern uintptr_t HAL_VirtualMM_UserAreaEnd;
+extern size_t HAL_VirtualMM_PageSize;
 
-UINTN HAL_VirtualMM_MakeNewAddressSpace();
-void HAL_VirtualMM_FreeAddressSpace(UINTN root);
-void HAL_VirtualMM_SwitchToAddressSpace(UINTN root);
-UINTN HAL_VirtualMM_GetCurrentAddressSpace();
+uintptr_t HAL_VirtualMM_MakeNewAddressSpace();
+void HAL_VirtualMM_FreeAddressSpace(uintptr_t root);
+void HAL_VirtualMM_SwitchToAddressSpace(uintptr_t root);
+uintptr_t HAL_VirtualMM_GetCurrentAddressSpace();
 
-bool HAL_VirtualMM_MapPageAt(UINTN root, UINTN vaddr, UINTN paddr, int flags);
+bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, int flags);
 
-UINTN HAL_VirtualMM_UnmapPageAt(UINTN root, UINTN vaddr);
+uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr);
 
-void HAL_VirtualMM_ChangePagePermissions(UINTN root, UINTN vaddr, int flags);
+void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int flags);
 
-UINTN HAL_VirtualMM_GetIOMapping(UINTN paddr, USIZE size, bool cacheDisabled);
+uintptr_t HAL_VirtualMM_GetIOMapping(uintptr_t paddr, size_t size, bool cacheDisabled);
 
 void HAL_VirtualMM_Flush();
 

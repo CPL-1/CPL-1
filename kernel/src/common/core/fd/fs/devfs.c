@@ -5,7 +5,7 @@
 
 struct DevFS_RootDirectoryEntry {
 	const char *name;
-	USIZE hash;
+	size_t hash;
 	struct VFS_Inode *inode;
 };
 
@@ -43,7 +43,7 @@ static bool DevFS_GetInode(UNUSED struct VFS_Superblock *sb, struct VFS_Inode *b
 }
 
 bool DevFS_RegisterInode(const char *name, struct VFS_Inode *inode) {
-	USIZE nameLen = strlen(name);
+	size_t nameLen = strlen(name);
 	if (nameLen > VFS_MAX_NAME_LENGTH) {
 		return false;
 	}
@@ -74,9 +74,9 @@ bool DevFS_RegisterInode(const char *name, struct VFS_Inode *inode) {
 }
 
 static ino_t DevFS_GetRootChild(UNUSED struct VFS_Inode *inode, const char *name) {
-	USIZE hash = GetStringHash(name);
+	size_t hash = GetStringHash(name);
 	Mutex_Lock(&DevFS_Mutex);
-	for (USIZE i = 0; i < DYNARRAY_LENGTH(DevFS_RootEntries); ++i) {
+	for (size_t i = 0; i < DYNARRAY_LENGTH(DevFS_RootEntries); ++i) {
 		if (DevFS_RootEntries[i].hash != hash) {
 			continue;
 		}

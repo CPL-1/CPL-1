@@ -4,7 +4,7 @@
 
 struct i686_NVME_PCIController {
 	struct i686_PCI_Address addr;
-	UINT8 irq;
+	uint8_t irq;
 	struct i686_IOWait_ListEntry *entry;
 	void (*eventCallback)(void *);
 	void *privateCtx;
@@ -13,7 +13,7 @@ struct i686_NVME_PCIController {
 static bool i686_NVME_CheckInterrupt(void *ctx) {
 	struct i686_NVME_PCIController *controller = (struct i686_NVME_PCIController *)ctx;
 	struct i686_PCI_Address addr = controller->addr;
-	UINT16 status = i686_PCI_ReadWord(addr, I686_PCI_STATUS);
+	uint16_t status = i686_PCI_ReadWord(addr, I686_PCI_STATUS);
 	return ((status & (1 << 3)) != 0);
 }
 
@@ -27,7 +27,7 @@ static void i686_NVME_EventCallback(void *ctx, UNUSED char *state) {
 static bool i686_NVME_InitializeEvent(void *ctx, void (*event_callback)(void *), void *privateCtx) {
 	return false;
 	struct i686_NVME_PCIController *controller = (struct i686_NVME_PCIController *)ctx;
-	UINT8 irq = i686_PCI_ReadByte(controller->addr, I686_PCI_INT_LINE);
+	uint8_t irq = i686_PCI_ReadByte(controller->addr, I686_PCI_int_LINE);
 	if (irq > 15) {
 		return false;
 	}
@@ -60,8 +60,8 @@ bool i686_NVME_DetectFromPCIBus(struct i686_PCI_Address addr, struct hal_nvme_co
 		return false;
 	}
 	i686_PCI_EnableBusMastering(addr);
-	buf->offset = (UINTN)bar.address;
-	buf->size = (USIZE)bar.size;
+	buf->offset = (uintptr_t)bar.address;
+	buf->size = (size_t)bar.size;
 	buf->disableCache = bar.disableCache;
 	buf->initEvent = i686_NVME_InitializeEvent;
 	buf->waitForEvent = i686_NVME_WaitForEvent;

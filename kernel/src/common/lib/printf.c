@@ -1,18 +1,18 @@
 #include <common/lib/printf.h>
 #include <hal/drivers/tty.h>
 
-static char printf_GetCharFromDigit(UINT8 digit) {
+static char printf_GetCharFromDigit(uint8_t digit) {
 	if (digit >= 10) {
 		return 'a' - 10 + digit;
 	}
 	return '0' + digit;
 }
 
-static USIZE printf_PrintUnsignedInteger(UINT64 val, UINT8 base, bool rec, char *buf, USIZE size) {
+static size_t printf_PrintUnsignedInteger(uint64_t val, uint8_t base, bool rec, char *buf, size_t size) {
 	if (val == 0 && rec) {
 		return 0;
 	}
-	USIZE used = printf_PrintUnsignedInteger(val / base, base, true, buf, size);
+	size_t used = printf_PrintUnsignedInteger(val / base, base, true, buf, size);
 	if (used >= size) {
 		return used;
 	}
@@ -20,20 +20,20 @@ static USIZE printf_PrintUnsignedInteger(UINT64 val, UINT8 base, bool rec, char 
 	return used + 1;
 }
 
-static USIZE printf_PrintInteger(INT64 val, INT8 base, char *buf, USIZE size) {
+static size_t printf_PrintInteger(int64_t val, int8_t base, char *buf, size_t size) {
 	if (size == 0) {
 		return 0;
 	}
 	if (val < 0) {
 		buf[0] = '-';
-		return printf_PrintUnsignedInteger((UINT64)-val, base, false, buf + 1, size - 1) + 1;
+		return printf_PrintUnsignedInteger((uint64_t)-val, base, false, buf + 1, size - 1) + 1;
 	}
-	return printf_PrintUnsignedInteger((UINT64)val, base, false, buf, size);
+	return printf_PrintUnsignedInteger((uint64_t)val, base, false, buf, size);
 }
 
-static USIZE printf_PrintString(const char *str, char *buf, USIZE size) {
-	USIZE pos = 0;
-	for (UINT64 i = 0; str[i] != '\0'; ++i) {
+static size_t printf_PrintString(const char *str, char *buf, size_t size) {
+	size_t pos = 0;
+	for (uint64_t i = 0; str[i] != '\0'; ++i) {
 		if (pos >= size) {
 			return pos;
 		}
@@ -43,14 +43,14 @@ static USIZE printf_PrintString(const char *str, char *buf, USIZE size) {
 	return pos;
 }
 
-static USIZE printf_PrintPointer(UINTN pointer, int depth, char *buf, USIZE size) {
+static size_t printf_PrintPointer(uintptr_t pointer, int depth, char *buf, size_t size) {
 	if (depth == 0) {
 		return 0;
 	}
 	if (size == 0) {
 		return 0;
 	}
-	USIZE used = printf_PrintPointer(pointer / 16, depth - 1, buf, size);
+	size_t used = printf_PrintPointer(pointer / 16, depth - 1, buf, size);
 	if (size == used) {
 		return used;
 	}
@@ -58,24 +58,24 @@ static USIZE printf_PrintPointer(UINTN pointer, int depth, char *buf, USIZE size
 	return used + 1;
 }
 
-USIZE printf(const char *fmt, ...) {
+size_t printf(const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	USIZE result = va_printf(fmt, args);
+	size_t result = va_printf(fmt, args);
 	va_end(args);
 	return result;
 }
 
-USIZE sprintf(const char *fmt, char *buf, USIZE size, ...) {
+size_t sprintf(const char *fmt, char *buf, size_t size, ...) {
 	va_list args;
 	va_start(args, size);
-	USIZE result = va_sprintf(fmt, buf, size, args);
+	size_t result = va_sprintf(fmt, buf, size, args);
 	va_end(args);
 	return result;
 }
 
-USIZE va_sprintf(const char *fmt, char *buf, USIZE size, va_list args) {
-	USIZE pos = 0;
+size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
+	size_t pos = 0;
 	for (int i = 0; fmt[i] != '\0'; ++i) {
 		if (pos >= size) {
 			return size;
@@ -91,13 +91,14 @@ USIZE va_sprintf(const char *fmt, char *buf, USIZE size, va_list args) {
 				pos++;
 				break;
 			case 'd':
-				pos += printf_PrintInteger((INT64)va_arg(args, INT32), 10, buf + pos, size - pos);
+				pos += printf_PrintInteger((int64_t)va_arg(args, int32_t), 10, buf + pos, size - pos);
 				break;
 			case 'u':
-				pos += printf_PrintUnsignedInteger((UINT64)va_arg(args, UINT32), 10, false, buf + pos, size - pos);
+				pos += printf_PrintUnsignedInteger((uint64_t)va_arg(args, uint32_t), 10, false, buf + pos, size - pos);
 				break;
 			case 'p':
-				pos += printf_PrintPointer((UINT64)va_arg(args, UINTN), sizeof(UINTN) * 2, buf + pos, size - pos);
+				pos += printf_PrintPointer((uint64_t)va_arg(args, uintptr_t), sizeof(uintptr_t) * 2, buf + pos,
+										   size - pos);
 				break;
 			case 's':
 				pos += printf_PrintString(va_arg(args, char *), buf + pos, size - pos);
@@ -110,10 +111,10 @@ USIZE va_sprintf(const char *fmt, char *buf, USIZE size, va_list args) {
 				++i;
 				switch (fmt[i]) {
 				case 'u':
-					pos += printf_PrintUnsignedInteger(va_arg(args, UINT64), 10, false, buf + pos, size - pos);
+					pos += printf_PrintUnsignedInteger(va_arg(args, uint64_t), 10, false, buf + pos, size - pos);
 					break;
 				case 'd':
-					pos += printf_PrintInteger(va_arg(args, INT64), 10, buf + pos, size - pos);
+					pos += printf_PrintInteger(va_arg(args, int64_t), 10, buf + pos, size - pos);
 					break;
 				default:
 					break;
@@ -126,16 +127,16 @@ USIZE va_sprintf(const char *fmt, char *buf, USIZE size, va_list args) {
 	return pos;
 }
 
-void printf_WriteStrinig(const char *str, UINT64 size) {
-	for (UINT64 i = 0; i < size; ++i) {
+void printf_WriteStrinig(const char *str, uint64_t size) {
+	for (uint64_t i = 0; i < size; ++i) {
 		HAL_TTY_PrintCharacter(str[i]);
 	}
 	HAL_TTY_Flush();
 }
 
-USIZE va_printf(const char *str, va_list args) {
+size_t va_printf(const char *str, va_list args) {
 	char buf[1024];
-	USIZE count = va_sprintf(str, buf, 1024, args);
+	size_t count = va_sprintf(str, buf, 1024, args);
 	printf_WriteStrinig(buf, count);
 	return count;
 }

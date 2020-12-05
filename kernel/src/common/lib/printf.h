@@ -4,9 +4,9 @@
 #include <common/misc/types.h>
 #include <stdarg.h>
 
-USIZE printf(const char *fmt, ...);
-USIZE sprintf(const char *fmt, char *buf, USIZE size, ...);
-USIZE va_printf(const char *fmt, va_list args);
-USIZE va_sprintf(const char *fmt, char *buf, USIZE size, va_list args);
+size_t printf(const char *fmt, ...);
+size_t sprintf(const char *fmt, char *buf, size_t size, ...);
+size_t va_printf(const char *fmt, va_list args);
+size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args);
 
 #endif

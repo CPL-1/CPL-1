@@ -4,8 +4,8 @@
 #include <common/misc/utils.h>
 
 void i686_PIC8259_Initialize();
-void i686_PIC8259_NotifyOnIRQTerm(UINT8 no);
-void i686_PIC8259_EnableIRQ(UINT8 no);
-void i686_PIC8259_DisableIRQ(UINT8 no);
+void i686_PIC8259_NotifyOnIRQTerm(uint8_t no);
+void i686_PIC8259_EnableIRQ(uint8_t no);
+void i686_PIC8259_DisableIRQ(uint8_t no);
 
 #endif

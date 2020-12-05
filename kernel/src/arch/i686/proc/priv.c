@@ -4,5 +4,5 @@
 extern void i686_Ring0Executor_InvokeISRHandler();
 
 void i686_Ring0Executor_Initialize() {
-	i686_IDT_InstallISR(0xff, (UINT32)i686_Ring0Executor_InvokeISRHandler);
+	i686_IDT_InstallISR(0xff, (uint32_t)i686_Ring0Executor_InvokeISRHandler);
 }

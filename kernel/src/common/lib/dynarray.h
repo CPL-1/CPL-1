@@ -7,7 +7,7 @@
 #define Dynarray(T) T *
 
 struct DynarrayMetadata {
-	USIZE count, capacity;
+	size_t count, capacity;
 	char data[];
 };
 
@@ -27,9 +27,9 @@ struct DynarrayMetadata {
 		AUTO dg_copy = (d);                                                                                            \
 		AUTO capacity_copy = (new_capacity);                                                                           \
 		struct DynarrayMetadata *old_dynarray = DYNARRAY_GET_METADATA(dg_copy);                                        \
-		USIZE element_size = sizeof(*dg_copy);                                                                         \
-		USIZE array_size = element_size * capacity_copy;                                                               \
-		USIZE dynarray_alloc_size = array_size + sizeof(struct DynarrayMetadata);                                      \
+		size_t element_size = sizeof(*dg_copy);                                                                        \
+		size_t array_size = element_size * capacity_copy;                                                              \
+		size_t dynarray_alloc_size = array_size + sizeof(struct DynarrayMetadata);                                     \
 		struct DynarrayMetadata *new_dynarray = (struct DynarrayMetadata *)Heap_AllocateMemory(dynarray_alloc_size);   \
 		if (new_dynarray != NULL) {                                                                                    \
 			new_dynarray->count = old_dynarray->count;                                                                 \
@@ -51,7 +51,7 @@ struct DynarrayMetadata {
 		AUTO dp_copy = (d);                                                                                            \
 		struct DynarrayMetadata *dynarray = DYNARRAY_GET_METADATA(dp_copy);                                            \
 		if (dynarray->count >= dynarray->capacity) {                                                                   \
-			USIZE new_capacity = (dynarray->capacity == 0 ? 1 : (2 * dynarray->capacity));                             \
+			size_t new_capacity = (dynarray->capacity == 0 ? 1 : (2 * dynarray->capacity));                            \
 			struct DynarrayMetadata *new_dynarray = DYNARRAY_GROW(dp_copy, new_capacity);                              \
 			if (new_dynarray != NULL) {                                                                                \
 				DYNARRAY_DISPOSE(dp_copy);                                                                             \
@@ -87,8 +87,8 @@ struct DynarrayMetadata {
 	({                                                                                                                 \
 		AUTO ds_copy = (d);                                                                                            \
 		AUTO e_copy = (e);                                                                                             \
-		USIZE result = DYNARRAY_LENGTH(ds_copy);                                                                       \
-		for (USIZE i = 0; i < DYNARRAY_LENGTH(ds_copy); ++i) {                                                         \
+		size_t result = DYNARRAY_LENGTH(ds_copy);                                                                      \
+		for (size_t i = 0; i < DYNARRAY_LENGTH(ds_copy); ++i) {                                                        \
 			if (ds_copy[i] == e_copy) {                                                                                \
 				result = i;                                                                                            \
 				break;                                                                                                 \
@@ -97,12 +97,12 @@ struct DynarrayMetadata {
 		result;                                                                                                        \
 	})
 
-#define POINTER_DYNARRAY_INSERT_pointer(d, p, iref)                                                                    \
+#define POintER_DYNARRAY_INSERT_pointer(d, p, iref)                                                                    \
 	({                                                                                                                 \
 		AUTO dpi_copy = (d);                                                                                           \
 		AUTO pi_copy = (p);                                                                                            \
 		AUTO iref_copy = (iref);                                                                                       \
-		USIZE pos = DYNARRAY_SEARCH(dpi_copy, NULL);                                                                   \
+		size_t pos = DYNARRAY_SEARCH(dpi_copy, NULL);                                                                  \
 		AUTO result = dpi_copy;                                                                                        \
 		if (pos != DYNARRAY_LENGTH(dpi_copy)) {                                                                        \
 			dpi_copy[pos] = pi_copy;                                                                                   \
@@ -113,7 +113,7 @@ struct DynarrayMetadata {
 		result;                                                                                                        \
 	})
 
-#define POINTER_DYNARRAY_REMOVE_POINTER(d, index)                                                                      \
+#define POintER_DYNARRAY_REMOVE_POintER(d, index)                                                                      \
 	({                                                                                                                 \
 		AUTO pdri_copy = (d);                                                                                          \
 		AUTO index_copy = (index);                                                                                     \

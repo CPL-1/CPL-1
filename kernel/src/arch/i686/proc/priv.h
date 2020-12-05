@@ -2,6 +2,6 @@
 #define __PRIV_H_INCLUDED__
 
 void i686_Ring0Executor_Initialize();
-void i686_Ring0Executor_Invoke(UINT32 function, UINT32 argument);
+void i686_Ring0Executor_Invoke(uint32_t function, uint32_t argument);
 
 #endif

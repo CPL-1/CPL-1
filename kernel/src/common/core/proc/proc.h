@@ -8,8 +8,8 @@
 	}
 
 struct Proc_ProcessID {
-	UINT64 id;
-	UINT64 instance_number;
+	uint64_t id;
+	uint64_t instance_number;
 };
 
 static INLINE bool proc_is_valid_Proc_ProcessID(struct Proc_ProcessID id) {

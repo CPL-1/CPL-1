@@ -4,6 +4,6 @@
 #include <common/core/storage/storage.h>
 #include <common/misc/utils.h>
 
-struct VFS_Inode *PartDev_MakePartitionDevice(struct Storage_Device *storage, UINT64 start, UINT64 count);
+struct VFS_Inode *PartDev_MakePartitionDevice(struct Storage_Device *storage, uint64_t start, uint64_t count);
 
 #endif

@@ -4,6 +4,6 @@
 #include <common/misc/utils.h>
 
 void i686_GDT_Initialize();
-UINT16 i686_GDT_GetTSSSegment();
+uint16_t i686_GDT_GetTSSSegment();
 
 #endif

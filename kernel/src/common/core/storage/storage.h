@@ -6,11 +6,11 @@
 #include <common/misc/utils.h>
 
 struct Storage_Device {
-	USIZE sectorSize;
-	USIZE maxRWSectorsCount;
-	UINT64 sectorsCount;
+	size_t sectorSize;
+	size_t maxRWSectorsCount;
+	uint64_t sectorsCount;
 	void *ctx;
-	bool (*rw_lba)(void *ctx, char *buf, UINT64 lba, USIZE count, bool write);
+	bool (*rw_lba)(void *ctx, char *buf, uint64_t lba, size_t count, bool write);
 	struct Mutex mutex;
 	char name[256];
 	enum
@@ -25,13 +25,13 @@ struct Storage_Device {
 		STORAGE_OPENED_PARTITION,
 		STORAGE_OPENED,
 	} openedMode;
-	USIZE partitions_opened_count;
+	size_t partitions_opened_count;
 };
 
 bool storageInit(struct Storage_Device *storage);
 bool Storage_LockTryOpenPartition(struct Storage_Device *storage);
 void Storage_LockClosePartition(struct Storage_Device *storage);
-bool storageRW(struct Storage_Device *storage, UINT64 offset, USIZE size, char *buf, bool write);
+bool storageRW(struct Storage_Device *storage, uint64_t offset, size_t size, char *buf, bool write);
 void storageFlush(struct Storage_Device *storage);
 struct File *storageFileOpen(struct VFS_Inode *inode, int perm);
 struct VFS_Inode *storageMakeInode(struct Storage_Device *storage);

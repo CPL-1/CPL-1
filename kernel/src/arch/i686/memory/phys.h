@@ -5,8 +5,8 @@
 
 void i686_PhysicalMM_Initialize();
 
-UINT32 i686_PhysicalMM_KernelAllocFrame();
-void HAL_PhysicalMM_KernelFreeFrame(UINT32 frame);
-UINT32 i686_PhysicalMM_GetMemorySize();
+uint32_t i686_PhysicalMM_KernelAllocFrame();
+void HAL_PhysicalMM_KernelFreeFrame(uint32_t frame);
+uint32_t i686_PhysicalMM_GetMemorySize();
 
 #endif

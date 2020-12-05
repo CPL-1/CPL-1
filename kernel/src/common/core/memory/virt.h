@@ -7,15 +7,15 @@
 
 struct VirtualMM_MemoryRegionBase {
 	struct RedBlackTree_Node base;
-	UINTN start;
-	UINTN end;
-	USIZE size;
+	uintptr_t start;
+	uintptr_t end;
+	size_t size;
 };
 
 struct VirtualMM_MemoryHoleNode {
 	struct VirtualMM_MemoryRegionBase base;
-	USIZE maxSize;
-	USIZE minSize;
+	size_t maxSize;
+	size_t minSize;
 	struct VirtualMM_MemoryRegionNode *correspondingRegion;
 };
 
@@ -31,15 +31,15 @@ struct VirtualMM_RegionTrees {
 };
 
 struct VirtualMM_AddressSpace {
-	UINTN root;
-	USIZE refCount;
+	uintptr_t root;
+	size_t refCount;
 	struct Mutex mutex;
 	struct VirtualMM_RegionTrees trees;
 };
 
-UINTN VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, UINTN addr, USIZE size, int flags, bool lock);
-void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, UINTN addr, USIZE size, bool lock);
-struct VirtualMM_AddressSpace *VirtualMM_MakeAddressSpaceFromRoot(UINTN root);
+uintptr_t VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, int flags, bool lock);
+void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, bool lock);
+struct VirtualMM_AddressSpace *VirtualMM_MakeAddressSpaceFromRoot(uintptr_t root);
 void VirtualMM_DropAddressSpace(struct VirtualMM_AddressSpace *space);
 struct VirtualMM_AddressSpace *VirtualMM_ReferenceAddressSpace(struct VirtualMM_AddressSpace *space);
 struct VirtualMM_AddressSpace *VirtualMM_MakeNewAddressSpace();

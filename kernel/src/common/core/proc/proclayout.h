@@ -13,7 +13,7 @@ struct Proc_Process {
 	struct Proc_Process *nextInQueue;
 	char *processState;
 	struct VirtualMM_AddressSpace *address_space;
-	UINTN kernelStack;
+	uintptr_t kernelStack;
 	int returnCode;
 	enum
 	{

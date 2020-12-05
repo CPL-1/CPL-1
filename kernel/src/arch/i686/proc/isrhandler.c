@@ -11,8 +11,8 @@ struct i686_ISR_ISRTemplate {
 	void *func;
 } PACKED;
 
-static USIZE i686_ISR_GetTemplateSize() {
-	return (UINT32)i686_ISR_TemplateEnd - (UINT32)i686_ISR_TemplateBegin;
+static size_t i686_ISR_GetTemplateSize() {
+	return (uint32_t)i686_ISR_TemplateEnd - (uint32_t)i686_ISR_TemplateBegin;
 }
 
 HAL_ISR_Handler i686_ISR_MakeNewISRHandler(void *func, void *arg) {

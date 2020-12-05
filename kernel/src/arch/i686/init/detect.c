@@ -8,7 +8,7 @@
 
 void i686_DetectHardware_EnumerateCallback(struct i686_PCI_Address addr, UNUSED struct i686_PCI_ID id,
 										   UNUSED void *ctx) {
-	UINT16 type = i686_PCI_GetDeviceType(addr);
+	uint16_t type = i686_PCI_GetDeviceType(addr);
 	switch (type) {
 	case NVME_I686_PCI_TYPE: {
 		KernelLog_InfoMsg("i686 Hardware Autodetection Routine", "Found NVME controller on PCI bus");

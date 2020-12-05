@@ -6,12 +6,12 @@
 #include <arch/i686/proc/isrhandler.h>
 #include <hal/proc/isrhandler.h>
 
-void i686_PIT8253_Initialize(UINT32 freq) {
-	UINT32 divisor = 1193180 / freq;
+void i686_PIT8253_Initialize(uint32_t freq) {
+	uint32_t divisor = 1193180 / freq;
 	i686_Ports_WriteByte(0x43, 0x36);
 
-	UINT8 lo = (UINT8)(divisor & 0xff);
-	UINT8 hi = (UINT8)((divisor >> 8) & 0xff);
+	uint8_t lo = (uint8_t)(divisor & 0xff);
+	uint8_t hi = (uint8_t)((divisor >> 8) & 0xff);
 
 	i686_Ports_WriteByte(0x40, lo);
 	i686_Ports_WriteByte(0x40, hi);
@@ -23,7 +23,7 @@ bool HAL_Timer_SetCallback(HAL_ISR_Handler entry) {
 	if (handler == NULL) {
 		return false;
 	}
-	i686_IDT_InstallISR(0xfe, (UINT32)handler);
+	i686_IDT_InstallISR(0xfe, (uint32_t)handler);
 	return true;
 }
 

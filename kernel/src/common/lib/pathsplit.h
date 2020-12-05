@@ -5,8 +5,8 @@
 
 struct PathSplitter {
 	char *copy;
-	USIZE size;
-	USIZE pos;
+	size_t size;
+	size_t pos;
 };
 
 bool PathSplitter_Init(const char *str, struct PathSplitter *splitter);

@@ -15,26 +15,26 @@ enum i686_stivale_mmap_entry_type
 };
 
 struct i686_stivale_mmap_entry {
-	UINT64 base;
-	UINT64 length;
-	UINT32 type;
-	UINT32 reserved;
+	uint64_t base;
+	uint64_t length;
+	uint32_t type;
+	uint32_t reserved;
 } PACKED;
 
 struct i686_Stivale_FramebufferInfo {
-	UINT64 framebufferAddr;
-	UINT16 framebufferPitch;
-	UINT16 framebufferWidth;
-	UINT16 framebufferHeight;
-	UINT16 framebufferBPP;
+	uint64_t framebufferAddr;
+	uint16_t framebufferPitch;
+	uint16_t framebufferWidth;
+	uint16_t framebufferHeight;
+	uint16_t framebufferBPP;
 } PACKED;
 
 struct i686_Stivale_MemoryMap {
 	struct i686_stivale_mmap_entry *entries;
-	UINT32 entries_count;
+	uint32_t entries_count;
 };
 
-void i686_Stivale_Initialize(UINT32 phys_info);
+void i686_Stivale_Initialize(uint32_t phys_info);
 bool i686_Stivale_GetMemoryMap(struct i686_Stivale_MemoryMap *buf);
 bool i686_Stivale_GetFramebufferInfo(struct i686_Stivale_FramebufferInfo *buf);
 

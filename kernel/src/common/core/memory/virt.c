@@ -11,8 +11,8 @@
 static bool VirtualMM_UpdateMaxAndMinHoleSizes(struct VirtualMM_MemoryHoleNode *node) {
 	struct VirtualMM_MemoryHoleNode *leftNode = (struct VirtualMM_MemoryHoleNode *)(node->base.base.desc[0]);
 	struct VirtualMM_MemoryHoleNode *rightNode = (struct VirtualMM_MemoryHoleNode *)(node->base.base.desc[1]);
-	USIZE maxSize = node->base.size;
-	USIZE minSize = node->base.size;
+	size_t maxSize = node->base.size;
+	size_t minSize = node->base.size;
 	bool updatesNeeded = false;
 	if (leftNode != NULL) {
 		if (leftNode->base.size < minSize) {
@@ -49,7 +49,7 @@ static void VirtualMM_HolesAugmentCallback(struct RedBlackTree_Node *node) {
 
 static int VirtualMM_FindBestFitComparator(struct RedBlackTree_Node *desired, struct RedBlackTree_Node *compared,
 										   UNUSED void *ctx) {
-	USIZE size = ((struct VirtualMM_MemoryHoleNode *)desired)->base.size;
+	size_t size = ((struct VirtualMM_MemoryHoleNode *)desired)->base.size;
 	struct VirtualMM_MemoryHoleNode *currentData = (struct VirtualMM_MemoryHoleNode *)(compared);
 	struct VirtualMM_MemoryHoleNode *leftData = (struct VirtualMM_MemoryHoleNode *)(compared->desc[0]);
 	if (leftData != NULL && leftData->maxSize >= size) {
@@ -108,7 +108,7 @@ void VirtualMM_CleanupRegionTrees(struct VirtualMM_RegionTrees *regions) {
 	}
 }
 
-bool VirtualMM_AddInitRegion(struct VirtualMM_RegionTrees *trees, UINTN start, UINTN end) {
+bool VirtualMM_AddInitRegion(struct VirtualMM_RegionTrees *trees, uintptr_t start, uintptr_t end) {
 	struct VirtualMM_MemoryHoleNode *hole = ALLOC_OBJ(struct VirtualMM_MemoryHoleNode);
 	if (hole == NULL) {
 		return false;
@@ -134,7 +134,7 @@ bool VirtualMM_AddInitRegion(struct VirtualMM_RegionTrees *trees, UINTN start, U
 	return true;
 }
 
-UINTN VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, USIZE size) {
+uintptr_t VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, size_t size) {
 	struct VirtualMM_MemoryHoleNode queryNode;
 	queryNode.base.size = size;
 	struct VirtualMM_MemoryHoleNode *hole = (struct VirtualMM_MemoryHoleNode *)RedBlackTree_Query(
@@ -155,7 +155,7 @@ UINTN VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, USIZE size) 
 	}
 	RedBlackTree_Remove(&(trees->holesTreeRoot), (struct RedBlackTree_Node *)hole);
 	RedBlackTree_Remove(&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)region);
-	UINTN prevRegionEnd = region->base.end;
+	uintptr_t prevRegionEnd = region->base.end;
 	region->base.end = region->base.start + size;
 	region->base.size = region->base.end - region->base.start;
 	newRegion->base.start = region->base.end;
@@ -179,7 +179,7 @@ UINTN VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, USIZE size) 
 	return region->base.start;
 }
 
-bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, UINTN start, UINTN end) {
+bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t start, uintptr_t end) {
 	struct VirtualMM_MemoryRegionNode queryNode;
 	queryNode.base.start = start;
 	struct VirtualMM_MemoryRegionNode *region = (struct VirtualMM_MemoryRegionNode *)RedBlackTree_Query(
@@ -271,7 +271,7 @@ bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, UINTN start, U
 	return true;
 }
 
-bool VirtualMM_FreeRegion(struct VirtualMM_RegionTrees *trees, UINTN start, UINTN end) {
+bool VirtualMM_FreeRegion(struct VirtualMM_RegionTrees *trees, uintptr_t start, uintptr_t end) {
 	if (start == end) {
 		return true;
 	}
@@ -380,7 +380,7 @@ static struct VirtualMM_AddressSpace *VirtualMM_GetCurrentAddressSpace() {
 	return process->address_space;
 }
 
-UINTN VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, UINTN addr, USIZE size, int flags, bool lock) {
+uintptr_t VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, int flags, bool lock) {
 	struct VirtualMM_AddressSpace *currentSpace = VirtualMM_GetCurrentAddressSpace();
 	if (space == NULL) {
 		space = currentSpace;
@@ -396,8 +396,8 @@ UINTN VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, UINTN addr, USIZ
 	} else if (!VirtualMM_ReserveRegion(&(space->trees), addr, addr + size)) {
 		return 0;
 	}
-	for (UINTN current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
-		UINTN new_page = HAL_PhysicalMM_UserAllocFrame();
+	for (uintptr_t current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
+		uintptr_t new_page = HAL_PhysicalMM_UserAllocFrame();
 		if (new_page == 0) {
 			goto failure;
 		}
@@ -407,7 +407,7 @@ UINTN VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, UINTN addr, USIZ
 		}
 		continue;
 	failure:
-		for (UINTN deallocating = addr; deallocating < current; deallocating += HAL_VirtualMM_PageSize) {
+		for (uintptr_t deallocating = addr; deallocating < current; deallocating += HAL_VirtualMM_PageSize) {
 			HAL_VirtualMM_UnmapPageAt(space->root, deallocating);
 		}
 		if (lock) {
@@ -427,7 +427,7 @@ UINTN VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, UINTN addr, USIZ
 	return addr;
 }
 
-void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, UINTN addr, USIZE size, bool lock) {
+void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, bool lock) {
 	struct VirtualMM_AddressSpace *currentSpace = VirtualMM_GetCurrentAddressSpace();
 	if (space == NULL) {
 		space = currentSpace;
@@ -438,8 +438,8 @@ void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, UINTN addr, USI
 	// TODO: do something better than leaking virtual address space
 	// in case of failure
 	VirtualMM_FreeRegion(&(space->trees), addr, addr + size);
-	for (UINTN current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
-		UINTN page = HAL_VirtualMM_UnmapPageAt(space->root, current);
+	for (uintptr_t current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
+		uintptr_t page = HAL_VirtualMM_UnmapPageAt(space->root, current);
 		HAL_PhysicalMM_UserFreeFrame(page);
 	}
 	if (lock) {
@@ -450,7 +450,7 @@ void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, UINTN addr, USI
 	}
 }
 
-struct VirtualMM_AddressSpace *VirtualMM_MakeAddressSpaceFromRoot(UINTN root) {
+struct VirtualMM_AddressSpace *VirtualMM_MakeAddressSpaceFromRoot(uintptr_t root) {
 	struct VirtualMM_AddressSpace *space = ALLOC_OBJ(struct VirtualMM_AddressSpace);
 	if (space == NULL) {
 		return NULL;
@@ -492,7 +492,7 @@ struct VirtualMM_AddressSpace *VirtualMM_ReferenceAddressSpace(struct VirtualMM_
 }
 
 struct VirtualMM_AddressSpace *VirtualMM_MakeNewAddressSpace() {
-	UINTN newRoot = HAL_VirtualMM_MakeNewAddressSpace();
+	uintptr_t newRoot = HAL_VirtualMM_MakeNewAddressSpace();
 	if (newRoot == 0) {
 		return NULL;
 	}

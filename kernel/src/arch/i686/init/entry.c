@@ -47,7 +47,7 @@ void i686_KernelInit_URMThreadFunction() {
 
 void i686_KernelInit_ExecuteInitProcess();
 
-void i686_KernelInit_DoInitialization(UINT32 mb_offset) {
+void i686_KernelInit_DoInitialization(uint32_t mb_offset) {
 	i686_Stivale_Initialize(mb_offset);
 	KernelLog_InfoMsg("i686 Kernel Init", "Preparing to unleash the real power of your CPU...");
 	KernelLog_InitDoneMsg("i686 Stivale v1.0 Tables Parser");
@@ -61,8 +61,6 @@ void i686_KernelInit_DoInitialization(UINT32 mb_offset) {
 	KernelLog_InitDoneMsg("i686 Physical Memory Allocator");
 	i686_VirtualMM_InitializeKernelMap();
 	KernelLog_InitDoneMsg("i686 Virtual Memory Mapper");
-	i686_TTY_Initialize();
-	KernelLog_InitDoneMsg("i686 Terminal");
 	Heap_Initialize();
 	KernelLog_InitDoneMsg("Kernel Heap Heap");
 	i686_IOWait_Initialize();
@@ -80,13 +78,15 @@ void i686_KernelInit_DoInitialization(UINT32 mb_offset) {
 	Proc_Initialize();
 	KernelLog_InitDoneMsg("Process Manager & Scheduler");
 	VFS_Initialize(RootFS_MakeSuperblock());
+	i686_TTY_Initialize();
+	KernelLog_InitDoneMsg("i686 Terminal");
 	KernelLog_InfoMsg("i686 Kernel Init", "Starting Init Process...");
 	struct Proc_ProcessID initID = Proc_MakeNewProcess(Proc_GetProcessID());
 	struct Proc_Process *initData = Proc_GetProcessData(initID);
 	struct i686_cpu_state *initState = (struct i686_cpu_state *)(initData->processState);
 	initState->ds = initState->es = initState->gs = initState->fs = initState->ss = 0x21;
 	initState->cs = 0x19;
-	initState->eip = (UINT32)i686_KernelInit_ExecuteInitProcess;
+	initState->eip = (uint32_t)i686_KernelInit_ExecuteInitProcess;
 	initState->esp = initData->kernelStack + PROC_KERNEL_STACK_SIZE;
 	initState->eflags = (1 << 9) | (1 << 12);
 	initData->address_space = VirtualMM_MakeNewAddressSpace();
@@ -128,6 +128,8 @@ void i686_KernelInit_ExecuteInitProcess() {
 		int read = File_Read(fd, 512, buf);
 		if (read == -1) {
 			KernelLog_ErrorMsg("i686 Kernel Init", "Failed to read test file");
+			while (true)
+				;
 		}
 		buf[read] = '\0';
 		printf("%s", buf);

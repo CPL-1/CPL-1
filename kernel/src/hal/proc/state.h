@@ -3,6 +3,6 @@
 
 #include <common/misc/utils.h>
 
-extern USIZE HAL_PROCESS_STATE_SIZE;
+extern size_t HAL_PROCESS_STATE_SIZE;
 
 #endif
