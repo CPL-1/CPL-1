@@ -25,7 +25,7 @@ static int partdev_fd_rw(struct File *file, int size, char *buf, bool write) {
 	if (endOffset < file->offset || (uint64_t)endOffset > inoData->count) {
 		return -1;
 	}
-	if (!storageRW(inoData->storage, inoData->start + file->offset, size, buf, write)) {
+	if (!Storage_ReadWrite(inoData->storage, inoData->start + file->offset, size, buf, write)) {
 		return -1;
 	}
 	return size;
@@ -55,7 +55,7 @@ static int partdev_fd_callback_write(struct File *file, int size, const char *bu
 
 static void partdev_fd_callback_flush(struct File *file) {
 	struct PartDev_InodeData *ino_data = (struct PartDev_InodeData *)(file->ctx);
-	storageFlush(ino_data->storage);
+	Storage_Flush(ino_data->storage);
 }
 
 static void partdev_fd_callback_close(struct File *file) {

@@ -25,16 +25,16 @@ struct Storage_Device {
 		STORAGE_OPENED_PARTITION,
 		STORAGE_OPENED,
 	} openedMode;
-	size_t partitions_opened_count;
+	size_t partitionsOpenedCount;
 };
 
-bool storageInit(struct Storage_Device *storage);
+bool Storage_init(struct Storage_Device *storage);
 bool Storage_LockTryOpenPartition(struct Storage_Device *storage);
 void Storage_LockClosePartition(struct Storage_Device *storage);
-bool storageRW(struct Storage_Device *storage, uint64_t offset, size_t size, char *buf, bool write);
-void storageFlush(struct Storage_Device *storage);
-struct File *storageFileOpen(struct VFS_Inode *inode, int perm);
-struct VFS_Inode *storageMakeInode(struct Storage_Device *storage);
-void storageMakePartitionName(struct Storage_Device *storage, char *buf, unsigned int part_id);
+bool Storage_ReadWrite(struct Storage_Device *storage, uint64_t offset, size_t size, char *buf, bool write);
+void Storage_Flush(struct Storage_Device *storage);
+struct File *Storage_FileOpen(struct VFS_Inode *inode, int perm);
+struct VFS_Inode *Storage_MakeInode(struct Storage_Device *storage);
+void Storage_MakePartitionName(struct Storage_Device *storage, char *buf, unsigned int part_id);
 
 #endif

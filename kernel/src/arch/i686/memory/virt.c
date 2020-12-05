@@ -186,6 +186,7 @@ void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int fl
 	pageTable->entries[ptIndex].writable = (flags & HAL_VIRT_FLAGS_WRITABLE) != 0;
 	pageTable->entries[ptIndex].cacheDisabled = (flags & HAL_VIRT_FLAGS_DISABLE_CACHE) != 0;
 	pageTable->entries[ptIndex].user = (flags & HAL_VIRT_FLAGS_USER_ACCESSIBLE) != 0;
+	pageTable->entries[ptIndex].present = true;
 }
 
 uintptr_t HAL_VirtualMM_MakeNewAddressSpace() {

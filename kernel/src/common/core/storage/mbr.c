@@ -7,7 +7,7 @@
 bool MBR_CheckDisk(struct Storage_Device *dev) {
 	char magic[3];
 	magic[2] = '\0';
-	if (!storageRW(dev, 510, 2, magic, false)) {
+	if (!Storage_ReadWrite(dev, 510, 2, magic, false)) {
 		return false;
 	}
 	return StringsEqual(magic, "\x55\xaa");
@@ -28,7 +28,7 @@ struct mbr_entry {
 
 bool MBR_EnumeratePartitions(struct Storage_Device *dev) {
 	struct mbr_entry entries[4];
-	if (!storageRW(dev, 0x1be, sizeof(entries), (char *)entries, false)) {
+	if (!Storage_ReadWrite(dev, 0x1be, sizeof(entries), (char *)entries, false)) {
 		return false;
 	}
 	struct VFS_Inode *partdevs[4];
@@ -55,7 +55,7 @@ bool MBR_EnumeratePartitions(struct Storage_Device *dev) {
 		}
 		char buf[256];
 		memset(buf, 0, 256);
-		storageMakePartitionName(dev, buf, i);
+		Storage_MakePartitionName(dev, buf, i);
 		if (!DevFS_RegisterInode(buf, partdevs[i])) {
 			FREE_OBJ(partdevs[i]);
 		}

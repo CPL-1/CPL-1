@@ -114,38 +114,11 @@ void i686_KernelInit_ExecuteInitProcess() {
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");
 	VFS_UserMount("/", "/dev/nvme0n1p1", "fat32");
 	KernelLog_InfoMsg("i686 Kernel Init", "Mounted FAT32 Filesystem on /");
-	KernelLog_InfoMsg("i686 Kernel Init", "Testing FAT32 directory iteration...");
-	struct File *fd = VFS_Open("/", VFS_O_RDONLY);
-	struct DirectoryEntry dirent;
-	while (File_Readdir(fd, &dirent, 1) == 1) {
-		KernelLog_Print("* %s", dirent.dtName);
-	}
-	File_Close(fd);
-	KernelLog_InfoMsg("i686 Kernel Init", "Testing FAT32 file reading routines...");
-	fd = VFS_Open("/folder_lmao/another_folder/yet_another_folder/test_file.txt", VFS_O_RDONLY);
-	char buf[513];
-	while (true) {
-		int read = File_Read(fd, 512, buf);
-		if (read == -1) {
-			KernelLog_ErrorMsg("i686 Kernel Init", "Failed to read test file");
-			while (true)
-				;
-		}
-		buf[read] = '\0';
-		printf("%s", buf);
-		if (read != 512) {
-			break;
-		}
-	}
-	File_Close(fd);
-	KernelLog_InfoMsg("i686 Kernel Init", "Testing reading kernel binary from disk");
-	char *buf2 = Heap_AllocateMemory(0x100000);
-	if (buf2 == NULL) {
-		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate memory for kernel binary reading test");
-	}
-	fd = VFS_Open("/boot/kernel.elf", VFS_O_RDONLY);
-	int result = File_Read(fd, 0x100000, buf2);
-	KernelLog_Print("Kernel binary reading done. Size: %u bytes", result);
+	VFS_UserMount("/dev/", NULL, "devfs");
+	KernelLog_InfoMsg("i686 Kernel Init", "Remounted Device Filesystem on /dev/");
+	KernelLog_InfoMsg("i686 Kernel Init", "Testing VirtualMM_MemoryRetype");
+	uintptr_t result = VirtualMM_MemoryMap(NULL, 0, 0x100000, HAL_VIRT_FLAGS_WRITABLE, true);
+	VirtualMM_MemoryRetype(NULL, result, 0x100000, HAL_VIRT_FLAGS_EXECUTABLE | HAL_VIRT_FLAGS_USER_ACCESSIBLE, true);
 	while (true)
 		;
 }

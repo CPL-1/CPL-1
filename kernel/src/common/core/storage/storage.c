@@ -28,9 +28,9 @@ bool Storage_LockTryOpenPartition(struct Storage_Device *storage) {
 	}
 	if (storage->openedMode == STORAGE_NOT_OPENED) {
 		storage->openedMode = STORAGE_OPENED_PARTITION;
-		storage->partitions_opened_count = 1;
+		storage->partitionsOpenedCount = 1;
 	} else {
-		storage->partitions_opened_count++;
+		storage->partitionsOpenedCount++;
 	}
 	Mutex_Unlock(&(storage->mutex));
 	return true;
@@ -52,12 +52,12 @@ void Storage_LockClosePartition(struct Storage_Device *storage) {
 		KernelLog_ErrorMsg("Storage Stack Manager", "Attempt to close partition when storage->opened_mode is not "
 													"equal to STORAGE_OPENED_PARTITION");
 	}
-	if (storage->partitions_opened_count == 0) {
+	if (storage->partitionsOpenedCount == 0) {
 		KernelLog_ErrorMsg("Storage Stack Manager", "Attempt to close partition when "
-													"storage->partitions_opened_count is zero");
+													"storage->partitionsOpenedCount is zero");
 	}
-	storage->partitions_opened_count--;
-	if (storage->partitions_opened_count == 0) {
+	storage->partitionsOpenedCount--;
+	if (storage->partitionsOpenedCount == 0) {
 		storage->openedMode = STORAGE_NOT_OPENED;
 	}
 	Mutex_Unlock(&(storage->mutex));
@@ -106,7 +106,7 @@ static bool StorageRWRange(struct Storage_Device *storage, uint64_t lba, uint64_
 	return true;
 }
 
-bool storageRW(struct Storage_Device *storage, uint64_t offset, size_t size, char *buf, bool write) {
+bool Storage_ReadWrite(struct Storage_Device *storage, uint64_t offset, size_t size, char *buf, bool write) {
 	if ((offset + (uint64_t)size) < offset) {
 		return false;
 	}
@@ -149,7 +149,7 @@ bool storageRW(struct Storage_Device *storage, uint64_t offset, size_t size, cha
 	}
 }
 
-void storageFlush(UNUSED struct Storage_Device *storage) {
+void Storage_Flush(UNUSED struct Storage_Device *storage) {
 }
 
 int storageFDCallbackRW(struct File *file, int size, char *buf, bool write) {
@@ -167,7 +167,7 @@ int storageFDCallbackRW(struct File *file, int size, char *buf, bool write) {
 	if ((pos + (off_t)size) >= (off_t)(storage->sectorSize * storage->sectorsCount)) {
 		return -1;
 	}
-	if (!storageRW(storage, (uint64_t)pos, (size_t)size, buf, write)) {
+	if (!Storage_ReadWrite(storage, (uint64_t)pos, (size_t)size, buf, write)) {
 		return -1;
 	}
 	return size;
@@ -197,12 +197,12 @@ static off_t Storage_FDCallbackLseek(struct File *file, off_t offset, int whence
 
 static void Storage_FDCallbackFlush(struct File *file) {
 	struct Storage_Device *storage = (struct Storage_Device *)file->ctx;
-	storageFlush(storage);
+	Storage_Flush(storage);
 }
 
 static void Storage_FDCallbackClose(struct File *file) {
 	struct Storage_Device *storage = (struct Storage_Device *)file->ctx;
-	storageFlush(storage);
+	Storage_Flush(storage);
 	Storage_LockClose(storage);
 	VFS_FinalizeFile(file);
 }
@@ -214,7 +214,7 @@ static struct FileOperations m_StorageFileOperations = {.read = storageFDCallbac
 														.flush = Storage_FDCallbackFlush,
 														.close = Storage_FDCallbackClose};
 
-struct File *storageFileOpen(struct VFS_Inode *inode, UNUSED int perm) {
+struct File *Storage_FileOpen(struct VFS_Inode *inode, UNUSED int perm) {
 	struct File *fd = ALLOC_OBJ(struct File);
 	if (fd == NULL) {
 		return NULL;
@@ -232,13 +232,13 @@ struct File *storageFileOpen(struct VFS_Inode *inode, UNUSED int perm) {
 
 static struct VFS_InodeOperations storage_inode_ops = {
 	.getChild = NULL,
-	.open = storageFileOpen,
+	.open = Storage_FileOpen,
 	.mkdir = NULL,
 	.link = NULL,
 	.unlink = NULL,
 };
 
-struct VFS_Inode *storageMakeInode(struct Storage_Device *storage) {
+struct VFS_Inode *Storage_MakeInode(struct Storage_Device *storage) {
 	struct VFS_Inode *inode = ALLOC_OBJ(struct VFS_Inode);
 	if (inode == NULL) {
 		return NULL;
@@ -252,9 +252,9 @@ struct VFS_Inode *storageMakeInode(struct Storage_Device *storage) {
 	return inode;
 }
 
-bool storageInit(struct Storage_Device *storage) {
+bool Storage_init(struct Storage_Device *storage) {
 	Storage_CacheInit(storage);
-	struct VFS_Inode *inode = storageMakeInode(storage);
+	struct VFS_Inode *inode = Storage_MakeInode(storage);
 	if (inode == NULL) {
 		return false;
 	}
@@ -267,7 +267,7 @@ bool storageInit(struct Storage_Device *storage) {
 	return true;
 }
 
-void storageMakePartitionName(struct Storage_Device *storage, char *buf, unsigned int part_id) {
+void Storage_MakePartitionName(struct Storage_Device *storage, char *buf, unsigned int part_id) {
 	if (storage->partitioningScheme == STORAGE_NUMERIC_PART_NAMING) {
 		sprintf("%s%lu\0", buf, 256, storage->name, (uint64_t)(part_id + 1));
 	} else if (storage->partitioningScheme == STORAGE_P_NUMERIC_PART_NAMING) {

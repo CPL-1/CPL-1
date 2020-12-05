@@ -18,7 +18,7 @@ static void qsort_SwapEntriesAtPositions(void *array, size_t size, size_t i1, si
 	qsort_SwapMemory(qsort_GetAtOffset(array, size, i1), qsort_GetAtOffset(array, size, i2), size);
 }
 
-static size_t qsort_partition(void *array, size_t size, size_t l, size_t r, qsort_comparator_t cmp, const void *ctx) {
+static size_t qsort_partition(void *array, size_t size, size_t l, size_t r, qsort_Comparator cmp, const void *ctx) {
 	void *v = qsort_GetAtOffset(array, size, (l + r) / 2);
 	size_t i = l;
 	size_t j = r;
@@ -37,7 +37,7 @@ static size_t qsort_partition(void *array, size_t size, size_t l, size_t r, qsor
 	return j;
 }
 
-static void qsort_Recursive(void *array, size_t size, size_t l, size_t r, qsort_comparator_t cmp, const void *ctx) {
+static void qsort_Recursive(void *array, size_t size, size_t l, size_t r, qsort_Comparator cmp, const void *ctx) {
 	if (l < r) {
 		size_t c = qsort_partition(array, size, l, r, cmp, ctx);
 		qsort_Recursive(array, size, l, c, cmp, ctx);
@@ -45,6 +45,6 @@ static void qsort_Recursive(void *array, size_t size, size_t l, size_t r, qsort_
 	}
 }
 
-void qsort(void *array, size_t size, size_t count, qsort_comparator_t cmp, const void *ctx) {
+void qsort(void *array, size_t size, size_t count, qsort_Comparator cmp, const void *ctx) {
 	qsort_Recursive(array, size, 0, count - 1, cmp, ctx);
 }

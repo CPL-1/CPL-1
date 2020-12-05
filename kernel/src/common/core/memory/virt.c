@@ -450,6 +450,25 @@ void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr,
 	}
 }
 
+void VirtualMM_MemoryRetype(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, int flags, bool lock) {
+	struct VirtualMM_AddressSpace *currentSpace = VirtualMM_GetCurrentAddressSpace();
+	if (space == NULL) {
+		space = currentSpace;
+	}
+	if (lock) {
+		Mutex_Lock(&(space->mutex));
+	}
+	for (uintptr_t current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
+		HAL_VirtualMM_ChangePagePermissions(space->root, current, flags);
+	}
+	if (lock) {
+		Mutex_Unlock(&(space->mutex));
+	}
+	if (space == currentSpace) {
+		HAL_VirtualMM_Flush();
+	}
+}
+
 struct VirtualMM_AddressSpace *VirtualMM_MakeAddressSpaceFromRoot(uintptr_t root) {
 	struct VirtualMM_AddressSpace *space = ALLOC_OBJ(struct VirtualMM_AddressSpace);
 	if (space == NULL) {

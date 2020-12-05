@@ -736,7 +736,7 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 		memset(namespace->cache.name, 0, 256);
 		sprintf("nvme%un%u\0", namespace->cache.name, 256, nvmeDriveInfo->id, i + 1);
 		namespace->cache.partitioningScheme = STORAGE_P_NUMERIC_PART_NAMING;
-		if (!storageInit(&(namespace->cache))) {
+		if (!Storage_init(&(namespace->cache))) {
 			KernelLog_WarnMsg("NVME Driver", "Failed to add drive object to storage stack");
 			return false;
 		}
