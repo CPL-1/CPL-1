@@ -231,7 +231,7 @@ static void i686_VirtualMM_FlushCR3FromRing0() {
 }
 
 static void i686_VirtualMM_FlushCR3() {
-	i686_Ring0Executor_Invoke(i686_VirtualMM_FlushCR3FromRing0, 0);
+	i686_Ring0Executor_Invoke((uint32_t)i686_VirtualMM_FlushCR3FromRing0, 0);
 }
 
 uintptr_t HAL_VirtualMM_GetIOMapping(uintptr_t paddr, size_t size, bool cacheDisabled) {
