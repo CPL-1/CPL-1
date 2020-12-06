@@ -103,8 +103,10 @@ bool Elf32_LoadProgramHeaders(struct File *file, struct Elf32 *info) {
 		uintptr_t pageStart = ALIGN_DOWN(info->headers[i].virtualAddress, HAL_VirtualMM_PageSize);
 		uintptr_t pageEnd =
 			ALIGN_UP(info->headers[i].virtualAddress + info->headers[i].memorySize, HAL_VirtualMM_PageSize);
-		if (VirtualMM_MemoryMap(NULL, pageStart, pageEnd - pageStart, HAL_VIRT_FLAGS_WRITABLE, true) == 0) {
-			goto failure;
+		struct VirtualMM_MemoryRegionNode *region =
+			VirtualMM_MemoryMap(NULL, pageStart, pageEnd - pageStart, HAL_VIRT_FLAGS_WRITABLE, true);
+		if (region == NULL) {
+			return false;
 		}
 		memset((void *)pageStart, 0, pageEnd - pageStart);
 		int flags = 0;
@@ -122,7 +124,7 @@ bool Elf32_LoadProgramHeaders(struct File *file, struct Elf32 *info) {
 							 (char *)(info->headers[i].virtualAddress))) {
 			goto failure;
 		}
-		VirtualMM_MemoryRetype(NULL, pageStart, pageEnd - pageStart, flags, true);
+		VirtualMM_MemoryRetype(NULL, region, flags);
 		continue;
 	failure:
 		for (size_t j = 0; j < i; ++j) {

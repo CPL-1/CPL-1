@@ -140,6 +140,11 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load program headers");
 	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Test Binary is loaded");
+	KernelLog_InfoMsg("i686 Kernel Init", "Testing address space duplication");
+	struct VirtualMM_AddressSpace *addressSpace2 = VirtualMM_CopyCurrentAddressSpace();
+	KernelLog_InfoMsg("i686 Kernel Init", "Duplication done. Switching to a new address space to test duplication");
+	VirtualMM_SwitchToAddressSpace(addressSpace2);
+	KernelLog_InfoMsg("i686 Kernel Init", "Switched to a new address space");
 	while (true) {
 		asm volatile("nop");
 	}

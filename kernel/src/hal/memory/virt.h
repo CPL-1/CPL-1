@@ -19,6 +19,7 @@ extern size_t HAL_VirtualMM_PageSize;
 
 uintptr_t HAL_VirtualMM_MakeNewAddressSpace();
 void HAL_VirtualMM_FreeAddressSpace(uintptr_t root);
+void HAL_VirtualMM_PreemptToAddressSpace(uintptr_t root);
 void HAL_VirtualMM_SwitchToAddressSpace(uintptr_t root);
 uintptr_t HAL_VirtualMM_GetCurrentAddressSpace();
 bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, int flags);

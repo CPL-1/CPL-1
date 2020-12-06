@@ -221,7 +221,7 @@ void Proc_PreemptCallback(MAYBE_UNUSED void *ctx, char *frame) {
 	memcpy(m_CurrentProcess->processState, frame, HAL_PROCESS_STATE_SIZE);
 	m_CurrentProcess = m_CurrentProcess->next;
 	memcpy(frame, m_CurrentProcess->processState, HAL_PROCESS_STATE_SIZE);
-	VirtualMM_SwitchToAddressSpace(m_CurrentProcess->addressSpace);
+	VirtualMM_PreemptToAddressSpace(m_CurrentProcess->addressSpace);
 	HAL_ISRStacks_SetSyscallsStack(m_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
 }
 

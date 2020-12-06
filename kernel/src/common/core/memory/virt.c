@@ -5,6 +5,7 @@
 #include <common/lib/kmsg.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
+#include <hal/proc/intlock.h>
 
 #define VIRT_MOD_NAME "Virtual Memory Manager"
 
@@ -143,24 +144,25 @@ bool VirtualMM_AddInitRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 	return true;
 }
 
-uintptr_t VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, size_t size) {
+struct VirtualMM_MemoryRegionNode *VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, size_t size,
+															int flags) {
 	struct VirtualMM_MemoryHoleNode queryNode;
 	queryNode.base.size = size;
 	struct VirtualMM_MemoryHoleNode *hole = (struct VirtualMM_MemoryHoleNode *)RedBlackTree_Query(
 		&(trees->holesTreeRoot), (struct RedBlackTree_Node *)&queryNode, VirtualMM_FindBestFitComparator, NULL, false);
 	if (hole == NULL || hole->base.size < size) {
-		return 0;
+		return NULL;
 	}
 	struct VirtualMM_MemoryRegionNode *region = hole->correspondingRegion;
 	if (hole->base.size == size) {
 		region->isUsed = true;
 		RedBlackTree_Remove(&(trees->holesTreeRoot), (struct RedBlackTree_Node *)hole);
 		FREE_OBJ(hole);
-		return hole->base.start;
+		return hole->correspondingRegion;
 	}
 	struct VirtualMM_MemoryRegionNode *newRegion = ALLOC_OBJ(struct VirtualMM_MemoryRegionNode);
 	if (newRegion == NULL) {
-		return 0;
+		return NULL;
 	}
 	RedBlackTree_Remove(&(trees->holesTreeRoot), (struct RedBlackTree_Node *)hole);
 	RedBlackTree_Remove(&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)region);
@@ -174,6 +176,7 @@ uintptr_t VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, size_t s
 	region->isUsed = true;
 	newRegion->isUsed = false;
 	newRegion->correspondingHole = hole;
+	newRegion->flags = flags;
 	hole->correspondingRegion = newRegion;
 	hole->base.start = newRegion->base.start;
 	hole->base.end = newRegion->base.end;
@@ -185,17 +188,24 @@ uintptr_t VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, size_t s
 						VirtualMM_GetMemoryAreaComparator, NULL);
 	RedBlackTree_Insert(&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)newRegion,
 						VirtualMM_GetMemoryAreaComparator, NULL);
-	return region->base.start;
+	return region;
 }
 
-bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t start, uintptr_t end) {
+struct VirtualMM_MemoryRegionNode *VirtualMM_MemoryGetRegionByAddress(struct VirtualMM_RegionTrees *trees,
+																	  uintptr_t addr) {
 	struct VirtualMM_MemoryRegionNode queryNode;
-	queryNode.base.start = start;
+	queryNode.base.start = addr;
 	struct VirtualMM_MemoryRegionNode *region = (struct VirtualMM_MemoryRegionNode *)RedBlackTree_Query(
 		&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)&queryNode, VirtualMM_GetMemoryAreaComparator, NULL,
 		false);
+	return region;
+}
+
+struct VirtualMM_MemoryRegionNode *VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t start,
+														   uintptr_t end, int flags) {
+	struct VirtualMM_MemoryRegionNode *region = VirtualMM_MemoryGetRegionByAddress(trees, start);
 	if (region == NULL || region->isUsed || end > region->base.end || start < region->base.start) {
-		return false;
+		return NULL;
 	}
 	struct VirtualMM_MemoryHoleNode *freeHole = region->correspondingHole;
 	struct VirtualMM_MemoryRegionNode *left = NULL, *right = NULL;
@@ -203,7 +213,7 @@ bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 	if (region->base.start < start) {
 		left = ALLOC_OBJ(struct VirtualMM_MemoryRegionNode);
 		if (left == NULL) {
-			return false;
+			return NULL;
 		}
 		leftHole = freeHole;
 		freeHole = NULL;
@@ -214,7 +224,7 @@ bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 			if (left != NULL) {
 				FREE_OBJ(left);
 			}
-			return false;
+			return NULL;
 		}
 		if (freeHole != NULL) {
 			rightHole = freeHole;
@@ -226,7 +236,7 @@ bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 					FREE_OBJ(left);
 				}
 				FREE_OBJ(right);
-				return false;
+				return NULL;
 			}
 		}
 	}
@@ -235,7 +245,7 @@ bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 		region->isUsed = true;
 		region->correspondingHole = NULL;
 		FREE_OBJ(region->correspondingHole);
-		return true;
+		return region;
 	}
 	RedBlackTree_Remove(&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)region);
 	if (region->base.start < start) {
@@ -275,20 +285,17 @@ bool VirtualMM_ReserveRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 	region->base.size = end - start;
 	region->correspondingHole = NULL;
 	region->isUsed = true;
+	region->flags = flags;
 	RedBlackTree_Insert(&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)region,
 						VirtualMM_GetMemoryAreaComparator, NULL);
-	return true;
+	return region;
 }
 
 bool VirtualMM_FreeRegion(struct VirtualMM_RegionTrees *trees, uintptr_t start, uintptr_t end) {
 	if (start == end) {
 		return true;
 	}
-	struct VirtualMM_MemoryRegionNode queryNode;
-	queryNode.base.start = start;
-	struct VirtualMM_MemoryRegionNode *region = (struct VirtualMM_MemoryRegionNode *)RedBlackTree_Query(
-		&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)&queryNode, VirtualMM_GetMemoryAreaComparator, NULL,
-		false);
+	struct VirtualMM_MemoryRegionNode *region = VirtualMM_MemoryGetRegionByAddress(trees, start);
 	if (region == NULL || !(region->isUsed) || end > region->base.end || start < region->base.start) {
 		return false;
 	}
@@ -389,7 +396,8 @@ static struct VirtualMM_AddressSpace *VirtualMM_GetCurrentAddressSpace() {
 	return process->addressSpace;
 }
 
-uintptr_t VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, int flags, bool lock) {
+struct VirtualMM_MemoryRegionNode *VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t addr,
+													   size_t size, int flags, bool lock) {
 	struct VirtualMM_AddressSpace *currentSpace = VirtualMM_GetCurrentAddressSpace();
 	if (space == NULL) {
 		space = currentSpace;
@@ -397,14 +405,17 @@ uintptr_t VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t ad
 	if (lock) {
 		Mutex_Lock(&(space->mutex));
 	}
+	struct VirtualMM_MemoryRegionNode *node;
 	if (addr == 0) {
-		addr = VirtualMM_AllocateRegion(&(space->trees), size);
-		if (addr == 0) {
-			return 0;
-		}
-	} else if (!VirtualMM_ReserveRegion(&(space->trees), addr, addr + size)) {
-		return 0;
+		node = VirtualMM_AllocateRegion(&(space->trees), size, flags);
+
+	} else {
+		node = VirtualMM_ReserveRegion(&(space->trees), addr, addr + size, flags);
 	}
+	if (node == NULL) {
+		return NULL;
+	}
+	addr = node->base.start;
 	for (uintptr_t current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
 		uintptr_t new_page = HAL_PhysicalMM_UserAllocFrame();
 		if (new_page == 0) {
@@ -428,7 +439,7 @@ uintptr_t VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t ad
 		// TODO: do something better than leaking virtual address space
 		// in case of failure
 		VirtualMM_FreeRegion(&(space->trees), addr, addr + size);
-		return false;
+		return NULL;
 	}
 	if (lock) {
 		Mutex_Unlock(&(space->mutex));
@@ -436,7 +447,7 @@ uintptr_t VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t ad
 	if (space == currentSpace) {
 		HAL_VirtualMM_Flush();
 	}
-	return addr;
+	return node;
 }
 
 void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, bool lock) {
@@ -464,19 +475,15 @@ void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr,
 	}
 }
 
-void VirtualMM_MemoryRetype(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, int flags, bool lock) {
+void VirtualMM_MemoryRetype(struct VirtualMM_AddressSpace *space, struct VirtualMM_MemoryRegionNode *region,
+							int flags) {
 	struct VirtualMM_AddressSpace *currentSpace = VirtualMM_GetCurrentAddressSpace();
 	if (space == NULL) {
 		space = currentSpace;
 	}
-	if (lock) {
-		Mutex_Lock(&(space->mutex));
-	}
-	for (uintptr_t current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
+	region->flags = flags;
+	for (uintptr_t current = region->base.start; current < region->base.end; current += HAL_VirtualMM_PageSize) {
 		HAL_VirtualMM_ChangePagePermissions(space->root, current, flags);
-	}
-	if (lock) {
-		Mutex_Unlock(&(space->mutex));
 	}
 	if (space == currentSpace) {
 		HAL_VirtualMM_Flush();
@@ -510,8 +517,8 @@ void VirtualMM_DropAddressSpace(struct VirtualMM_AddressSpace *space) {
 	space->refCount--;
 	if (space->refCount == 0) {
 		Mutex_Unlock(&(space->mutex));
-		HAL_VirtualMM_FreeAddressSpace(space->root);
 		VirtualMM_CleanupRegionTrees(space);
+		HAL_VirtualMM_FreeAddressSpace(space->root);
 		FREE_OBJ(space);
 		return;
 	}
@@ -547,8 +554,79 @@ struct VirtualMM_AddressSpace *VirtualMM_MakeNewAddressSpace() {
 }
 
 void VirtualMM_SwitchToAddressSpace(struct VirtualMM_AddressSpace *space) {
+	struct Proc_ProcessID id = Proc_GetProcessID();
+	struct Proc_Process *process = Proc_GetProcessData(id);
+	if (process == NULL) {
+		KernelLog_ErrorMsg(VIRT_MOD_NAME, "Failed to get process data");
+	}
+	HAL_InterruptLock_Lock();
+	process->addressSpace = space;
+	HAL_VirtualMM_SwitchToAddressSpace(space->root);
+	HAL_InterruptLock_Unlock();
+}
+
+void VirtualMM_PreemptToAddressSpace(struct VirtualMM_AddressSpace *space) {
 	if (space == NULL) {
 		space = VirtualMM_GetCurrentAddressSpace();
 	}
-	HAL_VirtualMM_SwitchToAddressSpace(space->root);
+	HAL_VirtualMM_PreemptToAddressSpace(space->root);
+}
+
+static void VirtualMM_CopyPageAcrossAddessSpaces(struct VirtualMM_AddressSpace *src, struct VirtualMM_AddressSpace *dst,
+												 char *buf, uintptr_t page) {
+
+	memcpy((void *)page, (void *)buf, HAL_VirtualMM_PageSize);
+	VirtualMM_SwitchToAddressSpace(dst);
+	memcpy((void *)buf, (void *)page, HAL_VirtualMM_PageSize);
+	VirtualMM_SwitchToAddressSpace(src);
+}
+
+static void VirtualMM_CopyPagesAcrossAddressSpaces(struct VirtualMM_AddressSpace *src,
+												   struct VirtualMM_AddressSpace *dst, char *buf, uintptr_t start,
+												   uintptr_t end) {
+	for (uintptr_t addr = start; addr < end; addr += HAL_VirtualMM_PageSize) {
+		VirtualMM_CopyPageAcrossAddessSpaces(src, dst, buf, addr);
+	}
+}
+
+struct VirtualMM_AddressSpace *VirtualMM_CopyCurrentAddressSpace() {
+	char *copyBuffer = Heap_AllocateMemory(HAL_VirtualMM_PageSize);
+	if (copyBuffer == NULL) {
+		return NULL;
+	}
+	struct VirtualMM_AddressSpace *newSpace = VirtualMM_MakeNewAddressSpace();
+	if (newSpace == NULL) {
+		Heap_FreeMemory(copyBuffer, HAL_VirtualMM_PageSize);
+		return NULL;
+	}
+	struct VirtualMM_AddressSpace *currentSpace = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(currentSpace->mutex));
+	struct RedBlackTree_Node *current = currentSpace->trees.regionsTreeRoot.ends[0];
+	while (current != NULL) {
+		struct VirtualMM_MemoryRegionNode *region = (struct VirtualMM_MemoryRegionNode *)current;
+		if (region->isUsed) {
+			if (!VirtualMM_MemoryMap(newSpace, region->base.start, region->base.size,
+									 HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_READABLE, false)) {
+				Heap_FreeMemory(copyBuffer, HAL_VirtualMM_PageSize);
+				VirtualMM_DropAddressSpace(newSpace);
+				return NULL;
+			}
+		}
+		current = current->iter[1];
+	}
+	current = currentSpace->trees.regionsTreeRoot.ends[0];
+	while (current != NULL) {
+		struct VirtualMM_MemoryRegionNode *region = (struct VirtualMM_MemoryRegionNode *)current;
+		if (region->isUsed) {
+			int oldType = region->flags;
+			VirtualMM_MemoryRetype(currentSpace, region, HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_READABLE);
+			VirtualMM_CopyPagesAcrossAddressSpaces(currentSpace, newSpace, copyBuffer, region->base.start,
+												   region->base.end);
+			VirtualMM_MemoryRetype(currentSpace, region, oldType);
+			VirtualMM_MemoryRetype(newSpace, region, region->flags);
+		}
+		current = current->iter[1];
+	}
+	Mutex_Unlock(&(currentSpace->mutex));
+	return newSpace;
 }

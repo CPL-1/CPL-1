@@ -3,6 +3,7 @@
 #include <arch/i686/memory/phys.h>
 #include <arch/i686/memory/virt.h>
 #include <arch/i686/proc/priv.h>
+#include <arch/i686/proc/ring1.h>
 #include <common/lib/kmsg.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
@@ -112,9 +113,6 @@ void i686_VirtualMM_InitializeKernelMap() {
 }
 
 bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, int flags) {
-	if ((flags & HAL_VIRT_FLAGS_READABLE) == 0 && (flags & HAL_VIRT_FLAGS_WRITABLE) == 0) {
-		return true;
-	}
 	struct i686_VirtualMM_PageTable *pageDir = (struct i686_VirtualMM_PageTable *)(root + I686_KERNEL_MAPPING_BASE);
 	uint16_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
@@ -149,13 +147,13 @@ uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr) {
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
 	uint32_t pageTablePhys = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);
 	if (pageTablePhys == 0) {
-		return 0;
+		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Attempt to unmap page that is not mapped");
 	}
 	struct i686_VirtualMM_PageTable *pageDir = (struct i686_VirtualMM_PageTable *)(root + I686_KERNEL_MAPPING_BASE);
 	struct i686_VirtualMM_PageTable *pageTable =
 		(struct i686_VirtualMM_PageTable *)(pageTablePhys + I686_KERNEL_MAPPING_BASE);
 	if (!(pageTable->entries[ptIndex].present)) {
-		return 0;
+		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Attempt to unmap page that is not mapped");
 	}
 	uintptr_t result = i686_VirtualMM_WalkToNextPageTable(pageTablePhys, ptIndex);
 	pageTable->entries[ptIndex].addr = 0;
@@ -171,9 +169,6 @@ uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr) {
 }
 
 void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int flags) {
-	if ((flags & HAL_VIRT_FLAGS_READABLE) == 0 && (flags & HAL_VIRT_FLAGS_WRITABLE) == 0) {
-		HAL_VirtualMM_UnmapPageAt(root, vaddr);
-	}
 	uint16_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
 	uint32_t pageTablePhys = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);
@@ -210,8 +205,17 @@ void HAL_VirtualMM_FreeAddressSpace(uintptr_t root) {
 	HAL_PhysicalMM_KernelFreeFrame(root);
 }
 
-void HAL_VirtualMM_SwitchToAddressSpace(uintptr_t root) {
+void HAL_VirtualMM_PreemptToAddressSpace(uintptr_t root) {
 	i686_CR3_Set(root);
+}
+
+void i686_VirtualMM_SwitchToAddressSpaceRing0(void *ctx) {
+	uintptr_t root = (uintptr_t)ctx;
+	i686_CR3_Set(root);
+}
+
+void HAL_VirtualMM_SwitchToAddressSpace(uintptr_t root) {
+	i686_Ring0Executor_Invoke((uint32_t)i686_VirtualMM_SwitchToAddressSpaceRing0, (uint32_t)root);
 }
 
 uintptr_t HAL_VirtualMM_GetCurrentAddressSpace(uintptr_t root) {

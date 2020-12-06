@@ -6,11 +6,10 @@ global i686_Ring0Executor_InvokeISRHandler
 section .text
 
 i686_Ring0Executor_Invoke:
-    pop edx
-    pop ecx
+    mov edx, esp
+    mov ecx, dword [edx + 4]
+    mov edx, dword [edx + 8]
     int 0xff
-    push ecx
-    push edx
     ret
 
 i686_Ring0Executor_InvokeISRHandler:
