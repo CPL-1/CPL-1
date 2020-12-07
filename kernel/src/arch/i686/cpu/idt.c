@@ -1,11 +1,16 @@
 #include <arch/i686/cpu/idt.h>
 
 struct i686_IDT_Entry {
-	uint16_t base_low;
+	uint16_t baseLow;
 	uint16_t selector;
 	uint8_t reserved;
-	uint8_t flags;
-	uint16_t base_high;
+	struct {
+		uint8_t type : 4;
+		uint8_t storageSegment : 1;
+		uint8_t dpl : 2;
+		uint8_t present : 1;
+	} PACKED;
+	uint16_t baseHigh;
 } PACKED;
 
 struct i686_IDTR {
@@ -16,12 +21,15 @@ struct i686_IDTR {
 static struct i686_IDTR m_IDTPointer;
 static struct i686_IDT_Entry m_IDTEntries[256];
 
-void i686_IDT_InstallHandler(uint8_t index, uint32_t entry, uint8_t flags) {
-	m_IDTEntries[index].base_low = (uint16_t)(entry & 0xffff);
-	m_IDTEntries[index].selector = 0x8;
+void i686_IDT_InstallHandler(uint8_t index, uint32_t entry, uint8_t gateType, uint8_t entryDPL, uint8_t selector) {
+	m_IDTEntries[index].baseLow = (uint16_t)(entry & 0xffff);
+	m_IDTEntries[index].selector = selector;
 	m_IDTEntries[index].reserved = 0;
-	m_IDTEntries[index].flags = flags;
-	m_IDTEntries[index].base_high = (uint16_t)((entry >> 16) & 0xffff);
+	m_IDTEntries[index].storageSegment = 0;
+	m_IDTEntries[index].type = gateType;
+	m_IDTEntries[index].dpl = entryDPL;
+	m_IDTEntries[index].present = 1;
+	m_IDTEntries[index].baseHigh = (uint16_t)((entry >> 16) & 0xffff);
 }
 
 void i686_IDT_Initialize() {

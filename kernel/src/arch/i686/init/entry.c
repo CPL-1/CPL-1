@@ -14,6 +14,7 @@
 #include <arch/i686/proc/iowait.h>
 #include <arch/i686/proc/priv.h>
 #include <arch/i686/proc/ring1.h>
+#include <arch/i686/proc/ring3.h>
 #include <arch/i686/proc/state.h>
 #include <common/core/fd/fdtable.h>
 #include <common/core/fd/fs/devfs.h>
@@ -76,13 +77,15 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 	KernelLog_InitDoneMsg("8253/8254 Programmable Interval Timer Driver");
 	i686_Ring0Executor_Initialize();
 	KernelLog_InitDoneMsg("i686 Privilege Manager");
-	Ring1_Switch();
+	i686_Ring1_Switch();
 	KernelLog_OkMsg("i686 Ring 1 Initializer", "Executing in Ring 1!");
 	Proc_Initialize();
 	KernelLog_InitDoneMsg("Process Manager & Scheduler");
 	VFS_Initialize(RootFS_MakeSuperblock());
 	i686_TTY_Initialize();
 	KernelLog_InitDoneMsg("i686 Terminal");
+	i686_Ring3_SyscallInit();
+	KernelLog_InitDoneMsg("i686 System Call Interface");
 	KernelLog_InfoMsg("i686 Kernel Init", "Starting Init Process...");
 	struct Proc_ProcessID initID = Proc_MakeNewProcess(Proc_GetProcessID());
 	struct Proc_Process *initData = Proc_GetProcessData(initID);
@@ -103,6 +106,7 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate file table object");
 	}
 	Proc_Resume(initID);
+	KernelLog_InfoMsg("i686 Kernel Init", "Init process summoned");
 	i686_KernelInit_URMThreadFunction();
 }
 
@@ -131,35 +135,20 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to remount Device Filesystem on /dev/");
 	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Remounted Device Filesystem on /dev/");
-	KernelLog_InfoMsg("i686 Kernel Init", "Testing loading Elf32 binaries");
-	struct File *file = VFS_Open("/test", VFS_O_RDONLY);
+	KernelLog_InfoMsg("i686 Kernel Init", "Loading \"/bin/init\" executable");
+	struct File *file = VFS_Open("/bin/init", VFS_O_RDONLY);
 	if (file == NULL) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open init binary file");
 	}
 	struct Elf32 *elf = Elf32_Parse(file, i686_Elf32_HeaderVerifyCallback);
 	if (elf == NULL) {
-		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load test Elf32 file");
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to parse init binary");
 	}
-	KernelLog_InfoMsg("i686 Kernel Init", "Read test ELF32 file. Entrypoint at 0x%p", elf->entryPoint);
 	if (!Elf32_LoadProgramHeaders(file, elf)) {
-		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load program headers");
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load init binary in memory");
 	}
-	KernelLog_InfoMsg("i686 Kernel Init", "Test Binary is loaded");
-	struct File *kekFile = VFS_Open("/kek.txt", VFS_O_RDONLY);
-	if (kekFile == NULL) {
-		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open kek.txt");
-	}
-	int slot = FileTable_AllocateFileSlot(NULL, kekFile);
-	if (slot < 0) {
-		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate file descriptor for the file");
-	}
-	char buf[3];
-	if (FileTable_FileRead(NULL, slot, buf, 2) != 2) {
-		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to read number of all numbers");
-	}
-	buf[2] = '\0';
-	KernelLog_InfoMsg("i686 Kernel Init", "The number of all numbers is %s", buf);
-	File_Drop(file);
+	KernelLog_InfoMsg("i686 Kernel Init", "Init binary is loaded. Jumping to the entrypoint");
+	i686_Ring3_Switch(elf->entryPoint, 0);
 	while (true) {
 		asm volatile("nop");
 	}
