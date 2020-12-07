@@ -1,40 +1,59 @@
 #include <common/core/fd/fd.h>
 #include <common/core/memory/heap.h>
+#include <common/lib/kmsg.h>
 #include <hal/memory/virt.h>
 
-int File_Read(struct File *file, int count, char *buf) {
+int File_ReadWithoutLocking(struct File *file, int count, char *buf) {
 	if (file->ops->read == NULL) {
 		return -1;
 	}
 	return file->ops->read(file, count, buf);
 }
 
-int File_Write(struct File *file, int count, const char *buf) {
+int File_WriteWithoutLocking(struct File *file, int count, const char *buf) {
 	if (file->ops->write == NULL) {
 		return -1;
 	}
 	return file->ops->write(file, count, buf);
 }
 
+int File_Read(struct File *file, int count, char *buf) {
+	Mutex_Lock(&(file->mutex));
+	int result = File_ReadWithoutLocking(file, count, buf);
+	Mutex_Unlock(&(file->mutex));
+	return result;
+}
+
+int File_Write(struct File *file, int count, const char *buf) {
+	Mutex_Lock(&(file->mutex));
+	int result = File_WriteWithoutLocking(file, count, buf);
+	Mutex_Unlock(&(file->mutex));
+	return result;
+}
+
 int File_Readdir(struct File *file, struct DirectoryEntry *buf, int count) {
 	if (file->ops->readdir == NULL) {
 		return -1;
 	}
+	Mutex_Lock(&(file->mutex));
 	int result = 0;
 	while (result < count) {
 		int code = file->ops->readdir(file, buf + result);
 		if (code == 0) {
+			Mutex_Unlock(&(file->mutex));
 			return result;
 		} else if (code == 1) {
 			++result;
 			continue;
 		}
+		Mutex_Unlock(&(file->mutex));
 		return code;
 	}
+	Mutex_Unlock(&(file->mutex));
 	return result;
 }
 
-off_t File_Lseek(struct File *file, off_t offset, int whence) {
+off_t File_LseekWithoutLocking(struct File *file, off_t offset, int whence) {
 	if (file->ops->lseek == NULL) {
 		return -1;
 	}
@@ -46,43 +65,99 @@ off_t File_Lseek(struct File *file, off_t offset, int whence) {
 	return result;
 }
 
+off_t File_Lseek(struct File *file, off_t offset, int whence) {
+	Mutex_Lock(&(file->mutex));
+	off_t result = File_LseekWithoutLocking(file, offset, whence);
+	Mutex_Unlock(&(file->mutex));
+	return result;
+}
+
 void File_Flush(struct File *file) {
 	if (file->ops->flush == NULL) {
 		return;
 	}
+	Mutex_Lock(&(file->mutex));
 	file->ops->flush(file);
+	Mutex_Unlock(&(file->mutex));
 }
 
-void File_Close(struct File *file) {
+struct File *File_Ref(struct File *file) {
+	Mutex_Lock(&(file->mutex));
+	file->refCount++;
+	Mutex_Unlock(&(file->mutex));
+	return file;
+}
+
+void File_Drop(struct File *file) {
+	Mutex_Lock(&(file->mutex));
+	if (file->refCount == 0) {
+		KernelLog_ErrorMsg("File Descriptor Manager", "Attempt to close file when its refcount is zero");
+	}
+	file->refCount--;
+	if (file->refCount != 0) {
+		Mutex_Unlock(&(file->mutex));
+		return;
+	}
+	Mutex_Unlock(&(file->mutex));
 	if (file->ops->close != NULL) {
 		file->ops->close(file);
 	}
 	FREE_OBJ(file);
 }
 
-int File_ReadAt(struct File *file, off_t pos, int count, char *buf) {
+int File_PReadWithoutLocking(struct File *file, off_t pos, int count, char *buf) {
 	if (file->ops->lseek == NULL || file->ops->read == NULL) {
 		return -1;
 	}
+	off_t origPos = file->offset;
 	int result;
-	if ((result = File_Lseek(file, pos, SEEK_SET)) < 0) {
+	if ((result = (int)File_LseekWithoutLocking(file, pos, SEEK_SET)) < 0) {
 		return result;
 	}
-	return File_Read(file, count, buf);
+	if ((result = File_ReadWithoutLocking(file, count, buf)) < 0) {
+		return result;
+	}
+	int secondError;
+	if ((secondError = (int)File_LseekWithoutLocking(file, origPos, SEEK_SET)) < 0) {
+		return secondError;
+	}
+	return result;
 }
 
-int File_WriteAt(struct File *file, off_t pos, int count, const char *buf) {
-	if (file->ops->lseek == NULL || file->ops->write == NULL) {
+int File_PWriteWithoutLocking(struct File *file, off_t pos, int count, const char *buf) {
+	if (file->ops->lseek == NULL || file->ops->read == NULL) {
 		return -1;
 	}
+	off_t origPos = file->offset;
 	int result;
-	if ((result = File_Lseek(file, pos, SEEK_SET)) < 0) {
+	if ((result = (int)File_LseekWithoutLocking(file, pos, SEEK_SET)) < 0) {
 		return result;
 	}
-	return File_Write(file, count, buf);
+	if ((result = File_WriteWithoutLocking(file, count, buf)) < 0) {
+		return result;
+	}
+	int secondError;
+	if ((secondError = (int)File_LseekWithoutLocking(file, origPos, SEEK_SET)) < 0) {
+		return secondError;
+	}
+	return result;
 }
 
-int File_ReadUser(struct File *file, int count, char *buf) {
+int File_PRead(struct File *file, off_t pos, int count, char *buf) {
+	Mutex_Lock(&(file->mutex));
+	int result = File_PReadWithoutLocking(file, pos, count, buf);
+	Mutex_Unlock(&(file->mutex));
+	return result;
+}
+
+int File_PWrite(struct File *file, off_t pos, int count, const char *buf) {
+	Mutex_Lock(&(file->mutex));
+	int result = File_PWriteWithoutLocking(file, pos, count, buf);
+	Mutex_Unlock(&(file->mutex));
+	return result;
+}
+
+int File_ReadUserWithoutLocking(struct File *file, int count, char *buf) {
 	if (file->ops->read == NULL) {
 		return -1;
 	}
@@ -95,7 +170,7 @@ int File_ReadUser(struct File *file, int count, char *buf) {
 			chunkSize = (size_t)count;
 		}
 		int blockSize = (int)chunkSize;
-		int result = File_Read(file, blockSize, (char *)currentOffset);
+		int result = File_ReadWithoutLocking(file, blockSize, (char *)currentOffset);
 		if (result < 0) {
 			return result;
 		}
@@ -110,7 +185,7 @@ int File_ReadUser(struct File *file, int count, char *buf) {
 	return read;
 }
 
-int File_WriteUser(struct File *file, int count, const char *buf) {
+int File_WriteUserWithoutLocking(struct File *file, int count, const char *buf) {
 	if (file->ops->read == NULL) {
 		return -1;
 	}
@@ -123,7 +198,7 @@ int File_WriteUser(struct File *file, int count, const char *buf) {
 			chunkSize = (size_t)count;
 		}
 		int blockSize = (int)chunkSize;
-		int result = File_Write(file, blockSize, (char *)currentOffset);
+		int result = File_WriteWithoutLocking(file, blockSize, (char *)currentOffset);
 		if (result < 0) {
 			return result;
 		}
@@ -138,24 +213,50 @@ int File_WriteUser(struct File *file, int count, const char *buf) {
 	return read;
 }
 
-int File_ReadAtUser(struct File *file, off_t pos, int count, char *buf) {
+int File_PReadUser(struct File *file, off_t pos, int count, char *buf) {
 	if (file->ops->lseek == NULL || file->ops->read == NULL) {
 		return -1;
 	}
+	Mutex_Lock(&(file->mutex));
+	off_t origPos = file->offset;
 	int result;
-	if ((result = File_Lseek(file, pos, SEEK_SET)) < 0) {
+	if ((result = (int)File_LseekWithoutLocking(file, pos, SEEK_SET)) < 0) {
+		Mutex_Unlock(&(file->mutex));
 		return result;
 	}
-	return File_ReadUser(file, count, buf);
+	if ((result = File_ReadUserWithoutLocking(file, count, buf)) < 0) {
+		Mutex_Unlock(&(file->mutex));
+		return result;
+	}
+	int secondError;
+	if ((secondError = (int)File_LseekWithoutLocking(file, origPos, SEEK_SET)) < 0) {
+		Mutex_Unlock(&(file->mutex));
+		return secondError;
+	}
+	Mutex_Unlock(&(file->mutex));
+	return result;
 }
 
-int File_WriteAtUser(struct File *file, off_t pos, int count, const char *buf) {
-	if (file->ops->lseek == NULL || file->ops->write == NULL) {
+int File_PWriteUser(struct File *file, off_t pos, int count, const char *buf) {
+	if (file->ops->lseek == NULL || file->ops->read == NULL) {
 		return -1;
 	}
+	Mutex_Lock(&(file->mutex));
+	off_t origPos = file->offset;
 	int result;
-	if ((result = File_Lseek(file, pos, SEEK_SET)) < 0) {
+	if ((result = (int)File_LseekWithoutLocking(file, pos, SEEK_SET)) < 0) {
+		Mutex_Unlock(&(file->mutex));
 		return result;
 	}
-	return File_WriteUser(file, count, buf);
+	if ((result = File_WriteUserWithoutLocking(file, count, buf)) < 0) {
+		Mutex_Unlock(&(file->mutex));
+		return result;
+	}
+	int secondError;
+	if ((secondError = (int)File_LseekWithoutLocking(file, origPos, SEEK_SET)) < 0) {
+		Mutex_Unlock(&(file->mutex));
+		return secondError;
+	}
+	Mutex_Unlock(&(file->mutex));
+	return result;
 }

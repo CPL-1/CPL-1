@@ -517,6 +517,8 @@ struct File *VFS_Open(const char *path, int perm) {
 		VFS_Dentry_DropRecursively(file);
 	}
 	fd->dentry = file;
+	Mutex_Initialize(&(fd->mutex));
+	fd->refCount = 1;
 	return fd;
 }
 

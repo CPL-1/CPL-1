@@ -151,7 +151,7 @@ static uint32_t FAT32_GetNextClusterID(struct FAT32_Superblock *fat32Superblock,
 	struct {
 		uint32_t entry;
 	} PACKED LITTLE_ENDIAN NOALIGN buf;
-	if (!File_ReadAt(fat32Superblock->device, fatOffset, 4, (char *)&buf)) {
+	if (!File_PRead(fat32Superblock->device, fatOffset, 4, (char *)&buf)) {
 		return 0x0FFFFFF7;
 	}
 	return buf.entry & 0x0FFFFFFF;
@@ -191,7 +191,7 @@ static size_t FAT32_ReadFromStream(struct FAT32_Superblock *fat32Superblock, str
 			chunkSize = remainingInChunk;
 		}
 		uint64_t streamPos = FAT32_GetStreamDrivePos(fat32Superblock, stream);
-		if (!File_ReadAt(fat32Superblock->device, streamPos, chunkSize, buf + result)) {
+		if (!File_PRead(fat32Superblock->device, streamPos, chunkSize, buf + result)) {
 			return result;
 		}
 		count -= chunkSize;
@@ -720,15 +720,15 @@ static struct VFS_Superblock *FAT32_Mount(const char *device_path) {
 		goto failFreeSuperblock;
 	}
 	fat32Superblock->device = device;
-	if (!File_ReadAt(device, 0, sizeof(struct FAT32_BIOSBootRecord), (char *)&(fat32Superblock->bpb))) {
+	if (!File_PRead(device, 0, sizeof(struct FAT32_BIOSBootRecord), (char *)&(fat32Superblock->bpb))) {
 		goto failCloseDevice;
 	}
-	if (!File_ReadAt(device, sizeof(struct FAT32_BIOSBootRecord), sizeof(struct FAT32_ExtendedBootRecord),
-					 (char *)&(fat32Superblock->ebp))) {
+	if (!File_PRead(device, sizeof(struct FAT32_BIOSBootRecord), sizeof(struct FAT32_ExtendedBootRecord),
+					(char *)&(fat32Superblock->ebp))) {
 		goto failCloseDevice;
 	}
 	uint64_t fsinfo_offset = fat32Superblock->bpb.bytesPerSector * fat32Superblock->ebp.fsInfoSector;
-	if (!File_ReadAt(device, fsinfo_offset, sizeof(struct FAT32_FSInfo), (char *)&(fat32Superblock->fsinfo))) {
+	if (!File_PRead(device, fsinfo_offset, sizeof(struct FAT32_FSInfo), (char *)&(fat32Superblock->fsinfo))) {
 		goto failCloseDevice;
 	}
 	if (fat32Superblock->ebp.bootableSignature != 0xaa55) {
@@ -753,7 +753,7 @@ static struct VFS_Superblock *FAT32_Mount(const char *device_path) {
 	Mutex_Initialize(&(fat32Superblock->mutex));
 	return result;
 failCloseDevice:
-	File_Close(device);
+	File_Drop(device);
 failFreeSuperblock:
 	FREE_OBJ(fat32Superblock);
 failFreeResult:
@@ -763,7 +763,7 @@ failFreeResult:
 
 void FAT32_Unmount(struct VFS_Superblock *sb) {
 	struct FAT32_Superblock *fat32Superblock = (struct FAT32_Superblock *)(sb->ctx);
-	File_Close(fat32Superblock->device);
+	File_Drop(fat32Superblock->device);
 	DYNARRAY_DISPOSE(fat32Superblock->openedInodes);
 }
 

@@ -2,6 +2,8 @@
 #define __FD_H_INCLUDED__
 
 #include <common/core/fd/fdtypes.h>
+#include <common/core/proc/mutex.h>
+#include <common/core/proc/proc.h>
 
 enum
 {
@@ -15,6 +17,8 @@ struct File {
 	void *ctx;
 	struct FileOperations *ops;
 	struct VFS_Dentry *dentry;
+	struct Mutex mutex;
+	size_t refCount;
 };
 
 #define VFS_MAX_NAME_LENGTH 255
@@ -40,11 +44,13 @@ int File_WriteUser(struct File *file, int count, const char *buf);
 int File_Readdir(struct File *file, struct DirectoryEntry *buf, int count);
 off_t File_Lseek(struct File *file, off_t offset, int whence);
 void File_Flush(struct File *file);
-void File_Close(struct File *file);
 
-int File_ReadAt(struct File *file, off_t pos, int count, char *buf);
-int File_WriteAt(struct File *file, off_t pos, int count, const char *buf);
-int File_ReadAtUser(struct File *file, off_t pos, int count, char *buf);
-int File_WriteAtUser(struct File *file, off_t pos, int count, const char *buf);
+struct File *File_Ref(struct File *file);
+void File_Drop(struct File *file);
+
+int File_PRead(struct File *file, off_t pos, int count, char *buf);
+int File_PWrite(struct File *file, off_t pos, int count, const char *buf);
+int File_PReadUser(struct File *file, off_t pos, int count, char *buf);
+int File_PWriteUser(struct File *file, off_t pos, int count, const char *buf);
 
 #endif
