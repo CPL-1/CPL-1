@@ -15,6 +15,7 @@
 #include <arch/i686/proc/priv.h>
 #include <arch/i686/proc/ring1.h>
 #include <arch/i686/proc/state.h>
+#include <common/core/fd/fdtable.h>
 #include <common/core/fd/fs/devfs.h>
 #include <common/core/fd/fs/fat32.h>
 #include <common/core/fd/fs/rootfs.h>
@@ -97,6 +98,10 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 	if (initData->addressSpace == NULL) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate address space object");
 	}
+	initData->fdTable = FileTable_MakeNewTable();
+	if (initData->fdTable == NULL) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate file table object");
+	}
 	Proc_Resume(initID);
 	i686_KernelInit_URMThreadFunction();
 }
@@ -140,6 +145,20 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load program headers");
 	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Test Binary is loaded");
+	struct File *kekFile = VFS_Open("/kek.txt", VFS_O_RDONLY);
+	if (kekFile == NULL) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open kek.txt");
+	}
+	int slot = FileTable_AllocateFileSlot(NULL, kekFile);
+	if (slot < 0) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to allocate file descriptor for the file");
+	}
+	char buf[3];
+	if (FileTable_FileRead(NULL, slot, buf, 2) != 2) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to read number of all numbers");
+	}
+	buf[2] = '\0';
+	KernelLog_InfoMsg("i686 Kernel Init", "The number of all numbers is %s", buf);
 	File_Drop(file);
 	while (true) {
 		asm volatile("nop");

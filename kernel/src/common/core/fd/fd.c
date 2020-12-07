@@ -213,6 +213,20 @@ int File_WriteUserWithoutLocking(struct File *file, int count, const char *buf) 
 	return read;
 }
 
+int File_ReadUser(struct File *file, int count, char *buf) {
+	Mutex_Lock(&(file->mutex));
+	int result = File_ReadUserWithoutLocking(file, count, buf);
+	Mutex_Unlock(&(file->mutex));
+	return result;
+}
+
+int File_WriteUser(struct File *file, int count, const char *buf) {
+	Mutex_Lock(&(file->mutex));
+	int result = File_WriteUserWithoutLocking(file, count, buf);
+	Mutex_Unlock(&(file->mutex));
+	return result;
+}
+
 int File_PReadUser(struct File *file, off_t pos, int count, char *buf) {
 	if (file->ops->lseek == NULL || file->ops->read == NULL) {
 		return -1;

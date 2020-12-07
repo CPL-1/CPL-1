@@ -475,8 +475,7 @@ static void FAT32_CleanInode(struct VFS_Inode *inode) {
 static ino_t FAT32_TryInsertingInode(struct FAT32_Superblock *fat32Superblock, struct VFS_Inode *inode) {
 	Mutex_Lock(&(fat32Superblock->mutex));
 	ino_t index;
-	struct Dynarray(VFS_Inode) *new_list =
-		POintER_DYNARRAY_INSERT_pointer(fat32Superblock->openedInodes, inode, &index);
+	struct Dynarray(VFS_Inode) *new_list = POINTER_DYNARRAY_INSERT(fat32Superblock->openedInodes, inode, &index);
 	if (new_list == NULL) {
 		Mutex_Unlock(&(fat32Superblock->mutex));
 		return 0;
@@ -581,7 +580,7 @@ static void FAT32_DropInode(MAYBE_UNUSED struct VFS_Superblock *sb, struct VFS_I
 	}
 	struct FAT32_Superblock *fat32Superblock = (struct FAT32_Superblock *)(sb->ctx);
 	Mutex_Lock(&(fat32Superblock->mutex));
-	fat32Superblock->openedInodes = POintER_DYNARRAY_REMOVE_POintER(fat32Superblock->openedInodes, id - 2);
+	fat32Superblock->openedInodes = POINTER_DYNARRAY_REMOVE(fat32Superblock->openedInodes, id - 2);
 	Mutex_Unlock(&(fat32Superblock->mutex));
 }
 

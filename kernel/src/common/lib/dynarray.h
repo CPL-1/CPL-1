@@ -75,11 +75,12 @@ struct DynarrayMetadata {
 		dynarray->count;                                                                                               \
 	})
 
-#define DYNARRAY_POP(d)                                                                                                \
+#define DYNARRAY_SHRINK(d, new_len)                                                                                    \
 	({                                                                                                                 \
 		AUTO dr_copy = (d);                                                                                            \
+		AUTO new_len_copy = (new_len);                                                                                 \
 		struct DynarrayMetadata *meta = DYNARRAY_GET_METADATA(dr_copy);                                                \
-		meta->count--;                                                                                                 \
+		meta->count = new_len_copy;                                                                                    \
 		dr_copy;                                                                                                       \
 	})
 
@@ -97,7 +98,7 @@ struct DynarrayMetadata {
 		result;                                                                                                        \
 	})
 
-#define POintER_DYNARRAY_INSERT_pointer(d, p, iref)                                                                    \
+#define POINTER_DYNARRAY_INSERT(d, p, iref)                                                                            \
 	({                                                                                                                 \
 		AUTO dpi_copy = (d);                                                                                           \
 		AUTO pi_copy = (p);                                                                                            \
@@ -113,15 +114,21 @@ struct DynarrayMetadata {
 		result;                                                                                                        \
 	})
 
-#define POintER_DYNARRAY_REMOVE_POintER(d, index)                                                                      \
+#define POINTER_DYNARRAY_REMOVE(d, index)                                                                              \
 	({                                                                                                                 \
 		AUTO pdri_copy = (d);                                                                                          \
 		AUTO index_copy = (index);                                                                                     \
 		AUTO result = pdri_copy;                                                                                       \
+		pdri_copy[index_copy] = NULL;                                                                                  \
 		if (index_copy == DYNARRAY_LENGTH(pdri_copy)) {                                                                \
-			result = DYNARRAY_POP(d);                                                                                  \
-		} else {                                                                                                       \
-			pdri_copy[index_copy] = NULL;                                                                              \
+			size_t ii;                                                                                                 \
+			for (ii = index_copy + 1; ii > 0; --ii) {                                                                  \
+				size_t i = ii - 1;                                                                                     \
+				if (pdri_copy[i] == NULL) {                                                                            \
+					break;                                                                                             \
+				}                                                                                                      \
+			}                                                                                                          \
+			result = DYNARRAY_SHRINK(d, ii);                                                                           \
 		}                                                                                                              \
 		result;                                                                                                        \
 	})

@@ -47,7 +47,7 @@ struct Elf32 *Elf32_Parse(struct File *file, MAYBE_UNUSED Elf32_HeaderVerifyCall
 	if (headers == NULL) {
 		return NULL;
 	}
-	result = File_Read(file, headersSize, (char *)headers);
+	result = File_PRead(file, header.programHeadersFileOffset, headersSize, (char *)headers);
 	if (result != headersSize) {
 		Heap_FreeMemory(headers, headersSize);
 		return NULL;
