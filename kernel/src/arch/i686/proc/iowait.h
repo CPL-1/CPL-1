@@ -11,6 +11,5 @@ void i686_IOWait_Initialize();
 struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_iowait_handler_t int_handler,
 													 i686_iowait_wakeup_handler_t check_hander, void *ctx);
 void i686_IOWait_WaitForIRQ(struct i686_IOWait_ListEntry *entry);
-void i686_IOWait_UnmaskUsedIRQ();
 
 #endif

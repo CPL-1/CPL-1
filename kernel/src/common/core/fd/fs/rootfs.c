@@ -55,5 +55,6 @@ struct VFS_Superblock *RootFS_MakeSuperblock() {
 	}
 	sb->type = &m_superblockType;
 	sb->ctx = NULL;
+	Mutex_Initialize(&(sb->mutex));
 	return sb;
 }

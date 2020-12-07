@@ -26,7 +26,7 @@ void Mutex_Lock(struct Mutex *mutex) {
 	if (mutex->queueHead == NULL) {
 		mutex->queueHead = mutex->queueTail = process;
 	} else {
-		mutex->queueTail->next = process;
+		mutex->queueTail->nextInQueue = process;
 	}
 	process->nextInQueue = NULL;
 	Proc_SuspendSelf(true);
@@ -48,7 +48,7 @@ void Mutex_Unlock(struct Mutex *mutex) {
 		Proc_Resume(process->pid);
 	} else {
 		struct Proc_Process *process = mutex->queueHead;
-		mutex->queueHead = mutex->queueHead->next;
+		mutex->queueHead = mutex->queueHead->nextInQueue;
 		HAL_InterruptLock_Unlock();
 		Proc_Resume(process->pid);
 	}

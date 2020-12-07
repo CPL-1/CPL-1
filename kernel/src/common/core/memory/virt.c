@@ -498,6 +498,7 @@ struct VirtualMM_AddressSpace *VirtualMM_MakeAddressSpaceFromRoot(uintptr_t root
 	space->root = root;
 	space->refCount = 1;
 	Mutex_Initialize(&(space->mutex));
+	VirtualMM_InitializeRegionTrees(&(space->trees));
 	if (!VirtualMM_AddInitRegion(&(space->trees), HAL_VirtualMM_UserAreaStart, HAL_VirtualMM_UserAreaEnd)) {
 		FREE_OBJ(space);
 		return NULL;

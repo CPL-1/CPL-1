@@ -1,4 +1,5 @@
 #include <common/lib/printf.h>
+#include <common/lib/vt100.h>
 #include <hal/drivers/tty.h>
 
 static char printf_GetCharFromDigit(uint8_t digit) {
@@ -129,9 +130,9 @@ size_t va_sprintf(const char *fmt, char *buf, size_t size, va_list args) {
 
 void printf_WriteString(const char *str, uint64_t size) {
 	for (uint64_t i = 0; i < size; ++i) {
-		HAL_TTY_PrintCharacter(str[i]);
+		VT100_PutCharacter(str[i]);
 	}
-	HAL_TTY_Flush();
+	VT100_Flush();
 }
 
 size_t va_printf(const char *str, va_list args) {

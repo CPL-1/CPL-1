@@ -463,6 +463,7 @@ void VFS_Initialize(struct VFS_Superblock *sb) {
 		sb->inodeLists[i] = NULL;
 	}
 	ino_t rootInode = 1;
+	Mutex_Initialize(&m_mutex);
 	if (sb->type->getRootInode != NULL) {
 		rootInode = sb->type->getRootInode(sb->ctx);
 	}
@@ -486,7 +487,6 @@ void VFS_Initialize(struct VFS_Superblock *sb) {
 	sb->nextMounted = sb->prevMounted;
 	m_superblockList = sb;
 	m_root = sb;
-	Mutex_Initialize(&m_mutex);
 	Mutex_Initialize(&(dentry->mutex));
 }
 

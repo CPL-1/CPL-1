@@ -5,7 +5,8 @@
 
 void HAL_TTY_PrintCharacter(char c);
 void HAL_TTY_Flush();
-void HAL_TTY_SetColor(uint8_t color);
+void HAL_TTY_SetForegroundColor(uint8_t color);
+void HAL_TTY_SetBackgroundColor(uint8_t color);
 void HAL_TTY_Clear();
 
 #endif

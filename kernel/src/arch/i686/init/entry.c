@@ -123,7 +123,7 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount Device Filesystem on /dev/");
 	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
-	i686_IOWait_UnmaskUsedIRQ();
+	HAL_InterruptLock_Flush();
 	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	i686_DetectHardware();
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");

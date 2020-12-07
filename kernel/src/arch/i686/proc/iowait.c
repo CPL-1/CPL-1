@@ -79,12 +79,3 @@ void i686_IOWait_WaitForIRQ(struct i686_IOWait_ListEntry *entry) {
 	entry->id = id;
 	Proc_Suspend(id, true);
 }
-
-void i686_IOWait_UnmaskUsedIRQ() {
-	for (size_t i = 0; i < 16; ++i) {
-		if (m_handlerLists[i] != NULL) {
-			i686_PIC8259_EnableIRQ(i);
-		}
-	}
-	HAL_InterruptLock_Flush();
-}
