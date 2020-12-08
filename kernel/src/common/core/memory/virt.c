@@ -387,7 +387,7 @@ bool VirtualMM_FreeRegion(struct VirtualMM_RegionTrees *trees, uintptr_t start, 
 	return true;
 }
 
-static struct VirtualMM_AddressSpace *VirtualMM_GetCurrentAddressSpace() {
+struct VirtualMM_AddressSpace *VirtualMM_GetCurrentAddressSpace() {
 	struct Proc_ProcessID id = Proc_GetProcessID();
 	struct Proc_Process *process = Proc_GetProcessData(id);
 	if (process == NULL) {

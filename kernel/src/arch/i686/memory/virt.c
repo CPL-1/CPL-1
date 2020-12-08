@@ -134,7 +134,8 @@ bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, i
 		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Mapping over already mapped page is not allowed");
 	}
 	pageTable->entries[ptIndex].addr = paddr;
-	pageTable->entries[ptIndex].present = true;
+	pageTable->entries[ptIndex].present =
+		((flags & HAL_VIRT_FLAGS_WRITABLE) != 0) || ((flags & HAL_VIRT_FLAGS_READABLE) != 0);
 	pageTable->entries[ptIndex].writable = (flags & HAL_VIRT_FLAGS_WRITABLE) != 0;
 	pageTable->entries[ptIndex].cacheDisabled = (flags & HAL_VIRT_FLAGS_DISABLE_CACHE) != 0;
 	pageTable->entries[ptIndex].user = (flags & HAL_VIRT_FLAGS_USER_ACCESSIBLE) != 0;
@@ -186,7 +187,8 @@ void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int fl
 	pageTable->entries[ptIndex].writable = (flags & HAL_VIRT_FLAGS_WRITABLE) != 0;
 	pageTable->entries[ptIndex].cacheDisabled = (flags & HAL_VIRT_FLAGS_DISABLE_CACHE) != 0;
 	pageTable->entries[ptIndex].user = (flags & HAL_VIRT_FLAGS_USER_ACCESSIBLE) != 0;
-	pageTable->entries[ptIndex].present = true;
+	pageTable->entries[ptIndex].present =
+		((flags & HAL_VIRT_FLAGS_WRITABLE) != 0) || ((flags & HAL_VIRT_FLAGS_READABLE) != 0);
 }
 
 uintptr_t HAL_VirtualMM_MakeNewAddressSpace() {
@@ -258,4 +260,33 @@ uintptr_t HAL_VirtualMM_GetIOMapping(uintptr_t paddr, size_t size, bool cacheDis
 
 void HAL_VirtualMM_Flush() {
 	i686_VirtualMM_FlushCR3();
+}
+
+int HAL_VirtualMM_GetPagePermissions(uintptr_t root, uintptr_t vaddr) {
+	uint16_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
+	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
+	uint32_t pageTablePhys = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);
+	if (pageTablePhys == 0) {
+		return 0;
+	}
+	struct i686_VirtualMM_PageTable *pageTable =
+		(struct i686_VirtualMM_PageTable *)(pageTablePhys + I686_KERNEL_MAPPING_BASE);
+	if (!(pageTable->entries[ptIndex].present)) {
+		return 0;
+	}
+	int result = 0;
+	if (pageTable->entries[ptIndex].present) {
+		result |= HAL_VIRT_FLAGS_READABLE;
+	}
+	if (pageTable->entries[ptIndex].user) {
+		result |= HAL_VIRT_FLAGS_USER_ACCESSIBLE;
+	}
+	if (pageTable->entries[ptIndex].writable) {
+		result |= HAL_VIRT_FLAGS_WRITABLE;
+	}
+	if (pageTable->entries[ptIndex].cacheDisabled) {
+		result |= HAL_VIRT_FLAGS_DISABLE_CACHE;
+	}
+	result |= HAL_VIRT_FLAGS_EXECUTABLE;
+	return result;
 }

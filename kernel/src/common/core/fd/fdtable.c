@@ -81,7 +81,7 @@ int FileTable_FileRead(struct FileTable *table, int fd, char *buf, int size) {
 		Mutex_Unlock(&(table->mutex));
 		return -1;
 	}
-	int result = File_ReadUser(table->descriptors[fd], size, buf);
+	int result = File_Read(table->descriptors[fd], size, buf);
 	Mutex_Unlock(&(table->mutex));
 	return result;
 }
@@ -95,7 +95,7 @@ int FileTable_FileWrite(struct FileTable *table, int fd, const char *buf, int si
 		Mutex_Unlock(&(table->mutex));
 		return -1;
 	}
-	int result = File_WriteUser(table->descriptors[fd], size, buf);
+	int result = File_Write(table->descriptors[fd], size, buf);
 	Mutex_Unlock(&(table->mutex));
 	return result;
 }
@@ -109,7 +109,7 @@ int FileTable_FilePRead(struct FileTable *table, int fd, char *buf, int size, of
 		Mutex_Unlock(&(table->mutex));
 		return -1;
 	}
-	int result = File_PReadUser(table->descriptors[fd], offset, size, buf);
+	int result = File_PRead(table->descriptors[fd], offset, size, buf);
 	Mutex_Unlock(&(table->mutex));
 	return result;
 }
@@ -123,7 +123,7 @@ int FileTable_FilePWrite(struct FileTable *table, int fd, const char *buf, int s
 		Mutex_Unlock(&(table->mutex));
 		return -1;
 	}
-	int result = File_PWriteUser(table->descriptors[fd], offset, size, buf);
+	int result = File_PWrite(table->descriptors[fd], offset, size, buf);
 	Mutex_Unlock(&(table->mutex));
 	return result;
 }

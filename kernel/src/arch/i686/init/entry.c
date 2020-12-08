@@ -18,10 +18,12 @@
 #include <arch/i686/proc/state.h>
 #include <common/core/fd/fdtable.h>
 #include <common/core/fd/fs/devfs.h>
+#include <common/core/fd/fs/devices/tty.h>
 #include <common/core/fd/fs/fat32.h>
 #include <common/core/fd/fs/rootfs.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
+#include <common/core/memory/msecurity.h>
 #include <common/core/memory/virt.h>
 #include <common/core/proc/elf32.h>
 #include <common/core/proc/proc.h>
@@ -135,6 +137,8 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to remount Device Filesystem on /dev/");
 	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Remounted Device Filesystem on /dev/");
+	TTYDevice_Register();
+	KernelLog_InitDoneMsg("TTY Character Device Driver");
 	KernelLog_InfoMsg("i686 Kernel Init", "Loading \"/bin/init\" executable");
 	struct File *file = VFS_Open("/bin/init", VFS_O_RDONLY);
 	if (file == NULL) {

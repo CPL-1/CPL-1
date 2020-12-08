@@ -38,6 +38,7 @@ struct VirtualMM_AddressSpace {
 	struct VirtualMM_RegionTrees trees;
 };
 
+struct VirtualMM_AddressSpace *VirtualMM_GetCurrentAddressSpace();
 struct VirtualMM_MemoryRegionNode *VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t addr,
 													   size_t size, int flags, bool lock);
 void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, bool lock);

@@ -55,7 +55,7 @@ i686_Ring3_SyscallEntry:
 
     push esp
     call ebx
-    add esp, 8
+    add esp, 4
 
     pop ds
     pop gs

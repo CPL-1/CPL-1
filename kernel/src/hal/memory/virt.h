@@ -27,5 +27,6 @@ uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr);
 void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int flags);
 uintptr_t HAL_VirtualMM_GetIOMapping(uintptr_t paddr, size_t size, bool cacheDisabled);
 void HAL_VirtualMM_Flush();
+int HAL_VirtualMM_GetPagePermissions(uintptr_t root, uintptr_t vaddr);
 
 #endif

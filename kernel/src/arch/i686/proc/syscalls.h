@@ -3,6 +3,10 @@
 
 #include <arch/i686/proc/state.h>
 
-int i686_Syscall_ExitProcess(struct i686_CPUState *state);
+void i686_Syscall_Exit(struct i686_CPUState *state);
+void i686_Syscall_Open(struct i686_CPUState *state);
+void i686_Syscall_Read(struct i686_CPUState *state);
+void i686_Syscall_Write(struct i686_CPUState *state);
+void i686_Syscall_Close(struct i686_CPUState *state);
 
 #endif
