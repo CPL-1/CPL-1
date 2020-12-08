@@ -2,15 +2,16 @@
 
 
 [![Code Grade](https://www.code-inspector.com/project/16615/status/svg)](https://frontend.code-inspector.com/project/16615/dashboard)
-<a href="https://discord.gg/SXnE5aSfhN">
-        <img src="https://img.shields.io/discord/781133765975474206?logo=discord"
-            alt="chat on Discord"></a>
 
 ![Process Test image](screenshots/kernel_init.png)
 
 *CPL-1 kernel init log on i686 CPUs*
 
-Invite: https://discord.gg/SXnE5aSfhN
+### Discord server
+
+CPL-1 has its own discord server.
+
+Server invite: https://discord.gg/SXnE5aSfhN
 
 ### What is CPL-1
 
