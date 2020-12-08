@@ -20,6 +20,14 @@ CPL-1 Operating System is a hobby operating system project with the goal of crea
 
 Currently there is only support for i686 CPUS with PIC 8259 interrupt controller and PCI configuration space access mechianism v1.0
 
+### Features
+
+* Process Subsystem
+* Virtual File System
+* NVMe controllers driver
+* FAT32 readonly filesystem support
+* Basic userspace support (open/read/write/close system calls) 
+
 ### What I need to build CPL-1?
 
 To build CPL-1 kernel for i686 target, you need to build GCC cross-compiler for ```i686-elf``` target (don't forget to add to PATH) and install NASM. Additionally, GNU Make, parted, mkdosfs, partprobe should be present and loopback devices should be enabled in the kernel.
@@ -28,9 +36,9 @@ Also, you might want python3 to run inotify helper, but that is optional, as ker
 
 ### How I build CPL-1?
 
-### Cloning limine
+#### Cloning limine
 
-CPL-1 uses limine bootloader ("https://github.com/limine-bootloader/limine")
+CPL-1 uses limine bootloader ("https://github.com/limine-bootloader/limine"). It should be cloned together with this repo if you use --recursive option
 
 #### Source watcher
 
