@@ -120,8 +120,8 @@ bool Elf32_LoadProgramHeaders(struct File *file, struct Elf32 *info) {
 			flags |= HAL_VIRT_FLAGS_EXECUTABLE;
 		}
 		flags |= HAL_VIRT_FLAGS_USER_ACCESSIBLE;
-		if (!File_PReadUser(file, info->headers[i].offset, info->headers[i].fileSize,
-							(char *)(info->headers[i].virtualAddress))) {
+		if (File_PReadUser(file, info->headers[i].offset, info->headers[i].fileSize,
+						   (char *)(info->headers[i].virtualAddress)) != (int)(info->headers[i].fileSize)) {
 			goto failure;
 		}
 		VirtualMM_MemoryRetype(NULL, region, flags);

@@ -37,7 +37,7 @@ i686_Ring3_SyscallEntry:
     pusha
     mov ecx, dword [i686_Ring3_SyscallTableSize]
     cmp eax, ecx
-    jg .fail
+    jge .fail
     mov ebx, [i686_Ring3_SyscallTable + 4 * eax]
     cmp ebx, 0
     je .fail
