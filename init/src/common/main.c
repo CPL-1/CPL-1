@@ -1,4 +1,4 @@
-#include <common/cpl1syscalls.h>
+#include <syscalls.h>
 
 static const char msg[] = "\033[92m\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
 						  "\t\t\t\t\t\t\t\t\t\t\t  /$$$$$$  /$$$$$$$  /$$         /$$  \n"

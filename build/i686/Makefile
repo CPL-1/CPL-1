@@ -6,6 +6,7 @@ all: clean build
 
 CPL-1_i686.hdd: ../x86/limine/limine-install
 	cd ../../kernel/build/i686 && make build -j`nproc` && sudo cp kernel.elf ../../../build/i686/kernel.elf
+	cd ../../userlib/build/i686 && make build -j`nproc`
 	cd ../../init/build/i686 && make build -j`nproc` && sudo cp init ../../../build/i686/init
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	parted -s CPL-1_i686.hdd mklabel msdos
@@ -32,6 +33,7 @@ build: CPL-1_i686.hdd
 clean:
 	cd ../../kernel/build/i686 && make clean
 	cd ../../init/build/i686 && make clean
+	cd ../../userlib/build/i686 && make clean
 	rm -rf kernel.elf
 	rm -rf CPL-1_i686.hdd
 
