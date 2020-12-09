@@ -54,3 +54,6 @@ dkms.conf
 # Disk images
 *.img
 *.hdd
+
+# vscode config folder
+*.vscode
