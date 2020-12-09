@@ -8,5 +8,7 @@ void i686_Syscall_Open(struct i686_CPUState *state);
 void i686_Syscall_Read(struct i686_CPUState *state);
 void i686_Syscall_Write(struct i686_CPUState *state);
 void i686_Syscall_Close(struct i686_CPUState *state);
+void i686_Syscall_MemoryMap(struct i686_CPUState *state);
+void i686_Syscall_MemoryUnmap(struct i686_CPUState *state);
 
 #endif

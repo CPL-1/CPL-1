@@ -41,7 +41,7 @@ struct VirtualMM_AddressSpace {
 struct VirtualMM_AddressSpace *VirtualMM_GetCurrentAddressSpace();
 struct VirtualMM_MemoryRegionNode *VirtualMM_MemoryMap(struct VirtualMM_AddressSpace *space, uintptr_t addr,
 													   size_t size, int flags, bool lock);
-void VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, bool lock);
+int VirtualMM_MemoryUnmap(struct VirtualMM_AddressSpace *space, uintptr_t addr, size_t size, bool lock);
 void VirtualMM_MemoryRetype(struct VirtualMM_AddressSpace *space, struct VirtualMM_MemoryRegionNode *region, int flags);
 struct VirtualMM_AddressSpace *VirtualMM_MakeAddressSpaceFromRoot(uintptr_t root);
 void VirtualMM_DropAddressSpace(struct VirtualMM_AddressSpace *space);

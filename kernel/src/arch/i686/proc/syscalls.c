@@ -1,3 +1,4 @@
+#include <arch/i686/proc/abis.h>
 #include <arch/i686/proc/syscalls.h>
 #include <common/core/fd/fdtable.h>
 #include <common/core/fd/vfs.h>
@@ -163,4 +164,93 @@ void i686_Syscall_Close(struct i686_CPUState *state) {
 	Mutex_Unlock(&(space->mutex));
 	int result = FileTable_FileClose(NULL, fd);
 	state->eax = result;
+}
+
+void i686_Syscall_MemoryUnmap(struct i686_CPUState *state) {
+	uint32_t paramsStart = state->esp + 8;
+	uint32_t paramsEnd = state->esp + 16;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = 0;
+		return;
+	}
+	uintptr_t addr = *(uintptr_t *)paramsStart;
+	size_t size = *(size_t *)(paramsStart + 4);
+	if (addr % HAL_VirtualMM_PageSize != 0) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = 0;
+		return;
+	}
+	if (size % HAL_VirtualMM_PageSize != 0) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = 0;
+		return;
+	}
+	int result = VirtualMM_MemoryUnmap(NULL, addr, size, false);
+	Mutex_Unlock(&(space->mutex));
+	state->eax = result;
+	return;
+}
+
+void i686_Syscall_MemoryMap(struct i686_CPUState *state) {
+	uint32_t paramsStart = state->esp + 8;
+	uint32_t paramsEnd = state->esp + 32;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+
+	uintptr_t addr = *(uintptr_t *)paramsStart;
+	size_t size = *(size_t *)(paramsStart + 4);
+	int prot = *(int *)(paramsStart + 8);
+	int flags = *(int *)(paramsStart + 12);
+
+	if ((prot & ~PROT_MASK) != 0) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	if ((flags & MAP_ANON) == 0) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	if (addr % HAL_VirtualMM_PageSize != 0) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	if (size % HAL_VirtualMM_PageSize != 0) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+
+	int halFlags = HAL_VIRT_FLAGS_USER_ACCESSIBLE;
+	if ((prot & PROT_READ) != 0) {
+		halFlags |= HAL_VIRT_FLAGS_READABLE;
+	}
+	if ((prot & PROT_WRITE) != 0) {
+		halFlags |= HAL_VIRT_FLAGS_WRITABLE;
+	}
+	if ((prot & PROT_EXEC) != 0) {
+		halFlags |= HAL_VIRT_FLAGS_EXECUTABLE;
+	}
+
+	struct VirtualMM_MemoryRegionNode *region = VirtualMM_MemoryMap(NULL, addr, size, HAL_VIRT_FLAGS_WRITABLE, false);
+	if (region == NULL) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = 0;
+		return;
+	}
+	memset((void *)(region->base.start), 0, region->base.size);
+	VirtualMM_MemoryRetype(NULL, region, halFlags);
+	Mutex_Unlock(&(space->mutex));
+
+	state->eax = region->base.start;
 }

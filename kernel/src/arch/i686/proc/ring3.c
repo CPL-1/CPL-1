@@ -17,4 +17,6 @@ void i686_Ring3_SyscallInit() {
 	i686_Ring3_SyscallTable[4] = (uint32_t)i686_Syscall_Write;
 	i686_Ring3_SyscallTable[5] = (uint32_t)i686_Syscall_Open;
 	i686_Ring3_SyscallTable[6] = (uint32_t)i686_Syscall_Close;
+	i686_Ring3_SyscallTable[73] = (uint32_t)i686_Syscall_MemoryUnmap;
+	i686_Ring3_SyscallTable[197] = (uint32_t)i686_Syscall_MemoryMap;
 }
