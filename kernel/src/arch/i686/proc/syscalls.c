@@ -1,12 +1,13 @@
-#include <arch/i686/proc/abis.h>
 #include <arch/i686/proc/syscalls.h>
 #include <common/core/fd/fdtable.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/memory/msecurity.h>
 #include <common/core/memory/virt.h>
+#include <common/core/proc/abis.h>
 #include <common/core/proc/mutex.h>
 #include <common/core/proc/proc.h>
+#include <common/core/proc/proclayout.h>
 #include <common/lib/kmsg.h>
 
 #define MAX_PATH_LEN 65536
@@ -253,4 +254,38 @@ void i686_Syscall_MemoryMap(struct i686_CPUState *state) {
 	Mutex_Unlock(&(space->mutex));
 
 	state->eax = region->base.start;
+}
+
+void i686_Syscall_Fork(struct i686_CPUState *state) {
+	struct Proc_ProcessID newProcess = Proc_MakeNewProcess(Proc_GetProcessID());
+	if (!Proc_IsValidProcessID(newProcess)) {
+		state->eax = -1;
+		return;
+	}
+	struct Proc_Process *newProcessData = Proc_GetProcessData(newProcess);
+	newProcessData->fdTable = FileTable_Fork(NULL);
+	if (newProcessData->fdTable == NULL) {
+		Proc_Dispose(newProcessData);
+		state->eax = -1;
+		return;
+	}
+	newProcessData->addressSpace = VirtualMM_CopyCurrentAddressSpace();
+	if (newProcessData->addressSpace == NULL) {
+		FileTable_Drop(newProcessData->fdTable);
+		Proc_Dispose(newProcessData);
+		state->eax = -1;
+		return;
+	}
+	memcpy(newProcessData->processState, state, sizeof(struct i686_CPUState));
+	((struct i686_CPUState *)newProcessData->processState)->eax = 0;
+	state->eax = newProcessData->pid.id;
+	Proc_Resume(newProcess);
+}
+
+void i686_Syscall_Execve(struct i686_CPUState *state) {
+	state->eax = -1;
+}
+
+void i686_Syscall_Wait4(struct i686_CPUState *state) {
+	state->eax = -1;
 }

@@ -20,12 +20,16 @@
 #define O_WRONLY 1
 #define O_RDWR 2
 
-int CPL1_SyscallOpen(const char *path, int perm);
-int CPL1_SyscallRead(int fd, char *buf, int size);
-int CPL1_SyscallWrite(int fd, const char *buf, int size);
-int CPL1_SyscallClose(int fd);
-void CPL1_SyscallExit(int exitCode);
-void *CPL1_SyscallMemoryMap(void *addr, size_t length, int prot, int flags, int fd, long offset);
-int CPL1_SyscallMemoryUnmap(void *addr, size_t length);
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE -1
+
+int open(const char *path, int perm);
+int read(int fd, char *buf, int size);
+int write(int fd, const char *buf, int size);
+int close(int fd);
+void exit(int exitCode);
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, long offset);
+int munmap(void *addr, size_t length);
+int fork();
 
 #endif

@@ -585,9 +585,9 @@ void VirtualMM_PreemptToAddressSpace(struct VirtualMM_AddressSpace *space) {
 static void VirtualMM_CopyPageAcrossAddessSpaces(struct VirtualMM_AddressSpace *src, struct VirtualMM_AddressSpace *dst,
 												 char *buf, uintptr_t page) {
 
-	memcpy((void *)page, (void *)buf, HAL_VirtualMM_PageSize);
-	VirtualMM_SwitchToAddressSpace(dst);
 	memcpy((void *)buf, (void *)page, HAL_VirtualMM_PageSize);
+	VirtualMM_SwitchToAddressSpace(dst);
+	memcpy((void *)page, (void *)buf, HAL_VirtualMM_PageSize);
 	VirtualMM_SwitchToAddressSpace(src);
 }
 

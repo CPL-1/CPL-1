@@ -98,6 +98,20 @@ struct DynarrayMetadata {
 		result;                                                                                                        \
 	})
 
+#define DYNARRAY_DUP(d)                                                                                                \
+	({                                                                                                                 \
+		AUTO dd_copy = (d);                                                                                            \
+		struct DynarrayMetadata *meta = DYNARRAY_GET_METADATA(dd_copy);                                                \
+		size_t new_memory_size = meta->capacity * sizeof(*dd_copy) + sizeof(struct DynarrayMetadata);                  \
+		void *area = Heap_AllocateMemory(new_memory_size);                                                             \
+		TYPEOF(dd_copy) result = NULL;                                                                                 \
+		if (area != NULL) {                                                                                            \
+			memcpy(area, (void *)meta, new_memory_size);                                                               \
+			result = (TYPEOF(dd_copy))((uintptr_t)area + sizeof(struct DynarrayMetadata));                             \
+		}                                                                                                              \
+		result;                                                                                                        \
+	})
+
 #define POINTER_DYNARRAY_INSERT(d, p, iref)                                                                            \
 	({                                                                                                                 \
 		AUTO dpi_copy = (d);                                                                                           \

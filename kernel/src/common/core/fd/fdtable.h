@@ -15,7 +15,8 @@ off_t FileTable_FileLseek(struct FileTable *table, int fd, off_t newOffset, int 
 int FileTable_Readdir(struct FileTable *table, int fd, struct DirectoryEntry *buf, int count);
 
 int FileTable_FileClose(struct FileTable *table, int fd);
-struct FileTable *FileDescritorTable_Ref(struct FileTable *table);
+struct FileTable *FileTable_Ref(struct FileTable *table);
+struct FileTable *FileTable_Fork(struct FileTable *table);
 void FileTable_Drop(struct FileTable *table);
 
 #endif

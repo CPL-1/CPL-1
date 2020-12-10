@@ -81,11 +81,10 @@ void File_Flush(struct File *file) {
 	Mutex_Unlock(&(file->mutex));
 }
 
-struct File *File_Ref(struct File *file) {
+void File_Ref(struct File *file) {
 	Mutex_Lock(&(file->mutex));
 	file->refCount++;
 	Mutex_Unlock(&(file->mutex));
-	return file;
 }
 
 void File_Drop(struct File *file) {

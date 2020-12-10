@@ -13,10 +13,13 @@ void i686_Ring3_SyscallInit() {
 	i686_Ring3_SyscallTableSize = I686_SYSCALL_TABLE_SIZE;
 	i686_IDT_InstallHandler(0x80, (uint32_t)i686_Ring3_SyscallEntry, I686_32BIT_TRAP_GATE, 3, 0x19);
 	i686_Ring3_SyscallTable[1] = (uint32_t)i686_Syscall_Exit;
+	i686_Ring3_SyscallTable[2] = (uint32_t)i686_Syscall_Fork;
 	i686_Ring3_SyscallTable[3] = (uint32_t)i686_Syscall_Read;
 	i686_Ring3_SyscallTable[4] = (uint32_t)i686_Syscall_Write;
 	i686_Ring3_SyscallTable[5] = (uint32_t)i686_Syscall_Open;
 	i686_Ring3_SyscallTable[6] = (uint32_t)i686_Syscall_Close;
+	i686_Ring3_SyscallTable[59] = (uint32_t)i686_Syscall_Execve;
 	i686_Ring3_SyscallTable[73] = (uint32_t)i686_Syscall_MemoryUnmap;
 	i686_Ring3_SyscallTable[197] = (uint32_t)i686_Syscall_MemoryMap;
+	i686_Ring3_SyscallTable[400] = (uint32_t)i686_Syscall_Wait4;
 }

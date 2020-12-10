@@ -171,7 +171,7 @@ int FileTable_FileClose(struct FileTable *table, int fd) {
 	return 0;
 }
 
-struct FileTable *FileDescritorTable_Ref(struct FileTable *table) {
+struct FileTable *FileTable_Ref(struct FileTable *table) {
 	if (table == NULL) {
 		table = FileTable_GetProcessFileTable();
 	}
@@ -202,4 +202,31 @@ void FileTable_Drop(struct FileTable *table) {
 	}
 	DYNARRAY_DISPOSE(table->descriptors);
 	FREE_OBJ(table);
+}
+
+struct FileTable *FileTable_Fork(struct FileTable *table) {
+	struct FileTable *newTable = ALLOC_OBJ(struct FileTable);
+	if (newTable == NULL) {
+		return NULL;
+	}
+	if (table == NULL) {
+		table = FileTable_GetProcessFileTable();
+	}
+	Mutex_Lock(&(table->mutex));
+	AUTO fdTableCopy = DYNARRAY_DUP(table->descriptors);
+	if (fdTableCopy == NULL) {
+		Mutex_Unlock(&(table->mutex));
+		FREE_OBJ(newTable);
+		return NULL;
+	}
+	newTable->descriptors = fdTableCopy;
+	for (size_t i = 0; i < DYNARRAY_LENGTH(newTable->descriptors); ++i) {
+		if (newTable->descriptors[i] != NULL) {
+			File_Ref(newTable->descriptors[i]);
+		}
+	}
+	Mutex_Initialize(&(newTable->mutex));
+	newTable->refCount = 1;
+	Mutex_Unlock(&(table->mutex));
+	return newTable;
 }

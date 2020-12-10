@@ -39,7 +39,7 @@ void i686_IOWait_HandleIRQ(void *ctx, void *frame) {
 			if (head->int_handler != NULL) {
 				head->int_handler(head->ctx, frame);
 			}
-			if (proc_is_valid_Proc_ProcessID(head->id)) {
+			if (Proc_IsValidProcessID(head->id)) {
 				Proc_Resume(head->id);
 				head->id = PROC_INVALID_PROC_ID;
 			}

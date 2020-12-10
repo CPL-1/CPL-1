@@ -4,15 +4,15 @@
 #define PROC_MAX_PROCESS_COUNT 4096
 #define PROC_INVALID_PROC_ID                                                                                           \
 	(struct Proc_ProcessID) {                                                                                          \
-		.id = PROC_MAX_PROCESS_COUNT, .instance_number = 0                                                             \
+		.id = PROC_MAX_PROCESS_COUNT, .instanceNumber = 0                                                              \
 	}
 
 struct Proc_ProcessID {
 	uint64_t id;
-	uint64_t instance_number;
+	uint64_t instanceNumber;
 };
 
-static INLINE bool proc_is_valid_Proc_ProcessID(struct Proc_ProcessID id) {
+static INLINE bool Proc_IsValidProcessID(struct Proc_ProcessID id) {
 	return id.id != PROC_MAX_PROCESS_COUNT;
 }
 

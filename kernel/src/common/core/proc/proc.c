@@ -37,7 +37,7 @@ struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id) {
 		HAL_InterruptLevel_Recover(level);
 		return NULL;
 	}
-	if (m_instanceCountsByID[array_index] != id.instance_number) {
+	if (m_instanceCountsByID[array_index] != id.instanceNumber) {
 		HAL_InterruptLevel_Recover(level);
 		return NULL;
 	}
@@ -52,14 +52,14 @@ static struct Proc_ProcessID Proc_AllocateProcessID(struct Proc_Process *process
 		if (m_processesByID[i] == NULL) {
 			m_processesByID[i] = process;
 			result.id = i;
-			result.instance_number = m_instanceCountsByID[i];
+			result.instanceNumber = m_instanceCountsByID[i];
 			HAL_InterruptLevel_Recover(level);
 			return result;
 		}
 		HAL_InterruptLevel_Recover(level);
 	}
 	result.id = PROC_MAX_PROCESS_COUNT;
-	result.instance_number = 0;
+	result.instanceNumber = 0;
 	return result;
 }
 
@@ -77,7 +77,7 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 		goto free_stack;
 	}
 	struct Proc_ProcessID new_id = Proc_AllocateProcessID(process);
-	if (!proc_is_valid_Proc_ProcessID(new_id)) {
+	if (!Proc_IsValidProcessID(new_id)) {
 		goto free_process_state;
 	}
 	memset(process_state, 0, HAL_PROCESS_STATE_SIZE);
@@ -98,7 +98,7 @@ free_process_obj:
 	FREE_OBJ(process);
 fail:;
 	struct Proc_ProcessID failed_id;
-	failed_id.instance_number = 0;
+	failed_id.instanceNumber = 0;
 	failed_id.id = PROC_MAX_PROCESS_COUNT;
 	return failed_id;
 }
@@ -245,7 +245,7 @@ void Proc_Initialize() {
 		m_instanceCountsByID[i] = 0;
 	}
 	struct Proc_ProcessID kernelProcID = Proc_MakeNewProcess(PROC_INVALID_PROC_ID);
-	if (!proc_is_valid_Proc_ProcessID(kernelProcID)) {
+	if (!Proc_IsValidProcessID(kernelProcID)) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to allocate kernel process");
 	}
 	struct Proc_Process *kernelProcessData = Proc_GetProcessData(kernelProcID);
@@ -279,7 +279,6 @@ bool Proc_PollDisposeQueue() {
 		HAL_InterruptLevel_Recover(level);
 		return false;
 	}
-	KernelLog_InfoMsg("User Request Monitor", "Disposing process...");
 	m_deallocQueueHead = process->nextInQueue;
 	HAL_InterruptLevel_Recover(level);
 	if (process->addressSpace != 0) {

@@ -36,6 +36,8 @@
 #include <hal/proc/intlevel.h>
 #include <hal/proc/isrhandler.h>
 
+#define INIT_PROCESS_STACK_SIZE 0x100000
+
 void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_PCI_ID id, MAYBE_UNUSED void *context) {
 	KernelLog_Print("PCI device found at bus: %d, slot: %d, function: %d, "
 					"vendor_id: %d, device_id: %d",
@@ -151,8 +153,15 @@ void i686_KernelInit_ExecuteInitProcess() {
 	if (!Elf32_LoadProgramHeaders(file, elf)) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load init binary in memory");
 	}
-	KernelLog_InfoMsg("i686 Kernel Init", "Init binary is loaded. Jumping to the entrypoint");
-	i686_Ring3_Switch(elf->entryPoint, 0);
+	KernelLog_InfoMsg("i686 Kernel Init", "Init binary is loaded. Mapping memory stack");
+	struct VirtualMM_MemoryRegionNode *node =
+		VirtualMM_MemoryMap(NULL, 0, INIT_PROCESS_STACK_SIZE, HAL_VIRT_FLAGS_WRITABLE, true);
+	if (node->base.start == 0) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
+	}
+	VirtualMM_MemoryRetype(NULL, node,
+						   HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_READABLE);
+	i686_Ring3_Switch(elf->entryPoint, node->base.end);
 	while (true) {
 		asm volatile("nop");
 	}

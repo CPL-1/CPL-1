@@ -1,14 +1,15 @@
 bits 32
 
-global CPL1_SyscallOpen
-global CPL1_SyscallRead
-global CPL1_SyscallWrite
-global CPL1_SyscallClose
-global CPL1_SyscallExit
-global CPL1_SyscallMemoryMap
-global CPL1_SyscallMemoryUnmap
+global open
+global read
+global write
+global close
+global exit
+global mmap
+global munmap
+global fork
 
-CPL1_SyscallOpen:
+open:
     times 2 push dword [esp + 8]
     sub esp, 8
     mov eax, 5
@@ -16,7 +17,7 @@ CPL1_SyscallOpen:
     add esp, 16
     ret
 
-CPL1_SyscallRead:
+read:
     times 3 push dword [esp + 12]
     sub esp, 4
     mov eax, 3
@@ -24,7 +25,7 @@ CPL1_SyscallRead:
     add esp, 16
     ret
 
-CPL1_SyscallWrite:
+write:
     times 3 push dword [esp + 12]
     sub esp, 4
     mov eax, 4
@@ -33,7 +34,7 @@ CPL1_SyscallWrite:
     ret
     ret
 
-CPL1_SyscallClose:
+close:
     push dword [esp + 4]
     sub esp, 12
     mov eax, 6
@@ -41,7 +42,7 @@ CPL1_SyscallClose:
     add esp, 16
     ret
 
-CPL1_SyscallExit:
+exit:
     push dword [esp + 4]
     sub esp, 12
     mov eax, 1
@@ -49,7 +50,7 @@ CPL1_SyscallExit:
     add esp, 16
     ret
 
-CPL1_SyscallMemoryMap:
+mmap:
     times 6 push dword [esp + 24]
     sub esp, 8
     mov eax, 197
@@ -57,10 +58,15 @@ CPL1_SyscallMemoryMap:
     add esp, 32
     ret
 
-CPL1_SyscallMemoryUnmap:
+munmap:
     times 2 push dword [esp + 8]
     sub esp, 8
     mov eax, 73
     int 0x80
     add esp, 16
+    ret
+
+fork:
+    mov eax, 2
+    int 0x80
     ret

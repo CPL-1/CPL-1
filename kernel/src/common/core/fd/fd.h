@@ -45,7 +45,7 @@ int File_Readdir(struct File *file, struct DirectoryEntry *buf, int count);
 off_t File_Lseek(struct File *file, off_t offset, int whence);
 void File_Flush(struct File *file);
 
-struct File *File_Ref(struct File *file);
+void File_Ref(struct File *file);
 void File_Drop(struct File *file);
 
 int File_PRead(struct File *file, off_t pos, int count, char *buf);

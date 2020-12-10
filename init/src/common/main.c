@@ -21,18 +21,18 @@ void fillmem(void *ptr, char val, int size) {
 }
 
 void print(const char *str) {
-	CPL1_SyscallWrite(m_ttyFd, str, strlen(str));
+	write(m_ttyFd, str, strlen(str));
 }
 
 static const char *TestSuite_FileReadTest() {
-	int file = CPL1_SyscallOpen("/etc/test/h.txt", O_RDONLY);
+	int file = open("/etc/test/h.txt", O_RDONLY);
 	if (file < 0) {
 		return "Failed to open file /etc/test/h.txt";
 	}
 	char buf[2];
-	int result = CPL1_SyscallRead(file, buf, 2);
+	int result = read(file, buf, 2);
 	if (result != 1) {
-		return "Returned value from CPL1_SyscallRead is not 1";
+		return "Returned value from read is not 1";
 	}
 	if (buf[0] != 'h') {
 		return "Data read from /etc/test/h.txt is incorrect: buf[0] != \'h\'";
@@ -41,7 +41,7 @@ static const char *TestSuite_FileReadTest() {
 }
 
 const char *TestSuite_AllocateMemoryTest() {
-	void *memory = CPL1_SyscallMemoryMap(NULL, 0x100000, PROT_WRITE | PROT_READ, MAP_ANON, -1, 0);
+	void *memory = mmap(NULL, 0x100000, PROT_WRITE | PROT_READ, MAP_ANON, -1, 0);
 	if (memory == NULL) {
 		return "Failed to allocate memory";
 	}
@@ -51,7 +51,7 @@ const char *TestSuite_AllocateMemoryTest() {
 			return "Failed to read/write on allocated memory";
 		}
 	}
-	int result = CPL1_SyscallMemoryUnmap(memory, 0x100000);
+	int result = munmap(memory, 0x100000);
 	if (result != 0) {
 		return "Failed to unmap memory";
 	}
@@ -59,10 +59,20 @@ const char *TestSuite_AllocateMemoryTest() {
 }
 
 const char *TestSuite_AllocateTooMuchMemory() {
-	void *memory = CPL1_SyscallMemoryMap(NULL, 0xFFFF0000, PROT_WRITE | PROT_READ, MAP_ANON, -1, 0);
+	void *memory = mmap(NULL, 0xFFFF0000, PROT_WRITE | PROT_READ, MAP_ANON, -1, 0);
 	if (memory != NULL) {
 		return "Allocated block is definetely not large enough for 0xFFFF0000, we don't have that much RAM on the "
 			   "system.";
+	}
+	return NULL;
+}
+
+const char *TestSuite_Fork() {
+	if (fork() == 0) {
+		print("This message is from child process\n");
+		exit(0);
+	} else {
+		print("This message is from parent process\n");
 	}
 	return NULL;
 }
@@ -74,7 +84,8 @@ struct TestRunner_TestCase {
 
 struct TestRunner_TestCase cases[] = {{"Reading from file", TestSuite_FileReadTest},
 									  {"Allocating too much memory", TestSuite_AllocateTooMuchMemory},
-									  {"Allocating memory", TestSuite_AllocateMemoryTest}};
+									  {"Allocating memory", TestSuite_AllocateMemoryTest},
+									  {"Forking process", TestSuite_Fork}};
 
 static void TestRunner_ExecuteTestCases() {
 	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
@@ -98,7 +109,7 @@ static void TestRunner_ExecuteTestCases() {
 }
 
 int main() {
-	m_ttyFd = CPL1_SyscallOpen("/dev/tty0", 0);
+	m_ttyFd = open("/dev/tty0", 0);
 	if (m_ttyFd < 0) {
 		return -1;
 	}
