@@ -5,7 +5,7 @@
 #include <common/lib/kmsg.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
-#include <hal/proc/intlock.h>
+#include <hal/proc/intlevel.h>
 #include <hal/proc/isrhandler.h>
 #include <hal/proc/stack.h>
 #include <hal/proc/state.h>
@@ -31,32 +31,32 @@ struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id) {
 	if (array_index >= PROC_MAX_PROCESS_COUNT) {
 		return NULL;
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	struct Proc_Process *data = m_processesByID[array_index];
 	if (data == NULL) {
-		HAL_InterruptLock_Unlock();
+		HAL_InterruptLevel_Recover(level);
 		return NULL;
 	}
 	if (m_instanceCountsByID[array_index] != id.instance_number) {
-		HAL_InterruptLock_Unlock();
+		HAL_InterruptLevel_Recover(level);
 		return NULL;
 	}
-	HAL_InterruptLock_Unlock();
+	HAL_InterruptLevel_Recover(level);
 	return data;
 }
 
 static struct Proc_ProcessID Proc_AllocateProcessID(struct Proc_Process *process) {
 	struct Proc_ProcessID result;
 	for (size_t i = 0; i < PROC_MAX_PROCESS_COUNT; ++i) {
-		HAL_InterruptLock_Lock();
+		int level = HAL_InterruptLevel_Elevate();
 		if (m_processesByID[i] == NULL) {
 			m_processesByID[i] = process;
 			result.id = i;
 			result.instance_number = m_instanceCountsByID[i];
-			HAL_InterruptLock_Unlock();
+			HAL_InterruptLevel_Recover(level);
 			return result;
 		}
-		HAL_InterruptLock_Unlock();
+		HAL_InterruptLevel_Recover(level);
 	}
 	result.id = PROC_MAX_PROCESS_COUNT;
 	result.instance_number = 0;
@@ -103,13 +103,23 @@ fail:;
 	return failed_id;
 }
 
+void Proc_VerifyProcess(struct Proc_Process *process) {
+	if (process->next == process->prev && process->next == process) {
+		return;
+	}
+	if ((process->next == process) || (process->prev == process)) {
+		KernelLog_ErrorMsg("Process Manager & Scheduler", "Process references to itself with next and prev");
+	}
+}
+
 void Proc_Resume(struct Proc_ProcessID id) {
 	struct Proc_Process *process = Proc_GetProcessData(id);
 	if (process == NULL) {
 		return;
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	process->state = RUNNING;
+	Proc_VerifyProcess(m_CurrentProcess);
 	struct Proc_Process *next, *prev;
 	next = m_CurrentProcess;
 	prev = m_CurrentProcess->prev;
@@ -117,7 +127,10 @@ void Proc_Resume(struct Proc_ProcessID id) {
 	prev->next = process;
 	process->next = next;
 	process->prev = prev;
-	HAL_InterruptLock_Unlock();
+	Proc_VerifyProcess(process);
+	Proc_VerifyProcess(next);
+	Proc_VerifyProcess(prev);
+	HAL_InterruptLevel_Recover(level);
 }
 
 static void Proc_CutFromActiveList(struct Proc_Process *process) {
@@ -125,6 +138,9 @@ static void Proc_CutFromActiveList(struct Proc_Process *process) {
 	struct Proc_Process *next = process->next;
 	prev->next = next;
 	next->prev = prev;
+	Proc_VerifyProcess(process);
+	Proc_VerifyProcess(next);
+	Proc_VerifyProcess(prev);
 }
 
 void Proc_Suspend(struct Proc_ProcessID id, bool overrideState) {
@@ -132,15 +148,16 @@ void Proc_Suspend(struct Proc_ProcessID id, bool overrideState) {
 	if (process == NULL) {
 		return;
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	if (overrideState) {
 		process->state = SLEEPING;
 	}
 	Proc_CutFromActiveList(process);
 	if (process == m_CurrentProcess) {
 		Proc_Yield();
+	} else {
+		HAL_InterruptLevel_Recover(level);
 	}
-	HAL_InterruptLock_Unlock();
 }
 
 struct Proc_ProcessID Proc_GetProcessID() {
@@ -154,14 +171,14 @@ void Proc_SuspendSelf(bool overrideState) {
 }
 
 void Proc_Dispose(struct Proc_Process *process) {
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	process->nextInQueue = m_deallocQueueHead;
 	m_deallocQueueHead = process;
-	HAL_InterruptLock_Unlock();
+	HAL_InterruptLevel_Recover(level);
 }
 
 void Proc_Exit(int exitCode) {
-	HAL_InterruptLock_Lock();
+	HAL_InterruptLevel_Elevate();
 	struct Proc_Process *process = m_CurrentProcess;
 	process->returnCode = exitCode;
 	m_instanceCountsByID[process->pid.id]++;
@@ -197,23 +214,20 @@ struct Proc_Process *Proc_GetWaitingQueueHead(struct Proc_Process *process) {
 }
 
 struct Proc_Process *Proc_WaitForChildTermination() {
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	struct Proc_Process *process = m_CurrentProcess;
 	if (process->waitQueueHead != NULL) {
 		struct Proc_Process *result = Proc_GetWaitingQueueHead(process);
-		HAL_InterruptLock_Unlock();
+		HAL_InterruptLevel_Recover(level);
 		return result;
 	}
 	process->state = WAITING_FOR_CHILD_TERM;
 	Proc_SuspendSelf(false);
-	HAL_InterruptLock_Lock();
 	struct Proc_Process *result = Proc_GetWaitingQueueHead(process);
-	HAL_InterruptLock_Unlock();
 	return result;
 }
 
 void Proc_Yield() {
-	HAL_InterruptLock_Flush();
 	HAL_Timer_TriggerInterrupt();
 }
 
@@ -259,15 +273,15 @@ void Proc_Initialize() {
 }
 
 bool Proc_PollDisposeQueue() {
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	struct Proc_Process *process = m_deallocQueueHead;
 	if (process == NULL) {
-		HAL_InterruptLock_Unlock();
+		HAL_InterruptLevel_Recover(level);
 		return false;
 	}
 	KernelLog_InfoMsg("User Request Monitor", "Disposing process...");
 	m_deallocQueueHead = process->nextInQueue;
-	HAL_InterruptLock_Unlock();
+	HAL_InterruptLevel_Recover(level);
 	if (process->addressSpace != 0) {
 		VirtualMM_DropAddressSpace(process->addressSpace);
 	}

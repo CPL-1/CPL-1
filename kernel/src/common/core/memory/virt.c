@@ -5,7 +5,7 @@
 #include <common/lib/kmsg.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
-#include <hal/proc/intlock.h>
+#include <hal/proc/intlevel.h>
 
 #define VIRT_MOD_NAME "Virtual Memory Manager"
 
@@ -569,10 +569,10 @@ void VirtualMM_SwitchToAddressSpace(struct VirtualMM_AddressSpace *space) {
 	if (process == NULL) {
 		KernelLog_ErrorMsg(VIRT_MOD_NAME, "Failed to get process data");
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	process->addressSpace = space;
 	HAL_VirtualMM_SwitchToAddressSpace(space->root);
-	HAL_InterruptLock_Unlock();
+	HAL_InterruptLevel_Recover(level);
 }
 
 void VirtualMM_PreemptToAddressSpace(struct VirtualMM_AddressSpace *space) {

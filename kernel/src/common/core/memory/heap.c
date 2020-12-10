@@ -30,7 +30,6 @@ bool Heap_ValidateSlubLists() {
 		while (hdr != NULL) {
 			hdr = hdr->next;
 		}
-		ASM volatile("nop");
 	}
 	return true;
 }

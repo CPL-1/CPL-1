@@ -5,7 +5,7 @@
 #include <common/core/memory/heap.h>
 #include <common/core/proc/proc.h>
 #include <common/lib/kmsg.h>
-#include <hal/proc/intlock.h>
+#include <hal/proc/intlevel.h>
 #include <hal/proc/isrhandler.h>
 
 struct i686_IOWait_ListEntry {
@@ -41,6 +41,7 @@ void i686_IOWait_HandleIRQ(void *ctx, void *frame) {
 			}
 			if (proc_is_valid_Proc_ProcessID(head->id)) {
 				Proc_Resume(head->id);
+				head->id = PROC_INVALID_PROC_ID;
 			}
 			break;
 		}
@@ -58,7 +59,10 @@ struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_iowait_ha
 	entry->int_handler = int_handler;
 	entry->check_wakeup_handler = check_hander;
 	entry->ctx = ctx;
-	if (m_handlerLists[irq] == NULL) {
+	entry->id = PROC_INVALID_PROC_ID;
+	entry->next = m_handlerLists[irq];
+	m_handlerLists[irq] = entry;
+	if (entry->next == NULL) {
 		void *interrupt_handler =
 			i686_ISR_MakeNewISRHandler((HAL_ISR_Handler)i686_IOWait_HandleIRQ, m_irqContexts + irq);
 		if (interrupt_handler == NULL) {
@@ -67,14 +71,11 @@ struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_iowait_ha
 		i686_IDT_InstallISR(irq + 0x20, (uint32_t)interrupt_handler);
 		i686_PIC8259_EnableIRQ(irq);
 	}
-	entry->id = PROC_INVALID_PROC_ID;
-	entry->next = m_handlerLists[irq];
-	m_handlerLists[irq] = entry;
 	return entry;
 }
 
 void i686_IOWait_WaitForIRQ(struct i686_IOWait_ListEntry *entry) {
-	HAL_InterruptLock_Lock();
+	HAL_InterruptLevel_Elevate();
 	struct Proc_ProcessID id = Proc_GetProcessID();
 	entry->id = id;
 	Proc_Suspend(id, true);

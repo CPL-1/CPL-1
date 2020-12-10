@@ -22,11 +22,17 @@ i686_ISR_TemplateBegin:
 
     mov strict eax, 0x22222222
     call eax
-
     add esp, 8
-    pop ds
+
+    ; Make sure that interrupts are enabled on exit
+    ; with modifying EFLAGS register in interrupt frame
+    mov eax, dword [esp + 56]
+    or eax, 1 << 9
+    mov dword [esp + 56], eax
+
     pop gs
     pop fs
+    pop ds
     pop es
 
     popa

@@ -252,7 +252,7 @@ struct VFS_Inode *Storage_MakeInode(struct Storage_Device *storage) {
 	return inode;
 }
 
-bool Storage_init(struct Storage_Device *storage) {
+bool Storage_Init(struct Storage_Device *storage) {
 	Storage_CacheInit(storage);
 	struct VFS_Inode *inode = Storage_MakeInode(storage);
 	if (inode == NULL) {

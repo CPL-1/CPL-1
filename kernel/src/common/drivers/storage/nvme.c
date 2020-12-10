@@ -9,7 +9,7 @@
 #include <common/misc/utils.h>
 #include <hal/drivers/storage/nvme.h>
 #include <hal/memory/virt.h>
-#include <hal/proc/intlock.h>
+#include <hal/proc/intlevel.h>
 
 #define NVME_SUBMISSION_QUEUE_SIZE 2
 #define NVME_COMPLETITION_QUEUE_SIZE 2
@@ -434,7 +434,7 @@ static uint16_t NVMEExecuteIOCommand(struct NVMEDrive *drive, union NVME_SQEntry
 	struct NVME_CSTSRegister csts;
 
 	if (!drive->fallbackToPolling) {
-		HAL_InterruptLock_Lock();
+		HAL_InterruptLevel_Elevate();
 		completitionEntry->phaseBit = drive->phaseBit;
 		*(drive->submissionDoorbell) = drive->submissionQueueHead;
 		drive->controller->waitForEvent(drive->controller->ctx);
@@ -736,7 +736,7 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 		memset(namespace->cache.name, 0, 256);
 		sprintf("nvme%un%u\0", namespace->cache.name, 256, nvmeDriveInfo->id, i + 1);
 		namespace->cache.partitioningScheme = STORAGE_P_NUMERIC_PART_NAMING;
-		if (!Storage_init(&(namespace->cache))) {
+		if (!Storage_Init(&(namespace->cache))) {
 			KernelLog_WarnMsg("NVME Driver", "Failed to add drive object to storage stack");
 			return false;
 		}

@@ -2,7 +2,7 @@
 #include <common/core/proc/proc.h>
 #include <common/core/proc/proclayout.h>
 #include <common/lib/kmsg.h>
-#include <hal/proc/intlock.h>
+#include <hal/proc/intlevel.h>
 
 void Mutex_Initialize(struct Mutex *mutex) {
 	mutex->queueHead = mutex->queueTail = NULL;
@@ -13,14 +13,14 @@ void Mutex_Lock(struct Mutex *mutex) {
 	if (!Proc_IsInitialized()) {
 		return;
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	struct Proc_Process *process = Proc_GetProcessData(Proc_GetProcessID());
 	if (process == NULL) {
 		KernelLog_ErrorMsg("Mutex Manager", "Failed to get current process data");
 	}
 	if (!(mutex->locked)) {
 		mutex->locked = true;
-		HAL_InterruptLock_Unlock();
+		HAL_InterruptLevel_Recover(level);
 		return;
 	}
 	if (mutex->queueHead == NULL) {
@@ -36,21 +36,21 @@ void Mutex_Unlock(struct Mutex *mutex) {
 	if (!Proc_IsInitialized()) {
 		return;
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	if (mutex->queueHead == NULL) {
 		mutex->locked = false;
-		HAL_InterruptLock_Unlock();
+		HAL_InterruptLevel_Recover(level);
 		return;
 	} else if (mutex->queueHead == mutex->queueTail) {
 		struct Proc_Process *process = mutex->queueTail;
 		mutex->queueHead = mutex->queueTail = NULL;
-		HAL_InterruptLock_Unlock();
 		Proc_Resume(process->pid);
+		HAL_InterruptLevel_Recover(level);
 	} else {
 		struct Proc_Process *process = mutex->queueHead;
 		mutex->queueHead = mutex->queueHead->nextInQueue;
-		HAL_InterruptLock_Unlock();
 		Proc_Resume(process->pid);
+		HAL_InterruptLevel_Recover(level);
 	}
 }
 
@@ -58,9 +58,9 @@ bool Mutex_IsAnyProcessWaiting(struct Mutex *mutex) {
 	if (!Proc_IsInitialized()) {
 		return false;
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	bool result = mutex->queueHead != NULL;
-	HAL_InterruptLock_Unlock();
+	HAL_InterruptLevel_Recover(level);
 	return result;
 }
 
@@ -68,8 +68,8 @@ bool Mutex_IsLocked(struct Mutex *mutex) {
 	if (!Proc_IsInitialized()) {
 		return false;
 	}
-	HAL_InterruptLock_Lock();
+	int level = HAL_InterruptLevel_Elevate();
 	bool result = mutex->locked;
-	HAL_InterruptLock_Unlock();
+	HAL_InterruptLevel_Recover(level);
 	return result;
 }

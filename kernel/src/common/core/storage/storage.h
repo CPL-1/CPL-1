@@ -28,7 +28,7 @@ struct Storage_Device {
 	size_t partitionsOpenedCount;
 };
 
-bool Storage_init(struct Storage_Device *storage);
+bool Storage_Init(struct Storage_Device *storage);
 bool Storage_LockTryOpenPartition(struct Storage_Device *storage);
 void Storage_LockClosePartition(struct Storage_Device *storage);
 bool Storage_ReadWrite(struct Storage_Device *storage, uint64_t offset, size_t size, char *buf, bool write);

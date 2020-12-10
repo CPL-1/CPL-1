@@ -24,8 +24,7 @@ static void i686_NVME_EventCallback(void *ctx, MAYBE_UNUSED char *state) {
 	}
 }
 
-static bool i686_NVME_InitializeEvent(void *ctx, void (*event_callback)(void *), void *privateCtx) {
-	return false;
+static bool i686_NVME_InitializeEvent(void *ctx, void (*eventCallback)(void *), void *privateCtx) {
 	struct i686_NVME_PCIController *controller = (struct i686_NVME_PCIController *)ctx;
 	uint8_t irq = i686_PCI_ReadByte(controller->addr, I686_PCI_int_LINE);
 	if (irq > 15) {
@@ -37,7 +36,7 @@ static bool i686_NVME_InitializeEvent(void *ctx, void (*event_callback)(void *),
 	if (controller->entry == NULL) {
 		return false;
 	}
-	controller->eventCallback = event_callback;
+	controller->eventCallback = eventCallback;
 	controller->privateCtx = privateCtx;
 	return true;
 }
