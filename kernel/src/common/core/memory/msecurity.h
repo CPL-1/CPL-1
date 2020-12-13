@@ -10,5 +10,6 @@
 
 bool MemorySecurity_VerifyMemoryRangePermissions(uintptr_t start, uintptr_t end, int flags);
 int MemorySecurity_VerifyCString(uintptr_t start, int maxLength, int flags);
+int MemorySecurity_VerifyNullTerminatedPointerList(uintptr_t start, int maxPointerCount, int flags);
 
 #endif

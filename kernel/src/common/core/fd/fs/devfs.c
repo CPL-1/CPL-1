@@ -98,6 +98,7 @@ static struct File *DeVFS_OpenRoot(MAYBE_UNUSED struct VFS_Inode *inode, MAYBE_U
 	newFile->offset = 0;
 	newFile->ctx = NULL;
 	newFile->ops = &m_rootIteratorOperations;
+	newFile->isATTY = false;
 	return newFile;
 }
 

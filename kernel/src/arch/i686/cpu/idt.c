@@ -36,5 +36,5 @@ void i686_IDT_Initialize() {
 	memset(&m_IDTEntries, 0, sizeof(m_IDTEntries));
 	m_IDTPointer.limit = sizeof(m_IDTEntries) - 1;
 	m_IDTPointer.base = (uint32_t)&m_IDTEntries;
-	ASM volatile("lidt %0" : : "m"(m_IDTPointer));
+	ASM VOLATILE("lidt %0" : : "m"(m_IDTPointer));
 }

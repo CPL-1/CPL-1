@@ -94,7 +94,8 @@ void Heap_FreeMemory(void *area, size_t size) {
 	size_t size_class = Heap_GetSizeClass(size);
 	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
 		Mutex_Unlock(&m_mutex);
-		HAL_PhysicalMM_KernelFreeArea((uintptr_t)area, ALIGN_UP(size, HAL_VirtualMM_PageSize));
+		HAL_PhysicalMM_KernelFreeArea(((uintptr_t)area) - HAL_VirtualMM_KernelMappingBase,
+									  ALIGN_UP(size, HAL_VirtualMM_PageSize));
 		return;
 	}
 	struct heap_slub_obj_hdr *hdr = (struct heap_slub_obj_hdr *)area;

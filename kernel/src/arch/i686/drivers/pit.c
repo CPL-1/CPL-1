@@ -28,5 +28,5 @@ bool HAL_Timer_SetCallback(HAL_ISR_Handler entry) {
 }
 
 void HAL_Timer_TriggerInterrupt() {
-	ASM volatile("int $0xfe");
+	ASM VOLATILE("int $0xfe");
 }

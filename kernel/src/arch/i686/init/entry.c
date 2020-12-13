@@ -36,7 +36,7 @@
 #include <hal/proc/intlevel.h>
 #include <hal/proc/isrhandler.h>
 
-#define INIT_PROCESS_STACK_SIZE 0x100000
+#define INIT_PROCESS_STACK_SIZE 0x1000000
 
 void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_PCI_ID id, MAYBE_UNUSED void *context) {
 	KernelLog_Print("PCI device found at bus: %d, slot: %d, function: %d, "
@@ -48,7 +48,7 @@ void i686_KernelInit_URMThreadFunction() {
 	while (true) {
 		while (Proc_PollDisposeQueue()) {
 		}
-		ASM volatile("pause");
+		ASM VOLATILE("pause");
 		Proc_Yield();
 	}
 }
@@ -127,7 +127,7 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount Device Filesystem on /dev/");
 	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
-	ASM volatile("sti");
+	ASM VOLATILE("sti");
 	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	i686_DetectHardware();
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");
@@ -153,16 +153,40 @@ void i686_KernelInit_ExecuteInitProcess() {
 	if (!Elf32_LoadProgramHeaders(file, elf)) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to load init binary in memory");
 	}
+	File_Drop(file);
 	KernelLog_InfoMsg("i686 Kernel Init", "Init binary is loaded. Mapping memory stack");
 	struct VirtualMM_MemoryRegionNode *node =
-		VirtualMM_MemoryMap(NULL, 0, INIT_PROCESS_STACK_SIZE, HAL_VIRT_FLAGS_WRITABLE, true);
+		VirtualMM_MemoryMap(NULL, 0, INIT_PROCESS_STACK_SIZE,
+							HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_READABLE, true);
 	if (node->base.start == 0) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
 	}
-	VirtualMM_MemoryRetype(NULL, node,
-						   HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_READABLE);
-	i686_Ring3_Switch(elf->entryPoint, node->base.end);
+	// Open TTY device for 3 first file descriptors
+	struct File *ttyFile = VFS_Open("/dev/tty0", VFS_O_RDONLY);
+	if (ttyFile == NULL) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open init TTY");
+	}
+	for (int i = 0; i < 3; ++i) {
+		if (i != FileTable_AllocateFileSlot(NULL, ttyFile)) {
+			KernelLog_ErrorMsg("i686 Kernel Init", "Failed to set up TTY");
+		}
+	}
+	// Stack layout for init process
+	// [ NULL ] // align
+	// [ NULL ] // mela points here
+	// [ NULL ] // envp points here
+	// [ NULL ] // argv points here
+	// [ char **mela ] // fake mela parameter
+	// [ char **envp  ] // environment variable
+	// [ char **argv  ] // arguments
+	// [ int argc = 0 ]
+	memset((void *)(node->base.start), 0, node->base.size);
+	*(uint32_t *)(node->base.end - 32) = 0;					  // argc = 0;
+	*(uint32_t *)(node->base.end - 28) = node->base.end - 16; // argv
+	*(uint32_t *)(node->base.end - 24) = node->base.end - 12; // envp
+	*(uint32_t *)(node->base.end - 20) = node->base.end - 8;  // mela
+	i686_Ring3_Switch(elf->entryPoint, node->base.end - 32);
 	while (true) {
-		asm volatile("nop");
+		asm VOLATILE("nop");
 	}
 }

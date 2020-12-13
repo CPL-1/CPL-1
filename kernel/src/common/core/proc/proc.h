@@ -26,7 +26,8 @@ struct Proc_ProcessID Proc_GetProcessID();
 void Proc_SuspendSelf(bool overrideState);
 void Proc_Suspend(struct Proc_ProcessID id, bool overrideState);
 void Proc_Resume(struct Proc_ProcessID id);
-struct Proc_Process *Proc_WaitForChildTermination();
+struct Proc_Process *Proc_WaitForChildTermination(bool returnImmediately);
+void Proc_InsertChildBack(struct Proc_Process *process);
 struct Proc_Process *Proc_GetProcessData(struct Proc_ProcessID id);
 
 void Proc_Exit(int exitCode);

@@ -279,15 +279,15 @@ struct NVME_NamespaceInfo {
 
 struct NVMEDrive {
 	struct HAL_NVMEController *controller;
-	volatile uint32_t *bar0;
+	VOLATILE uint32_t *bar0;
 	union NVME_SQEntry *adminSubmissionQueue;
-	volatile struct NVME_CQEntry *adminCompletitionQueue;
+	VOLATILE struct NVME_CQEntry *adminCompletitionQueue;
 	union NVME_SQEntry *submissionQueue;
-	volatile struct NVME_CQEntry *completitionQueue;
-	volatile uint16_t *adminSubmissionDoorbell;
-	volatile uint16_t *adminCompletitionDoorbell;
-	volatile uint16_t *submissionDoorbell;
-	volatile uint16_t *completitionDoorbell;
+	VOLATILE struct NVME_CQEntry *completitionQueue;
+	VOLATILE uint16_t *adminSubmissionDoorbell;
+	VOLATILE uint16_t *adminCompletitionDoorbell;
+	VOLATILE uint16_t *submissionDoorbell;
+	VOLATILE uint16_t *completitionDoorbell;
 	struct NVME_IdentifyInfo *identifyInfo;
 	size_t adminSubmissionQueueHead;
 	size_t adminCompletitionQueueHead;
@@ -312,75 +312,75 @@ struct nvme_drive_namespace {
 	uint64_t blocks_count;
 };
 
-static struct NVME_CAPRegister NVME_ReadCapRegister(volatile uint32_t *bar0) {
+static struct NVME_CAPRegister NVME_ReadCapRegister(VOLATILE uint32_t *bar0) {
 	struct NVME_CAPRegister result = {0};
 	uint64_t *asPointer = (uint64_t *)&result;
 	*asPointer = ((uint64_t)bar0[1] << 32ULL) | (uint64_t)bar0[0];
 	return result;
 }
 
-static struct NVME_CC_Register NVME_ReadCCRegister(volatile uint32_t *bar0) {
+static struct NVME_CC_Register NVME_ReadCCRegister(VOLATILE uint32_t *bar0) {
 	struct NVME_CC_Register result = {0};
 	uint32_t *asPointer = (uint32_t *)&result;
 	*asPointer = bar0[5];
 	return result;
 }
 
-static struct NVME_CSTSRegister NVME_ReadCSTSRegister(volatile uint32_t *bar0) {
+static struct NVME_CSTSRegister NVME_ReadCSTSRegister(VOLATILE uint32_t *bar0) {
 	struct NVME_CSTSRegister result = {0};
 	uint32_t *asPointer = (uint32_t *)&result;
 	*asPointer = bar0[7];
 	return result;
 }
 
-static struct NVME_AQARegister NVME_ReadAQARegister(volatile uint32_t *bar0) {
+static struct NVME_AQARegister NVME_ReadAQARegister(VOLATILE uint32_t *bar0) {
 	struct NVME_AQARegister result = {0};
 	uint32_t *asPointer = (uint32_t *)&result;
 	*asPointer = bar0[9];
 	return result;
 }
 
-static struct NVME_ASQRegister NVME_ReadASQRegister(volatile uint32_t *bar0) {
+static struct NVME_ASQRegister NVME_ReadASQRegister(VOLATILE uint32_t *bar0) {
 	struct NVME_ASQRegister result = {0};
 	uint64_t *asPointer = (uint64_t *)&result;
 	*asPointer = ((uint64_t)bar0[11] << 32ULL) | (uint64_t)bar0[10];
 	return result;
 }
 
-static struct NVME_ACQRegister NVME_ReadACQRegister(volatile uint32_t *bar0) {
+static struct NVME_ACQRegister NVME_ReadACQRegister(VOLATILE uint32_t *bar0) {
 	struct NVME_ACQRegister result = {0};
 	uint64_t *asPointer = (uint64_t *)&result;
 	*asPointer = ((uint64_t)bar0[13] << 32ULL) | (uint64_t)bar0[12];
 	return result;
 }
 
-static void NVME_WriteCCRegister(volatile uint32_t *bar0, struct NVME_CC_Register cc) {
+static void NVME_WriteCCRegister(VOLATILE uint32_t *bar0, struct NVME_CC_Register cc) {
 	uint32_t *asPointer = (uint32_t *)&cc;
 	bar0[5] = *asPointer;
 }
 
-static void NVME_WriteAQARegister(volatile uint32_t *bar0, struct NVME_AQARegister aqa) {
+static void NVME_WriteAQARegister(VOLATILE uint32_t *bar0, struct NVME_AQARegister aqa) {
 	uint32_t *asPointer = (uint32_t *)&aqa;
 	bar0[9] = *asPointer;
 }
 
-static void NVME_WriteASQRegister(volatile uint32_t *bar0, struct NVME_ASQRegister cap) {
+static void NVME_WriteASQRegister(VOLATILE uint32_t *bar0, struct NVME_ASQRegister cap) {
 	uint64_t *asPointer = (uint64_t *)&cap;
 	bar0[10] = (uint32_t)(*asPointer & 0xFFFFFFFF);
 	bar0[11] = (uint32_t)((*asPointer >> 32ULL) & 0xFFFFFFFF);
 }
 
-static void NVME_WriteACQRegister(volatile uint32_t *bar0, struct NVME_ACQRegister cap) {
+static void NVME_WriteACQRegister(VOLATILE uint32_t *bar0, struct NVME_ACQRegister cap) {
 	uint64_t *asPointer = (uint64_t *)&cap;
 	bar0[12] = (uint32_t)(*asPointer & 0xFFFFFFFF);
 	bar0[13] = (uint32_t)((*asPointer >> 32ULL) & 0xFFFFFFFF);
 }
 
-static void NVME_EnableInterrupts(volatile uint32_t *bar0) {
+static void NVME_EnableInterrupts(VOLATILE uint32_t *bar0) {
 	bar0[0x03] = 0;
 }
 
-MAYBE_UNUSED static void NVME_DisableInterrupts(volatile uint32_t *bar0) {
+MAYBE_UNUSED static void NVME_DisableInterrupts(VOLATILE uint32_t *bar0) {
 	bar0[0x03] = 0xffffffff;
 }
 
@@ -390,7 +390,7 @@ static uint16_t NVME_ExecuteAdminCmd(struct NVMEDrive *drive, union NVME_SQEntry
 	if (drive->adminSubmissionQueueHead == NVME_SUBMISSION_QUEUE_SIZE) {
 		drive->adminSubmissionQueueHead = 0;
 	}
-	volatile struct NVME_CQEntry *completitionEntry = drive->adminCompletitionQueue + drive->adminCompletitionQueueHead;
+	VOLATILE struct NVME_CQEntry *completitionEntry = drive->adminCompletitionQueue + drive->adminCompletitionQueueHead;
 	completitionEntry->phaseBit = drive->adminPhaseBit;
 
 	*(drive->adminSubmissionDoorbell) = drive->adminSubmissionQueueHead;
@@ -429,7 +429,7 @@ static uint16_t NVMEExecuteIOCommand(struct NVMEDrive *drive, union NVME_SQEntry
 	if (drive->submissionQueueHead == NVME_SUBMISSION_QUEUE_SIZE) {
 		drive->submissionQueueHead = 0;
 	}
-	volatile struct NVME_CQEntry *completitionEntry = drive->completitionQueue + drive->completitionQueueHead;
+	VOLATILE struct NVME_CQEntry *completitionEntry = drive->completitionQueue + drive->completitionQueueHead;
 
 	struct NVME_CSTSRegister csts;
 
@@ -526,7 +526,7 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 		KernelLog_WarnMsg("NVME Driver", "Failed to map BAR0");
 		return false;
 	}
-	volatile uint32_t *bar0 = (volatile uint32_t *)(mapping + (controller->offset - mappingPaddr));
+	VOLATILE uint32_t *bar0 = (VOLATILE uint32_t *)(mapping + (controller->offset - mappingPaddr));
 	nvmeDriveInfo->bar0 = bar0;
 
 	struct NVME_CC_Register cc;
@@ -626,10 +626,10 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 
 	size_t doorbellSize = 1 << (2 + cap.dstrd);
 	uintptr_t doorbellsBase = (uint32_t)bar0 + 0x1000;
-	nvmeDriveInfo->adminSubmissionDoorbell = (volatile uint16_t *)(doorbellsBase + doorbellSize * 0);
-	nvmeDriveInfo->adminCompletitionDoorbell = (volatile uint16_t *)(doorbellsBase + doorbellSize * 1);
-	nvmeDriveInfo->submissionDoorbell = (volatile uint16_t *)(doorbellsBase + doorbellSize * 2);
-	nvmeDriveInfo->completitionDoorbell = (volatile uint16_t *)(doorbellsBase + doorbellSize * 3);
+	nvmeDriveInfo->adminSubmissionDoorbell = (VOLATILE uint16_t *)(doorbellsBase + doorbellSize * 0);
+	nvmeDriveInfo->adminCompletitionDoorbell = (VOLATILE uint16_t *)(doorbellsBase + doorbellSize * 1);
+	nvmeDriveInfo->submissionDoorbell = (VOLATILE uint16_t *)(doorbellsBase + doorbellSize * 2);
+	nvmeDriveInfo->completitionDoorbell = (VOLATILE uint16_t *)(doorbellsBase + doorbellSize * 3);
 
 	union NVME_SQEntry identifyCommand = {0};
 	identifyCommand.identify.opcode = NVME_IDENTIFY;

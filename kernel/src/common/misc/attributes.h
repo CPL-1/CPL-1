@@ -2,6 +2,7 @@
 #define __ATTRIBUTES_H_INCLUDED__
 
 #define ASM __asm__
+#define VOLATILE __volatile__
 #define INLINE __inline__
 #define TYPEOF __typeof__
 #define AUTO __auto_type

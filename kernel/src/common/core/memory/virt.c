@@ -446,11 +446,12 @@ struct VirtualMM_MemoryRegionNode *VirtualMM_MemoryMap(struct VirtualMM_AddressS
 		VirtualMM_FreeRegion(&(space->trees), addr, addr + size);
 		return NULL;
 	}
-	if (lock) {
-		Mutex_Unlock(&(space->mutex));
-	}
+	node->flags = flags;
 	if (space == currentSpace) {
 		HAL_VirtualMM_Flush();
+	}
+	if (lock) {
+		Mutex_Unlock(&(space->mutex));
 	}
 	return node;
 }
@@ -583,30 +584,36 @@ void VirtualMM_PreemptToAddressSpace(struct VirtualMM_AddressSpace *space) {
 }
 
 static void VirtualMM_CopyPageAcrossAddessSpaces(struct VirtualMM_AddressSpace *src, struct VirtualMM_AddressSpace *dst,
-												 char *buf, uintptr_t page) {
+												 char *buf, uintptr_t addr, uintptr_t size) {
 
-	memcpy((void *)buf, (void *)page, HAL_VirtualMM_PageSize);
+	memcpy((void *)buf, (void *)addr, size);
 	VirtualMM_SwitchToAddressSpace(dst);
-	memcpy((void *)page, (void *)buf, HAL_VirtualMM_PageSize);
+	memcpy((void *)addr, (void *)buf, size);
 	VirtualMM_SwitchToAddressSpace(src);
 }
+
+#define VIRTUALMM_COPY_BUFFER_SIZE 0x100000
 
 static void VirtualMM_CopyPagesAcrossAddressSpaces(struct VirtualMM_AddressSpace *src,
 												   struct VirtualMM_AddressSpace *dst, char *buf, uintptr_t start,
 												   uintptr_t end) {
-	for (uintptr_t addr = start; addr < end; addr += HAL_VirtualMM_PageSize) {
-		VirtualMM_CopyPageAcrossAddessSpaces(src, dst, buf, addr);
+	for (uintptr_t addr = start; addr < end; addr += VIRTUALMM_COPY_BUFFER_SIZE) {
+		size_t size = VIRTUALMM_COPY_BUFFER_SIZE;
+		if ((end - addr) < size) {
+			size = end - addr;
+		}
+		VirtualMM_CopyPageAcrossAddessSpaces(src, dst, buf, addr, size);
 	}
 }
 
 struct VirtualMM_AddressSpace *VirtualMM_CopyCurrentAddressSpace() {
-	char *copyBuffer = Heap_AllocateMemory(HAL_VirtualMM_PageSize);
+	char *copyBuffer = Heap_AllocateMemory(VIRTUALMM_COPY_BUFFER_SIZE);
 	if (copyBuffer == NULL) {
 		return NULL;
 	}
 	struct VirtualMM_AddressSpace *newSpace = VirtualMM_MakeNewAddressSpace();
 	if (newSpace == NULL) {
-		Heap_FreeMemory(copyBuffer, HAL_VirtualMM_PageSize);
+		Heap_FreeMemory(copyBuffer, VIRTUALMM_COPY_BUFFER_SIZE);
 		return NULL;
 	}
 	struct VirtualMM_AddressSpace *currentSpace = VirtualMM_GetCurrentAddressSpace();
@@ -617,7 +624,7 @@ struct VirtualMM_AddressSpace *VirtualMM_CopyCurrentAddressSpace() {
 		if (region->isUsed) {
 			if (!VirtualMM_MemoryMap(newSpace, region->base.start, region->base.size,
 									 HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_READABLE, false)) {
-				Heap_FreeMemory(copyBuffer, HAL_VirtualMM_PageSize);
+				Heap_FreeMemory(copyBuffer, VIRTUALMM_COPY_BUFFER_SIZE);
 				VirtualMM_DropAddressSpace(newSpace);
 				return NULL;
 			}
@@ -637,6 +644,7 @@ struct VirtualMM_AddressSpace *VirtualMM_CopyCurrentAddressSpace() {
 		}
 		current = current->iter[1];
 	}
+	Heap_FreeMemory(copyBuffer, VIRTUALMM_COPY_BUFFER_SIZE);
 	Mutex_Unlock(&(currentSpace->mutex));
 	return newSpace;
 }

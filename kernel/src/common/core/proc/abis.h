@@ -9,9 +9,10 @@
 
 #define MAP_SHARED 0x01
 #define MAP_PRIVATE 0x02
-
-#define MAP_FIXED 0x10
 #define MAP_ANON 0x1000
-#define MAP_FILE 0x0000
+#define MAP_FIXED 0x1
+
+#define WNOHANG 1
+#define WUNTRACED 2
 
 #endif

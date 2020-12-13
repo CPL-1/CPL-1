@@ -3,8 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static int m_ttyFd;
-
 int strlen(const char *str) {
 	int result = 0;
 	while (str[result] != '\0') {
@@ -21,7 +19,7 @@ void fillmem(void *ptr, char val, int size) {
 }
 
 void print(const char *str) {
-	write(m_ttyFd, str, strlen(str));
+	write(STDOUT, str, strlen(str));
 }
 
 static const char *TestSuite_FileReadTest() {
@@ -36,6 +34,9 @@ static const char *TestSuite_FileReadTest() {
 	}
 	if (buf[0] != 'h') {
 		return "Data read from /etc/test/h.txt is incorrect: buf[0] != \'h\'";
+	}
+	if (close(file) < 0) {
+		return "Failed to close the file";
 	}
 	return NULL;
 }
@@ -60,19 +61,33 @@ const char *TestSuite_AllocateMemoryTest() {
 
 const char *TestSuite_AllocateTooMuchMemory() {
 	void *memory = mmap(NULL, 0xFFFF0000, PROT_WRITE | PROT_READ, MAP_ANON, -1, 0);
-	if (memory != NULL) {
+	if (memory != MAP_FAIL) {
 		return "Allocated block is definetely not large enough for 0xFFFF0000, we don't have that much RAM on the "
 			   "system.";
 	}
 	return NULL;
 }
 
-const char *TestSuite_Fork() {
-	if (fork() == 0) {
-		print("This message is from child process\n");
-		exit(0);
+const char *TestSuite_RunningProcessesTest() {
+	char const *args[] = {NULL};
+	char const *envp[] = {NULL};
+	int pid1 = fork();
+	if (pid1 == 0) {
+		execve("/bin/hello", args, envp);
 	} else {
-		print("This message is from parent process\n");
+		int receivedPid1 = wait4(-1, NULL, 0, NULL);
+		if (receivedPid1 != pid1) {
+			return "Value of pid of process 1 from wait4 system call is wrong";
+		}
+	}
+	int pid2 = fork();
+	if (pid2 == 0) {
+		execve("/bin/hello", args, envp);
+	} else {
+		int receivedPid2 = wait4(-1, NULL, 0, NULL);
+		if (receivedPid2 != pid2) {
+			return "Value of pid of process 2 from wait4 system call is wrong";
+		}
 	}
 	return NULL;
 }
@@ -85,7 +100,7 @@ struct TestRunner_TestCase {
 struct TestRunner_TestCase cases[] = {{"Reading from file", TestSuite_FileReadTest},
 									  {"Allocating too much memory", TestSuite_AllocateTooMuchMemory},
 									  {"Allocating memory", TestSuite_AllocateMemoryTest},
-									  {"Forking process", TestSuite_Fork}};
+									  {"Running processes", TestSuite_RunningProcessesTest}};
 
 static void TestRunner_ExecuteTestCases() {
 	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
@@ -109,10 +124,6 @@ static void TestRunner_ExecuteTestCases() {
 }
 
 int main() {
-	m_ttyFd = open("/dev/tty0", 0);
-	if (m_ttyFd < 0) {
-		return -1;
-	}
 	print("\033[92m\n"
 		  "  /$$$$$$  /$$$$$$$  /$$         /$$  \n"
 		  " /$$__  $$| $$__  $$| $$       /$$$$  \n"

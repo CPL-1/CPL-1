@@ -4,25 +4,9 @@
 #include <common/lib/printf.h>
 #include <common/misc/attributes.h>
 #include <common/misc/types.h>
+#include <hal/misc/string.h>
 #include <stdarg.h>
 #include <stdatomic.h>
-
-static INLINE void *memset(void *ptr, int value, size_t size) {
-	char *writable_ptr = (char *)ptr;
-	for (size_t i = 0; i < size; ++i) {
-		writable_ptr[i] = (char)value;
-	}
-	return ptr;
-}
-
-static INLINE void *memcpy(void *dst, const void *src, size_t size) {
-	char *writable_dst = (char *)dst;
-	const char *readable_dst = (const char *)src;
-	for (size_t i = 0; i < size; ++i) {
-		writable_dst[i] = readable_dst[i];
-	}
-	return dst;
-}
 
 static INLINE size_t strlen(const char *str) {
 	size_t result = 0;

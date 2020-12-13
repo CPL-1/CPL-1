@@ -52,5 +52,5 @@ void i686_GDT_Initialize() {
 	i686_GDT_InstallTSS();
 	m_GDTPointer.size = sizeof(m_entries) - 1;
 	m_GDTPointer.offset = (uint32_t)&m_entries;
-	ASM volatile("lgdt %0" : : "m"(m_GDTPointer));
+	ASM VOLATILE("lgdt %0" : : "m"(m_GDTPointer));
 }

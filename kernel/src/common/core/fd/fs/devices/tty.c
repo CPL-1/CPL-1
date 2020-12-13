@@ -43,6 +43,7 @@ struct File *TTYDevice_Open(MAYBE_UNUSED struct VFS_Inode *inode, int perm) {
 	ttyFile->ctx = NULL;
 	ttyFile->ops = &(TTYDevice_FileOperations);
 	;
+	ttyFile->isATTY = true;
 	return ttyFile;
 }
 

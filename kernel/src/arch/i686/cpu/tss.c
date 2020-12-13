@@ -19,7 +19,7 @@ static struct m_TSS_Layout m_TSS;
 void i686_TSS_Initialize() {
 	memset(&m_TSS, 0, sizeof(m_TSS));
 	m_TSS.iomapOffset = sizeof(m_TSS);
-	ASM volatile("ltr %%ax" : : "a"(i686_GDT_GetTSSSegment()));
+	ASM VOLATILE("ltr %%ax" : : "a"(i686_GDT_GetTSSSegment()));
 }
 
 uint32_t i686_TSS_GetBase() {

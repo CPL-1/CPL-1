@@ -618,6 +618,7 @@ static struct File *FAT32_OpenRegularFile(struct VFS_Inode *inode, int perm) {
 		return NULL;
 	}
 	fd->ctx = (void *)regFileContext;
+	fd->isATTY = false;
 	regFileContext->stream.currentCluster = ((struct FAT32_Inode *)inode->ctx)->firstCluster;
 	regFileContext->stream.offsetInCluster = 0;
 	fd->offset = 0;
@@ -632,6 +633,7 @@ static struct File *FAT32_OpenDirectory(MAYBE_UNUSED struct VFS_Inode *inode, in
 	if (fd == NULL) {
 		return NULL;
 	}
+	fd->isATTY = false;
 	fd->ops = &m_directoryFileOperations;
 	fd->offset = 0;
 	return fd;

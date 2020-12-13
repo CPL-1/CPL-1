@@ -17,6 +17,7 @@ static uint64_t m_instanceCountsByID[PROC_MAX_PROCESS_COUNT];
 static struct Proc_Process *m_processesByID[PROC_MAX_PROCESS_COUNT];
 static struct Proc_Process *m_CurrentProcess;
 static struct Proc_Process *m_deallocQueueHead;
+static struct Proc_Process *m_deallocQueueTail;
 static bool m_procInitialized = false;
 
 #define PROC_SCHEDULER_STACK_SIZE 65536
@@ -89,6 +90,11 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	process->returnCode = 0;
 	process->state = SLEEPING;
 	process->addressSpace = NULL;
+	process->childCount = 0;
+	struct Proc_Process *parentProcess = Proc_GetProcessData(parent);
+	if (parentProcess != NULL) {
+		parentProcess->childCount++;
+	}
 	return new_id;
 free_process_state:
 	Heap_FreeMemory(process_state, HAL_PROCESS_STATE_SIZE);
@@ -103,15 +109,6 @@ fail:;
 	return failed_id;
 }
 
-void Proc_VerifyProcess(struct Proc_Process *process) {
-	if (process->next == process->prev && process->next == process) {
-		return;
-	}
-	if ((process->next == process) || (process->prev == process)) {
-		KernelLog_ErrorMsg("Process Manager & Scheduler", "Process references to itself with next and prev");
-	}
-}
-
 void Proc_Resume(struct Proc_ProcessID id) {
 	struct Proc_Process *process = Proc_GetProcessData(id);
 	if (process == NULL) {
@@ -119,7 +116,6 @@ void Proc_Resume(struct Proc_ProcessID id) {
 	}
 	int level = HAL_InterruptLevel_Elevate();
 	process->state = RUNNING;
-	Proc_VerifyProcess(m_CurrentProcess);
 	struct Proc_Process *next, *prev;
 	next = m_CurrentProcess;
 	prev = m_CurrentProcess->prev;
@@ -127,9 +123,18 @@ void Proc_Resume(struct Proc_ProcessID id) {
 	prev->next = process;
 	process->next = next;
 	process->prev = prev;
-	Proc_VerifyProcess(process);
-	Proc_VerifyProcess(next);
-	Proc_VerifyProcess(prev);
+	HAL_InterruptLevel_Recover(level);
+}
+
+void Proc_InsertChildBack(struct Proc_Process *process) {
+	struct Proc_ProcessID id = Proc_GetProcessID();
+	struct Proc_Process *currentProcess = Proc_GetProcessData(id);
+	int level = HAL_InterruptLevel_Elevate();
+	process->nextInQueue = currentProcess->waitQueueHead;
+	currentProcess->waitQueueHead = process;
+	if (currentProcess->waitQueueTail == NULL) {
+		currentProcess->waitQueueHead = process;
+	}
 	HAL_InterruptLevel_Recover(level);
 }
 
@@ -138,9 +143,6 @@ static void Proc_CutFromActiveList(struct Proc_Process *process) {
 	struct Proc_Process *next = process->next;
 	prev->next = next;
 	next->prev = prev;
-	Proc_VerifyProcess(process);
-	Proc_VerifyProcess(next);
-	Proc_VerifyProcess(prev);
 }
 
 void Proc_Suspend(struct Proc_ProcessID id, bool overrideState) {
@@ -172,19 +174,44 @@ void Proc_SuspendSelf(bool overrideState) {
 
 void Proc_Dispose(struct Proc_Process *process) {
 	int level = HAL_InterruptLevel_Elevate();
-	process->nextInQueue = m_deallocQueueHead;
-	m_deallocQueueHead = process;
+	if (m_deallocQueueHead == NULL) {
+		m_deallocQueueHead = m_deallocQueueTail = process;
+	} else {
+		m_deallocQueueTail->nextInQueue = process;
+		m_deallocQueueTail = process;
+	}
+	process->nextInQueue = NULL;
+	HAL_InterruptLevel_Recover(level);
+}
+
+static void Proc_FreeProcessesFromQueueOnExit(struct Proc_Process *process) {
+	int level = HAL_InterruptLevel_Elevate();
+	struct Proc_Process *waitQueueHead = process->waitQueueHead;
+	struct Proc_Process *waitQueueTail = process->waitQueueTail;
+	if (waitQueueHead == NULL) {
+		HAL_InterruptLevel_Recover(level);
+		return;
+	}
+	if (waitQueueHead == waitQueueTail) {
+		HAL_InterruptLevel_Recover(level);
+		Proc_Dispose(waitQueueHead);
+		return;
+	}
+	m_deallocQueueTail->nextInQueue = waitQueueHead;
+	waitQueueTail->nextInQueue = NULL;
+	m_deallocQueueTail = waitQueueTail;
 	HAL_InterruptLevel_Recover(level);
 }
 
 void Proc_Exit(int exitCode) {
 	HAL_InterruptLevel_Elevate();
 	struct Proc_Process *process = m_CurrentProcess;
+	Proc_FreeProcessesFromQueueOnExit(process);
 	process->returnCode = exitCode;
+	process->terminatedNormally = true;
 	m_instanceCountsByID[process->pid.id]++;
 	m_processesByID[process->pid.id] = NULL;
 	process->state = ZOMBIE;
-	Proc_CutFromActiveList(process);
 	struct Proc_ProcessID parentID = process->ppid;
 	struct Proc_Process *parentProcess = Proc_GetProcessData(parentID);
 	if (parentProcess == NULL) {
@@ -200,6 +227,7 @@ void Proc_Exit(int exitCode) {
 			Proc_Resume(parentID);
 		}
 	}
+	Proc_CutFromActiveList(process);
 	Proc_Yield();
 }
 
@@ -213,13 +241,22 @@ struct Proc_Process *Proc_GetWaitingQueueHead(struct Proc_Process *process) {
 	return result;
 }
 
-struct Proc_Process *Proc_WaitForChildTermination() {
+struct Proc_Process *Proc_WaitForChildTermination(bool returnImmediately) {
 	int level = HAL_InterruptLevel_Elevate();
 	struct Proc_Process *process = m_CurrentProcess;
+	if (process->childCount == 0) {
+		HAL_InterruptLevel_Recover(level);
+		return NULL;
+	}
+	process->childCount--;
 	if (process->waitQueueHead != NULL) {
 		struct Proc_Process *result = Proc_GetWaitingQueueHead(process);
 		HAL_InterruptLevel_Recover(level);
 		return result;
+	}
+	if (returnImmediately) {
+		HAL_InterruptLevel_Recover(level);
+		return NULL;
 	}
 	process->state = WAITING_FOR_CHILD_TERM;
 	Proc_SuspendSelf(false);
@@ -264,7 +301,7 @@ void Proc_Initialize() {
 	if (kernelProcessData->addressSpace == NULL) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to allocate process address space object");
 	}
-	m_deallocQueueHead = NULL;
+	m_deallocQueueHead = m_deallocQueueTail = NULL;
 	HAL_ISRStacks_SetISRStack((uintptr_t)(Proc_SchedulerStack) + PROC_SCHEDULER_STACK_SIZE);
 	if (!HAL_Timer_SetCallback((HAL_ISR_Handler)Proc_PreemptCallback)) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to set timer callback");
@@ -281,11 +318,14 @@ bool Proc_PollDisposeQueue() {
 	}
 	m_deallocQueueHead = process->nextInQueue;
 	HAL_InterruptLevel_Recover(level);
-	if (process->addressSpace != 0) {
+	if (process->addressSpace != NULL) {
 		VirtualMM_DropAddressSpace(process->addressSpace);
 	}
 	if (process->kernelStack != 0) {
 		Heap_FreeMemory((void *)(process->kernelStack), PROC_KERNEL_STACK_SIZE);
+	}
+	if (process->fdTable != NULL) {
+		FileTable_Drop(process->fdTable);
 	}
 	FREE_OBJ(process);
 	return true;

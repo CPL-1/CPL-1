@@ -227,6 +227,7 @@ struct File *Storage_FileOpen(struct VFS_Inode *inode, MAYBE_UNUSED int perm) {
 	fd->ctx = inode->ctx;
 	fd->ops = &m_StorageFileOperations;
 	fd->offset = 0;
+	fd->isATTY = false;
 	return fd;
 }
 

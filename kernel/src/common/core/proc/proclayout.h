@@ -24,6 +24,8 @@ struct Proc_Process {
 		WAITING_FOR_CHILD_TERM,
 		ZOMBIE
 	} state;
+	bool terminatedNormally;
+	size_t childCount;
 };
 
 #endif

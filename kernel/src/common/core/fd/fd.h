@@ -19,6 +19,7 @@ struct File {
 	struct VFS_Dentry *dentry;
 	struct Mutex mutex;
 	size_t refCount;
+	bool isATTY;
 };
 
 #define VFS_MAX_NAME_LENGTH 255
@@ -40,6 +41,10 @@ int File_Read(struct File *file, int count, char *buf);
 int File_Write(struct File *file, int count, const char *buf);
 int File_ReadUser(struct File *file, int count, char *buf);
 int File_WriteUser(struct File *file, int count, const char *buf);
+int File_PRead(struct File *file, off_t pos, int count, char *buf);
+int File_PWrite(struct File *file, off_t pos, int count, const char *buf);
+int File_PReadUser(struct File *file, off_t pos, int count, char *buf);
+int File_PWriteUser(struct File *file, off_t pos, int count, const char *buf);
 
 int File_Readdir(struct File *file, struct DirectoryEntry *buf, int count);
 off_t File_Lseek(struct File *file, off_t offset, int whence);
@@ -47,10 +52,5 @@ void File_Flush(struct File *file);
 
 void File_Ref(struct File *file);
 void File_Drop(struct File *file);
-
-int File_PRead(struct File *file, off_t pos, int count, char *buf);
-int File_PWrite(struct File *file, off_t pos, int count, const char *buf);
-int File_PReadUser(struct File *file, off_t pos, int count, char *buf);
-int File_PWriteUser(struct File *file, off_t pos, int count, const char *buf);
 
 #endif

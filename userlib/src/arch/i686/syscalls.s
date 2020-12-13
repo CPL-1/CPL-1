@@ -8,6 +8,8 @@ global exit
 global mmap
 global munmap
 global fork
+global execve
+global wait4
 
 open:
     times 2 push dword [esp + 8]
@@ -69,4 +71,19 @@ munmap:
 fork:
     mov eax, 2
     int 0x80
+    ret
+
+execve:
+    times 3 push dword [esp + 12]
+    sub esp, 4
+    mov eax, 59
+    int 0x80
+    add esp, 16
+    ret
+
+wait4:
+    times 4 push dword [esp + 16]
+    mov eax, 400
+    int 0x80
+    add esp, 16
     ret

@@ -96,7 +96,6 @@ uintptr_t HAL_PhysicalMM_KernelAllocArea(size_t size) {
 }
 
 static void i686_PhysicalMM_FreeFrame(uint32_t frame) {
-	Mutex_Lock(&m_mutex);
 	uint32_t index = frame / I686_PAGE_SIZE;
 	if (index < m_lowArenaMaxIndex) {
 		if (index < m_lowArenaMinIndex) {
@@ -108,14 +107,17 @@ static void i686_PhysicalMM_FreeFrame(uint32_t frame) {
 		}
 	}
 	i686_PhysicalMM_ClearBit(frame / I686_PAGE_SIZE);
-	Mutex_Unlock(&m_mutex);
 }
 
 void HAL_PhysicalMM_UserFreeFrame(uintptr_t frame) {
+	Mutex_Lock(&m_mutex);
 	i686_PhysicalMM_FreeFrame(frame);
+	Mutex_Unlock(&m_mutex);
 }
 void HAL_PhysicalMM_KernelFreeFrame(uint32_t frame) {
+	Mutex_Lock(&m_mutex);
 	i686_PhysicalMM_FreeFrame(frame);
+	Mutex_Unlock(&m_mutex);
 }
 
 void HAL_PhysicalMM_KernelFreeArea(uintptr_t area, size_t size) {

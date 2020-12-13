@@ -35,22 +35,23 @@ clean:
 	cd ../../init/build/i686 && make clean
 	cd ../../userlib/build/i686 && make clean
 	rm -rf kernel.elf
+	rm -rf init
 	rm -rf CPL-1_i686.hdd
 
 run: CPL-1_i686.hdd
 	qemu-system-i386 -no-reboot -no-shutdown -boot c \
 	-drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
-	-device nvme,drive=NVME1,serial=nvme-1 --enable-kvm -debugcon stdio
+	-device nvme,drive=NVME1,serial=nvme-1 --enable-kvm -debugcon stdio -m 128M
 
 run-with-ints: CPL-1_i686.hdd
 	qemu-system-i386 -no-reboot -no-shutdown -boot c \
 	-drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
-	-device nvme,drive=NVME1,serial=nvme-1 -debugcon stdio -trace nvme* -d int -singlestep
+	-device nvme,drive=NVME1,serial=nvme-1 -debugcon stdio -trace nvme* -d int -singlestep -m 128M
 	
 debug: CPL-1_i686.hdd
 	qemu-system-i386 -d int -no-reboot -no-shutdown -boot c \
 	-s -S -daemonize -drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
-	-device nvme,drive=NVME1,serial=nvme-1 -singlestep
+	-device nvme,drive=NVME1,serial=nvme-1 -m 128M
 	gdb kernel.elf -ex "target remote :1234"
 
 testrun: clean build run

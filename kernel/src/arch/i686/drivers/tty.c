@@ -34,7 +34,7 @@ static void i686_TTY_ReportFramebufferError(const char *msg, size_t size) {
 		((char *)(HAL_VirtualMM_KernelMappingBase + 0xb8000))[2 * i + 1] = 0x0f;
 	}
 	while (true) {
-		ASM volatile("nop");
+		ASM VOLATILE("nop");
 	}
 };
 
