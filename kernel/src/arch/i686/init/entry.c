@@ -18,7 +18,7 @@
 #include <arch/i686/proc/state.h>
 #include <common/core/fd/fdtable.h>
 #include <common/core/fd/fs/devfs.h>
-#include <common/core/fd/fs/devices/tty.h>
+#include <common/core/devices/tty.h>
 #include <common/core/fd/fs/fat32.h>
 #include <common/core/fd/fs/rootfs.h>
 #include <common/core/fd/vfs.h>
@@ -160,16 +160,6 @@ void i686_KernelInit_ExecuteInitProcess() {
 							HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_READABLE, true);
 	if (node->base.start == 0) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
-	}
-	// Open TTY device for 3 first file descriptors
-	struct File *ttyFile = VFS_Open("/dev/tty0", VFS_O_RDONLY);
-	if (ttyFile == NULL) {
-		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open init TTY");
-	}
-	for (int i = 0; i < 3; ++i) {
-		if (i != FileTable_AllocateFileSlot(NULL, ttyFile)) {
-			KernelLog_ErrorMsg("i686 Kernel Init", "Failed to set up TTY");
-		}
 	}
 	// Stack layout for init process
 	// [ NULL ] // align

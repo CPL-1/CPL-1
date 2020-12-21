@@ -2,7 +2,7 @@
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/proc/mutex.h>
-#include <common/core/storage/storage.h>
+#include <common/core/devices/storage/storage.h>
 #include <common/drivers/storage/nvme.h>
 #include <common/lib/kmsg.h>
 #include <common/lib/math.h>

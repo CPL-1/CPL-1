@@ -1,7 +1,7 @@
 #include <common/core/fd/fs/devfs.h>
 #include <common/core/memory/heap.h>
-#include <common/core/storage/mbr.h>
-#include <common/core/storage/storage.h>
+#include <common/core/devices/storage/mbr.h>
+#include <common/core/devices/storage/storage.h>
 #include <common/lib/kmsg.h>
 
 bool Storage_CacheInit(struct Storage_Device *storage) {

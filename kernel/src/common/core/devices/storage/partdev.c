@@ -2,8 +2,8 @@
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/proc/mutex.h>
-#include <common/core/storage/partdev.h>
-#include <common/core/storage/storage.h>
+#include <common/core/devices/storage/partdev.h>
+#include <common/core/devices/storage/storage.h>
 
 struct PartDev_InodeData {
 	uint64_t start;

@@ -1,6 +1,6 @@
 #include <common/core/fd/fd.h>
 #include <common/core/fd/fs/devfs.h>
-#include <common/core/fd/fs/devices/tty.h>
+#include <common/core/devices/tty.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/memory/virt.h>

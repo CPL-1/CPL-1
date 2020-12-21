@@ -123,7 +123,28 @@ static void TestRunner_ExecuteTestCases() {
 	}
 }
 
+bool InitProcess_SetupTTYStreams() {
+	if (open("/dev/tty0", O_RDONLY) != 0) {
+		return false;
+	}
+	if (open("/dev/tty0", O_RDONLY) != 1) {
+		return false;
+	}
+	if (open("/dev/tty0", O_RDONLY) != 2) {
+		return false;
+	}
+	return true;
+}
+
 int main() {
+	if (!InitProcess_SetupTTYStreams()) {
+		// Let it hang
+		while(true) {
+			volatile int a;
+			a = 1;
+			a = a;
+		}
+	}
 	print("\033[92m\n"
 		  "  /$$$$$$  /$$$$$$$  /$$         /$$  \n"
 		  " /$$__  $$| $$__  $$| $$       /$$$$  \n"

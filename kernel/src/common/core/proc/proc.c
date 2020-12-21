@@ -268,12 +268,13 @@ void Proc_Yield() {
 	HAL_Timer_TriggerInterrupt();
 }
 
-void Proc_PreemptCallback(MAYBE_UNUSED void *ctx, char *frame) {
-	memcpy(m_CurrentProcess->processState, frame, HAL_PROCESS_STATE_SIZE);
+void Proc_PreemptCallback(MAYBE_UNUSED void *ctx, char *state) {
+	memcpy(m_CurrentProcess->processState, state, HAL_PROCESS_STATE_SIZE);
 	m_CurrentProcess = m_CurrentProcess->next;
-	memcpy(frame, m_CurrentProcess->processState, HAL_PROCESS_STATE_SIZE);
+	memcpy(state, m_CurrentProcess->processState, HAL_PROCESS_STATE_SIZE);
 	VirtualMM_PreemptToAddressSpace(m_CurrentProcess->addressSpace);
 	HAL_ISRStacks_SetSyscallsStack(m_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
+	HAL_State_EnableInterrupts(state);
 }
 
 void Proc_Initialize() {

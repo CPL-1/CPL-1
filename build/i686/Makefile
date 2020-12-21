@@ -4,7 +4,7 @@ all: clean build
 ../x86/limine/limine-install:
 	make -C ../x86/limine limine-install
 
-CPL-1_i686.hdd: ../x86/limine/limine-install
+build: ../x86/limine/limine-install
 	cd ../../kernel/build/i686 && make build -j`nproc` && sudo cp kernel.elf ../../../build/i686/kernel.elf
 	cd ../../userlib/build/i686 && make build -j`nproc`
 	cd ../../init/build/i686 && make build -j`nproc` && sudo cp init ../../../build/i686/init
@@ -27,8 +27,6 @@ CPL-1_i686.hdd: ../x86/limine/limine-install
 	rm -rf loopback_dev
 	../x86/limine/limine-install ../x86/limine/limine.bin CPL-1_i686.hdd
 	7z a CPL-1_i686.7z CPL-1_i686.hdd
-
-build: CPL-1_i686.hdd
 
 clean:
 	cd ../../kernel/build/i686 && make clean
