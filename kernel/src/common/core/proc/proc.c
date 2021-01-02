@@ -73,7 +73,7 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	if (stack == 0) {
 		goto free_process_obj;
 	}
-	char *process_state = (char *)(Heap_AllocateMemory(HAL_PROCESS_STATE_SIZE));
+	char *process_state = (char *)(Heap_AllocateMemory(HAL_ProcessStateSize));
 	if (process_state == NULL) {
 		goto free_stack;
 	}
@@ -81,7 +81,7 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	if (!Proc_IsValidProcessID(new_id)) {
 		goto free_process_state;
 	}
-	memset(process_state, 0, HAL_PROCESS_STATE_SIZE);
+	memset(process_state, 0, HAL_ProcessStateSize);
 	process->next = process->prev = process->waitQueueHead = process->waitQueueTail = process->nextInQueue = NULL;
 	process->ppid = parent;
 	process->pid = new_id;
@@ -97,7 +97,7 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	}
 	return new_id;
 free_process_state:
-	Heap_FreeMemory(process_state, HAL_PROCESS_STATE_SIZE);
+	Heap_FreeMemory(process_state, HAL_ProcessStateSize);
 free_stack:
 	Heap_FreeMemory((void *)stack, PROC_KERNEL_STACK_SIZE);
 free_process_obj:
@@ -269,9 +269,9 @@ void Proc_Yield() {
 }
 
 void Proc_PreemptCallback(MAYBE_UNUSED void *ctx, char *state) {
-	memcpy(m_CurrentProcess->processState, state, HAL_PROCESS_STATE_SIZE);
+	memcpy(m_CurrentProcess->processState, state, HAL_ProcessStateSize);
 	m_CurrentProcess = m_CurrentProcess->next;
-	memcpy(state, m_CurrentProcess->processState, HAL_PROCESS_STATE_SIZE);
+	memcpy(state, m_CurrentProcess->processState, HAL_ProcessStateSize);
 	VirtualMM_PreemptToAddressSpace(m_CurrentProcess->addressSpace);
 	HAL_ISRStacks_SetSyscallsStack(m_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
 	HAL_State_EnableInterrupts(state);
@@ -294,7 +294,7 @@ void Proc_Initialize() {
 	m_CurrentProcess = kernelProcessData;
 	kernelProcessData->next = kernelProcessData;
 	kernelProcessData->prev = kernelProcessData;
-	kernelProcessData->processState = Heap_AllocateMemory(HAL_PROCESS_STATE_SIZE);
+	kernelProcessData->processState = Heap_AllocateMemory(HAL_ProcessStateSize);
 	if (kernelProcessData->processState == NULL) {
 		KernelLog_ErrorMsg(PROC_MOD_NAME, "Failed to allocate kernel process state");
 	}

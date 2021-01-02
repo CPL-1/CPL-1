@@ -3,7 +3,7 @@
 
 #include <common/misc/utils.h>
 
-extern size_t HAL_PROCESS_STATE_SIZE;
+extern size_t HAL_ProcessStateSize;
 
 void HAL_State_EnableInterrupts(void *state);
 void HAL_State_DisableInterrupts(void *state);

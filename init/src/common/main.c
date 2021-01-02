@@ -104,7 +104,7 @@ struct TestRunner_TestCase cases[] = {{"Reading from file", TestSuite_FileReadTe
 
 static void TestRunner_ExecuteTestCases() {
 	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
-		print("[ \033[91mINFO\033[39m ]\033[97m Test Runner:\033[39m Running test case \"");
+		print("[ \033[33mINFO\033[39m ]\033[97m Test Runner:\033[39m Running test case \"");
 		print(cases[i].testCaseName);
 		print("\"\n");
 		const char *error = cases[i].testCallback();
@@ -139,23 +139,41 @@ bool InitProcess_SetupTTYStreams() {
 int main() {
 	if (!InitProcess_SetupTTYStreams()) {
 		// Let it hang
-		while(true) {
+		while (true) {
 			volatile int a;
 			a = 1;
 			a = a;
 		}
 	}
 	print("\033[92m\n"
-		  "  /$$$$$$  /$$$$$$$  /$$         /$$  \n"
-		  " /$$__  $$| $$__  $$| $$       /$$$$  \n"
-		  "| $$  \\__/| $$  \\ $$| $$      |_  $$  \n"
-		  "| $$      | $$$$$$$/| $$ /$$$$$$| $$  \n"
-		  "| $$      | $$____/ | $$|______/| $$  \n"
-		  "| $$    $$| $$      | $$        | $$  \n"
-		  "|  $$$$$$/| $$      | $$$$$$$$ /$$$$$$\n"
-		  " \\______/ |__/      |________/|______/"
+		  "              /\\\n"
+		  "             <  >\n"
+		  "              \\/\n"
+		  "              /\\\n"
+		  "             /  \\\n"
+		  "            /++++\\\n"
+		  "           /  \033[94m()\033[92m  \\\n"
+		  "           /      \\\n"
+		  "          /~`~`~`~`\\\n"
+		  "         /  \033[96m()\033[92m  \033[94m()\033[92m  \\\n"
+		  "         /          \\\n"
+		  "        /*&*&*&*&*&*&\\\n"
+		  "       /  \033[94m()\033[92m  \033[96m()\033[92m  \033[94m()\033[92m  \\\n"
+		  "       /              \\\n"
+		  "      /++++++++++++++++\\\n"
+		  "     /  \033[96m()\033[92m  \033[94m()\033[92m  \033[96m()\033[92m  \033[96m()\033[92m  \\\n"
+		  "     /                  \\\n"
+		  "    /~`~`~`~`~`~`~`~`~`~`\\\n"
+		  "   /  \033[96m()\033[92m  \033[96m()\033[92m  \033[96m()\033[92m  \033[96m()\033[92m  "
+		  "\033[94m()\033[92m  \\\n"
+		  "   /*&*&*&*&*&*&*&*&*&*&*&\\\n"
+		  "  /                        \\\n"
+		  " /,.,.,.,.,.,.,.,.,.,.,.,.,.\\\n"
+		  "            |   |\n"
+		  "           |`````|\n"
+		  "           \\_____/\t\tHappy New Year!\n"
 		  "\033[39m\n\n");
-	print("[ \033[91mINFO\033[39m ]\033[97m Test Runner:\033[39m Executing tests in init process test suite...\n");
+	print("[ \033[33mINFO\033[39m ]\033[97m Test Runner:\033[39m Executing tests in init process test suite...\n");
 	TestRunner_ExecuteTestCases();
 	return 0;
 }

@@ -96,14 +96,19 @@ static void i686_TTY_PutCharacter(char c) {
 		i686_TTY_Scroll();
 	}
 	if (c == '\n') {
-		m_ttyY++;
-		m_ttyX = 0;
+		uint16_t oldY = m_ttyY;
+		while (oldY == m_ttyY) {
+			i686_TTY_PutCharacterRaw(' ');
+		}
 	} else if (c == '\t') {
-		m_ttyX += 1;
-		m_ttyX += m_ttyTabSize - (m_ttyX % m_ttyTabSize);
-		if (m_ttyX >= m_ttyYSize) {
-			m_ttyX -= m_ttyYSize;
-			m_ttyY++;
+		uint16_t newX = m_ttyX;
+		newX += 1;
+		newX += m_ttyTabSize - (newX % m_ttyTabSize);
+		if (newX >= m_ttyYSize) {
+			newX -= m_ttyYSize;
+		}
+		while (m_ttyX != newX) {
+			i686_TTY_PutCharacterRaw(' ');
 		}
 	} else {
 		i686_TTY_PutCharacterRaw(c);
@@ -138,7 +143,7 @@ void i686_TTY_Initialize() {
 	}
 	m_framebuffer = framebufferMapping + framebufferPageOffset;
 	m_ttyForegroundColor = m_VGA2RGB[7];
-	m_ttyBackgroundColor = m_VGA2RGB[0];
+	m_ttyBackgroundColor = 0x002c001e;
 	m_ttyDefaultForegroundColor = m_ttyForegroundColor;
 	m_ttyDefaultBackgroundColor = m_ttyBackgroundColor;
 	m_isFramebufferInitialized = true;

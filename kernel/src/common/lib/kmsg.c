@@ -47,7 +47,7 @@ void KernelLog_InfoMsg(const char *mod, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	int level = HAL_InterruptLevel_Elevate();
-	printf("[ \033[91mINFO\033[39m ]\033[97m %s: \033[39m", mod);
+	printf("[ \033[33mINFO\033[39m ]\033[97m %s: \033[39m", mod);
 	va_printf(fmt, args);
 	printf("\n");
 	HAL_InterruptLevel_Recover(level);
