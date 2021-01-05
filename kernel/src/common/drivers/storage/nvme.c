@@ -39,7 +39,7 @@ struct NVME_CAPRegister {
 	uint32_t : 6;
 } PACKED_ALIGN(8) LITTLE_ENDIAN;
 
-struct NVME_CC_Register {
+struct NVME_CCRegister {
 	uint32_t en : 1;
 	uint32_t : 3;
 	uint32_t css : 3;
@@ -319,8 +319,8 @@ static struct NVME_CAPRegister NVME_ReadCapRegister(VOLATILE uint32_t *bar0) {
 	return result;
 }
 
-static struct NVME_CC_Register NVME_ReadCCRegister(VOLATILE uint32_t *bar0) {
-	struct NVME_CC_Register result = {0};
+static struct NVME_CCRegister NVME_ReadCCRegister(VOLATILE uint32_t *bar0) {
+	struct NVME_CCRegister result = {0};
 	uint32_t *asPointer = (uint32_t *)&result;
 	*asPointer = bar0[5];
 	return result;
@@ -354,7 +354,7 @@ static struct NVME_ACQRegister NVME_ReadACQRegister(VOLATILE uint32_t *bar0) {
 	return result;
 }
 
-static void NVME_WriteCCRegister(VOLATILE uint32_t *bar0, struct NVME_CC_Register cc) {
+static void NVME_WriteCCRegister(VOLATILE uint32_t *bar0, struct NVME_CCRegister cc) {
 	uint32_t *asPointer = (uint32_t *)&cc;
 	bar0[5] = *asPointer;
 }
@@ -529,7 +529,7 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 	VOLATILE uint32_t *bar0 = (VOLATILE uint32_t *)(mapping + (controller->offset - mappingPaddr));
 	nvmeDriveInfo->bar0 = bar0;
 
-	struct NVME_CC_Register cc;
+	struct NVME_CCRegister cc;
 	struct NVME_CSTSRegister csts;
 	struct NVME_CAPRegister cap;
 	struct NVME_AQARegister aqa;
