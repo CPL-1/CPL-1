@@ -457,51 +457,51 @@ static uint16_t NVMEExecuteIOCommand(struct NVMEDrive *drive, union NVME_SQEntry
 	return drive->completitionQueue->status;
 }
 
-static bool nvme_rw_lba(struct NVMEDrive *drive, size_t ns, void *buf, uint64_t lba, size_t count, bool write) {
+static bool NVME_ReadWriteLBA(struct NVMEDrive *drive, size_t ns, void *buf, uint64_t lba, size_t count, bool write) {
 	Mutex_Lock(&(drive->mutex));
 	struct nvme_drive_namespace *namespace = drive->namespaces + (ns - 1);
 	size_t block_size = namespace->block_size;
 	uintptr_t page_offset = (uintptr_t)buf & (HAL_VirtualMM_PageSize - 1);
 
-	MAYBE_UNUSED union NVME_SQEntry rw_command;
-	rw_command.rw.opcode = write ? NVME_CMD_WRITE : NVME_CMD_READ;
-	rw_command.rw.flags = 0;
-	rw_command.rw.control = 0;
-	rw_command.rw.dsmgmt = 0;
-	rw_command.rw.reftag = 0;
-	rw_command.rw.apptag = 0;
-	rw_command.rw.appmask = 0;
-	rw_command.rw.metadata = 0;
-	rw_command.rw.slba = lba;
-	rw_command.rw.nsid = ns;
-	rw_command.rw.length = count - 1;
+	union NVME_SQEntry rwCommand;
+	rwCommand.rw.opcode = write ? NVME_CMD_WRITE : NVME_CMD_READ;
+	rwCommand.rw.flags = 0;
+	rwCommand.rw.control = 0;
+	rwCommand.rw.dsmgmt = 0;
+	rwCommand.rw.reftag = 0;
+	rwCommand.rw.apptag = 0;
+	rwCommand.rw.appmask = 0;
+	rwCommand.rw.metadata = 0;
+	rwCommand.rw.slba = lba;
+	rwCommand.rw.nsid = ns;
+	rwCommand.rw.length = count - 1;
 	uintptr_t alignedDown = ALIGN_DOWN((uintptr_t)buf, HAL_VirtualMM_PageSize);
 	uintptr_t alignedUp = ALIGN_UP((uintptr_t)(buf + count * block_size), HAL_VirtualMM_PageSize);
 	size_t prpEntriesCount = ((alignedUp - alignedDown) / HAL_VirtualMM_PageSize) - 1;
 
 	if (prpEntriesCount == 0) {
-		rw_command.rw.prp1 = (uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase);
+		rwCommand.rw.prp1 = (uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase);
 	} else if (prpEntriesCount == 1) {
-		rw_command.rw.prp1 = (uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase);
-		rw_command.rw.prp2 =
+		rwCommand.rw.prp1 = (uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase);
+		rwCommand.rw.prp2 =
 			(uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase - page_offset + HAL_VirtualMM_PageSize);
 	} else {
-		rw_command.rw.prp1 = (uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase);
-		rw_command.rw.prp2 = (uint64_t)((uintptr_t)(drive->prps) - HAL_VirtualMM_KernelMappingBase);
+		rwCommand.rw.prp1 = (uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase);
+		rwCommand.rw.prp2 = (uint64_t)((uintptr_t)(drive->prps) - HAL_VirtualMM_KernelMappingBase);
 		for (size_t i = 0; i < prpEntriesCount; ++i) {
 			drive->prps[i] = (uint64_t)((uintptr_t)buf - HAL_VirtualMM_KernelMappingBase - page_offset +
 										(i + 1) * HAL_VirtualMM_PageSize);
 		}
 	}
 
-	uint16_t status = NVMEExecuteIOCommand(drive, rw_command);
+	uint16_t status = NVMEExecuteIOCommand(drive, rwCommand);
 	Mutex_Unlock(&(drive->mutex));
 	return status == 0;
 }
 
-static bool nvme_namespace_rw_lba(void *ctx, char *buf, uint64_t lba, size_t count, bool write) {
+static bool NVME_NamespaceReadWriteLBA(void *ctx, char *buf, uint64_t lba, size_t count, bool write) {
 	struct nvme_drive_namespace *namespace = (struct nvme_drive_namespace *)ctx;
-	return nvme_rw_lba(namespace->drive, namespace->namespaceID, buf, lba, count, write);
+	return NVME_ReadWriteLBA(namespace->drive, namespace->namespaceID, buf, lba, count, write);
 }
 
 bool NVME_Initialize(struct HAL_NVMEController *controller) {
@@ -731,7 +731,7 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 		namespace->cache.sectorSize = namespace->block_size;
 		namespace->cache.maxRWSectorsCount = namespace->transferBlocksMax;
 		namespace->cache.sectorsCount = namespace->blocks_count;
-		namespace->cache.rw_lba = nvme_namespace_rw_lba;
+		namespace->cache.rw_lba = NVME_NamespaceReadWriteLBA;
 		namespace->cache.ctx = (void *)namespace;
 		memset(namespace->cache.name, 0, 256);
 		sprintf("nvme%un%u\0", namespace->cache.name, 256, nvmeDriveInfo->id, i + 1);
