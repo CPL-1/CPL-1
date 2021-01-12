@@ -1,0 +1,128 @@
+sources:
+  - name: binutils
+    subdir: 'tools'
+    url: 'https://ftp.gnu.org/gnu/binutils/binutils-2.35.tar.xz'
+    format: 'tar.xz'
+    extract_path: 'binutils-2.35'
+    tools_required:
+      - host-autoconf-2.70
+      - host-automake-1.15
+    regenerate:
+      - args: ['automake']
+      - workdir: '@THIS_SOURCE_DIR@/ld'
+  
+  - name: gcc
+    subdir: 'ports'
+    url: 'https://ftp.gnu.org/gnu/gcc/gcc-10.2.0/gcc-10.2.0.tar.xz'
+    format: 'tar.xz'
+    tools_required:
+      - host-autoconf-2.70
+      - host-automake-1.15
+    regenerate:
+      - args: ['./contrib/download_prerequisites']
+        workdir: '@THIS_SOURCE_DIR@'
+      - args: ['autoconf']
+        workdir: '@THIS_SOURCE_DIR@/gcc'
+      - args: ['autoconf']
+        workdir: '@THIS_SOURCE_DIR@/libstdc++-v3'
+      - args: ['sh', '-c', 'patch -p1 < ../../extra-patches/gcc.patch']
+        workdir: '@THIS_SOURCE_DIR@'
+  
+  - name: mlibc
+    url: 'https://github.com/managarm/mlibc/archive/2.0.0.tar.gz'
+    format: 'tar.gz'
+    extract_path: 'mlibc-2.0.0'
+    patch-path-strip: 2
+
+tools:
+  - name: host-autoconf-2.70
+    source:
+      name: autoconf-2.70
+      subdir: 'ports'
+      url: 'https://ftp.gnu.org/gnu/autoconf/autoconf-2.70.tar.xz'
+      format: 'tar.xz'
+      extract_path: 'autoconf-2.70'
+      patch-path-strip: 1
+    configure:
+      - args: ['@THIS_SOURCE_DIR@/configure', '--prefix=@PREFIX@']
+    compile:
+      - args: ['make', '-j@PARALLELISM@']
+    install:
+      - args: ['make', 'install']
+
+  - name: host-automake-1.15
+    source:
+      name: automake-1.15
+      subdir: 'ports'
+      url: 'https://ftp.gnu.org/gnu/automake/automake-1.15.1.tar.xz'
+      format: 'tar.xz'
+      extract_path: 'automake-1.15.1'
+      patch-path-strip: 1
+    tools_required:
+      - host-autoconf-2.70
+    configure:
+      - args:
+        - '@THIS_SOURCE_DIR@/configure'
+        - '--prefix=@PREFIX@'
+    compile:
+      - args: ['make', '-j@PARALLELISM@']
+    install:
+      - args: ['make', 'install']
+
+  - name: host-binutils
+    from_source: binutils
+    configure:
+      - args:
+        - '@THIS_SOURCE_DIR@/configure'
+        - '--prefix=@PREFIX@'
+        - '--target=i686-elf'
+        - '--with-sysroot=@SYSROOT_DIR@'
+        - '--disable-nls'
+        - '--disable-werror'
+    compile:
+      - args: ['make', '-j@PARALLELISM@']
+    install:
+      - args: ['make', 'install']
+
+  - name: host-gcc
+    from_source: gcc
+    tools_required:
+      - tool: host-binutils
+        recursive: true
+    configure:
+      - args:
+        - '@THIS_SOURCE_DIR@/configure'
+        - '--prefix=@PREFIX@'
+        - '--target=i686-elf'
+        - '--with-sysroot=@SYSROOT_DIR@'
+        - '--enable-languages=c,c++'
+        - '--disable-nls'
+    stages:
+      - name: compiler
+        compile:
+          - args: ['make', '-j@PARALLELISM@', 'all-gcc']
+        install:
+          - args: ['make', 'install-gcc']
+          # GCC does *not* look for target-prefixed LD/AS.
+          # Instead, it searches a list of prefix directories. Link AS/LD to make it happy.
+          - args: ['mkdir', '-p', '@PREFIX@/x86_64-lyre/bin']
+          - args: ['ln', '-sf', '../../../host-binutils/x86_64-lyre/bin/as',
+                               '@PREFIX@/x86_64-lyre/bin/as']
+          - args: ['ln', '-sf', '../../../host-binutils/x86_64-lyre/bin/ld',
+                               '@PREFIX@/x86_64-lyre/bin/ld']
+      - name: libgcc
+        tools_required:
+          - tool: host-gcc
+            stage_dependencies: [compiler]
+        compile:
+          - args: ['make', '-j@PARALLELISM@', 'all-target-libgcc']
+        install:
+          - args: ['make', 'install-target-libgcc']
+      - name: libstdc++
+        tools_required:
+          - tool: host-gcc
+            stage_dependencies: [libgcc]
+        compile:
+          - args: ['make', '-j@PARALLELISM@', 'all-target-libstdc++-v3']
+        install:
+          - args: ['make', 'install-target-libstdc++-v3']
