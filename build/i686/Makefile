@@ -9,7 +9,7 @@ build: ../x86/limine/limine-install
 	cd ../../userlib/build/i686 && make build -j`nproc`
 	cd ../../init/build/i686 && make build -j`nproc` && sudo cp init ../../../build/i686/init
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
-	parted -s CPL-1_i686.hdd mklabel msdos
+	parted -s CPL-1_i686.hdd mklabel gpt
 	parted -s CPL-1_i686.hdd mkpart primary 2048s 100%
 	sudo losetup -Pf --show CPL-1_i686.hdd > loopback_dev
 	sudo partprobe `cat loopback_dev`

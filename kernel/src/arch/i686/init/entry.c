@@ -131,6 +131,9 @@ void i686_KernelInit_ExecuteInitProcess() {
 	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	i686_DetectHardware();
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");
+	while (true) {
+		ASM VOLATILE("pause");
+	}
 	if (!VFS_UserMount("/", "/dev/nvme0n1p1", "fat32")) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount FAT32 Filesystem on /");
 	}

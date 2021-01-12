@@ -1,6 +1,7 @@
 #include <common/core/fd/fs/devfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/devices/storage/mbr.h>
+#include <common/core/devices/storage/gpt.h>
 #include <common/core/devices/storage/storage.h>
 #include <common/lib/kmsg.h>
 
@@ -262,7 +263,9 @@ bool Storage_Init(struct Storage_Device *storage) {
 	if (!DevFS_RegisterInode(storage->name, inode)) {
 		return false;
 	}
-	if (MBR_CheckDisk(storage)) {
+	if (GPT_CheckDisk(storage)) {
+		GPT_EnumeratePartitions(storage);
+	} else if (MBR_CheckDisk(storage)) {
 		MBR_EnumeratePartitions(storage);
 	}
 	return true;

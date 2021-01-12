@@ -13,7 +13,7 @@ bool MBR_CheckDisk(struct Storage_Device *dev) {
 	return StringsEqual(magic, "\x55\xaa");
 }
 
-struct mbr_entry {
+struct MBR_Entry {
 	uint32_t status : 8;
 	uint32_t startHead : 8;
 	uint32_t startCylinder : 10;
@@ -27,7 +27,7 @@ struct mbr_entry {
 } PACKED LITTLE_ENDIAN NOALIGN;
 
 bool MBR_EnumeratePartitions(struct Storage_Device *dev) {
-	struct mbr_entry entries[4];
+	struct MBR_Entry entries[4];
 	if (!Storage_ReadWrite(dev, 0x1be, sizeof(entries), (char *)entries, false)) {
 		return false;
 	}
