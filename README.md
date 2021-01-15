@@ -33,22 +33,11 @@ Currently there is only support for i686 CPUS with PIC 8259 interrupt controller
 
 To build CPL-1 kernel for i686 target, you need to build GCC cross-compiler for ```i686-elf``` target (don't forget to add to PATH) and install NASM. Additionally, GNU Make, parted, mkdosfs, partprobe should be present and loopback devices should be enabled in the kernel.
 
-Also, you might want python3 to run inotify helper, but that is optional, as kernel compile times are quite low atm.
-
 ### How I build CPL-1?
 
 #### Cloning limine
 
 CPL-1 uses limine bootloader ("https://github.com/limine-bootloader/limine"). It should be cloned together with this repo if you use --recursive option
-
-#### Source watcher
-
-Source watcher automatically deletes object files when you edit corresponding source files. This allows to decrease build times, as only files that you have edited are recompiled
-
-You can run source watcher from repository root with
-```bash
-python3 inotify-object-delete.py
-```
 
 #### Building system for i686
 
@@ -91,4 +80,4 @@ make testdebug
 
 ### Licensing
 
-CPL-1 uses MIT license. In short, it means that you need to cite this codebase if you are planning to use code from this repository. Don't quote me on this though.
+CPL-1 was relicensed to GPLv3.
