@@ -16,9 +16,9 @@
 #include <arch/i686/proc/ring1.h>
 #include <arch/i686/proc/ring3.h>
 #include <arch/i686/proc/state.h>
+#include <common/core/devices/tty.h>
 #include <common/core/fd/fdtable.h>
 #include <common/core/fd/fs/devfs.h>
-#include <common/core/devices/tty.h>
 #include <common/core/fd/fs/fat32.h>
 #include <common/core/fd/fs/rootfs.h>
 #include <common/core/fd/vfs.h>
@@ -36,7 +36,7 @@
 #include <hal/proc/intlevel.h>
 #include <hal/proc/isrhandler.h>
 
-#define INIT_PROCESS_STACK_SIZE 0x1000000
+#define INIT_PROCESS_STACK_SIZE 0x100000
 
 void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_PCI_ID id, MAYBE_UNUSED void *context) {
 	KernelLog_Print("PCI device found at bus: %d, slot: %d, function: %d, "
@@ -131,9 +131,6 @@ void i686_KernelInit_ExecuteInitProcess() {
 	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	i686_DetectHardware();
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");
-	while (true) {
-		ASM VOLATILE("pause");
-	}
 	if (!VFS_UserMount("/", "/dev/nvme0n1p1", "fat32")) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount FAT32 Filesystem on /");
 	}
@@ -166,19 +163,18 @@ void i686_KernelInit_ExecuteInitProcess() {
 	}
 	// Stack layout for init process
 	// [ NULL ] // align
-	// [ NULL ] // mela points here
+	// [ NULL ] // align
 	// [ NULL ] // envp points here
 	// [ NULL ] // argv points here
-	// [ char **mela ] // fake mela parameter
 	// [ char **envp  ] // environment variable
 	// [ char **argv  ] // arguments
 	// [ int argc = 0 ]
+	// [ libc will push pointer here ]
 	memset((void *)(node->base.start), 0, node->base.size);
-	*(uint32_t *)(node->base.end - 32) = 0;					  // argc = 0;
-	*(uint32_t *)(node->base.end - 28) = node->base.end - 16; // argv
-	*(uint32_t *)(node->base.end - 24) = node->base.end - 12; // envp
-	*(uint32_t *)(node->base.end - 20) = node->base.end - 8;  // mela
-	i686_Ring3_Switch(elf->entryPoint, node->base.end - 32);
+	*(uint32_t *)(node->base.end - 28) = 0;					  // argc = 0;
+	*(uint32_t *)(node->base.end - 24) = node->base.end - 16; // argv
+	*(uint32_t *)(node->base.end - 20) = node->base.end - 12; // envp
+	i686_Ring3_Switch(elf->entryPoint, node->base.end - 28);
 	while (true) {
 		asm VOLATILE("nop");
 	}

@@ -18,11 +18,11 @@
 #define MAX_ARGS 1024
 #define MAX_ENVP 1024
 #define MAX_ARGS_LEN 65536
-#define PROCESS_STACK_SIZE 0x1000000
+#define PROCESS_STACK_SIZE 0x100000
 
 void i686_Syscall_Exit(struct i686_CPUState *state) {
-	uint32_t statusStart = state->esp + 12;
-	uint32_t statusEnd = state->esp + 16;
+	uint32_t statusStart = state->esp + 4;
+	uint32_t statusEnd = state->esp + 8;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
 	Mutex_Lock(&(space->mutex));
 	if (!MemorySecurity_VerifyMemoryRangePermissions(statusStart, statusEnd, MSECURITY_UR)) {
@@ -37,8 +37,8 @@ void i686_Syscall_Exit(struct i686_CPUState *state) {
 }
 
 void i686_Syscall_Open(struct i686_CPUState *state) {
-	uint32_t paramsStart = state->esp + 8;
-	uint32_t paramsEnd = state->esp + 16;
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 12;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
 	Mutex_Lock(&(space->mutex));
 	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
@@ -160,8 +160,8 @@ void i686_Syscall_Write(struct i686_CPUState *state) {
 }
 
 void i686_Syscall_Close(struct i686_CPUState *state) {
-	uint32_t paramsStart = state->esp + 12;
-	uint32_t paramsEnd = state->esp + 16;
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 8;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
 	Mutex_Lock(&(space->mutex));
 	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
@@ -176,8 +176,8 @@ void i686_Syscall_Close(struct i686_CPUState *state) {
 }
 
 void i686_Syscall_MemoryUnmap(struct i686_CPUState *state) {
-	uint32_t paramsStart = state->esp + 8;
-	uint32_t paramsEnd = state->esp + 16;
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 12;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
 	Mutex_Lock(&(space->mutex));
 	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
@@ -204,8 +204,8 @@ void i686_Syscall_MemoryUnmap(struct i686_CPUState *state) {
 }
 
 void i686_Syscall_MemoryMap(struct i686_CPUState *state) {
-	uint32_t paramsStart = state->esp + 8;
-	uint32_t paramsEnd = state->esp + 32;
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 28;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
 	Mutex_Lock(&(space->mutex));
 	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
@@ -460,10 +460,6 @@ void i686_Syscall_Execve(struct i686_CPUState *state) {
 	int envpOffset = areaOffset;
 	memcpy((void *)(node->base.start + areaOffset), envpKernelCopy, 4 * (envsCount + 1));
 	areaOffset += 4 * (envsCount + 1);
-	// Store NULL for NULL terminated list mela parameter uses
-	int melaOffset = areaOffset;
-	*(uint32_t *)(node->base.start + areaOffset) = 0;
-	areaOffset += 4;
 
 	char **newArgsUser = (char **)(node->base.start + argsOffset);
 	char **newEnvpUser = (char **)(node->base.start + envpOffset);
@@ -526,17 +522,16 @@ void i686_Syscall_Execve(struct i686_CPUState *state) {
 	uintptr_t entrypoint = elf->entryPoint;
 	Elf32_Dispose(elf);
 	// stack layout on entry
-	// esp here [argc: 4 bytes] [argv: 4 bytes] [env: 4 bytes] [mela: 4 bytes]
-	*(uint32_t *)(node->base.start + PROCESS_STACK_SIZE - 16) = argsCount;
-	*(uint32_t *)(node->base.start + PROCESS_STACK_SIZE - 12) = node->base.start + argsOffset;
-	*(uint32_t *)(node->base.start + PROCESS_STACK_SIZE - 8) = node->base.start + envpOffset;
-	*(uint32_t *)(node->base.start + PROCESS_STACK_SIZE - 4) = node->base.start + melaOffset;
-	i686_Ring3_Switch(entrypoint, node->base.start + PROCESS_STACK_SIZE - 16);
+	// [main will be pushed here] esp here [argc: 4 bytes] [argv: 4 bytes] [env: 4 bytes]
+	*(uint32_t *)(node->base.start + PROCESS_STACK_SIZE - 12) = argsCount;
+	*(uint32_t *)(node->base.start + PROCESS_STACK_SIZE - 8) = node->base.start + argsOffset;
+	*(uint32_t *)(node->base.start + PROCESS_STACK_SIZE - 4) = node->base.start + envpOffset;
+	i686_Ring3_Switch(entrypoint, node->base.start + PROCESS_STACK_SIZE - 12);
 }
 
 void i686_Syscall_Wait4(struct i686_CPUState *state) {
-	uint32_t paramsStart = state->esp;
-	uint32_t paramsEnd = state->esp + 16;
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 20;
 	struct Proc_Process *currentProcess = Proc_GetProcessData(Proc_GetProcessID());
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
 	Mutex_Lock(&(space->mutex));

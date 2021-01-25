@@ -143,7 +143,7 @@ void i686_TTY_Initialize() {
 	}
 	m_framebuffer = framebufferMapping + framebufferPageOffset;
 	m_ttyForegroundColor = m_VGA2RGB[7];
-	m_ttyBackgroundColor = 0x002c001e;
+	m_ttyBackgroundColor = /*0x002c001e*/0;
 	m_ttyDefaultForegroundColor = m_ttyForegroundColor;
 	m_ttyDefaultBackgroundColor = m_ttyBackgroundColor;
 	m_isFramebufferInitialized = true;

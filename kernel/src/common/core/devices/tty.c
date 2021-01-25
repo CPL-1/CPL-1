@@ -59,12 +59,12 @@ void TTYDevice_Register() {
 	Mutex_Initialize(&TTYDevice_Mutex);
 	struct VFS_Inode *inode = ALLOC_OBJ(struct VFS_Inode);
 	if (inode == NULL) {
-		KernelLog_ErrorMsg("TTY Character Device Driver", "Failed to allocate Inode object for terminal inode");
+		KernelLog_ErrorMsg("HAL Console Driver", "Failed to allocate Inode object for terminal inode");
 	}
 	inode->ctx = NULL;
 	inode->ops = &(TTYDevice_InodeOperations);
-	if (!DevFS_RegisterInode("tty0", inode)) {
-		KernelLog_ErrorMsg("TTY Character Device Driver",
-						   "Failed to register terminal inode in Device Filesystem (path: \"/dev/tty0\")");
+	if (!DevFS_RegisterInode("halterm", inode)) {
+		KernelLog_ErrorMsg("HAL Console Driver",
+						   "Failed to register terminal inode in Device Filesystem (path: \"/dev/halterm\")");
 	}
 }

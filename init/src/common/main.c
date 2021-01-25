@@ -1,67 +1,96 @@
-#include <libcpl1.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-int strlen(const char *str) {
-	int result = 0;
-	while (str[result] != '\0') {
-		++result;
-	}
-	return result;
-}
-
-void fillmem(void *ptr, char val, int size) {
-	char *cptr = (char *)ptr;
-	for (int i = 0; i < size; ++i) {
-		cptr[i] = val;
-	}
-}
-
-void print(const char *str) {
-	write(STDOUT, str, strlen(str));
-}
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/libsyscall.h>
 
 static const char *TestSuite_FileReadTest() {
-	int file = open("/etc/test/h.txt", O_RDONLY);
-	if (file < 0) {
+	FILE *file = fopen("/etc/test/h.txt", "r");
+	if (file == NULL) {
 		return "Failed to open file /etc/test/h.txt";
 	}
 	char buf[2];
-	int result = read(file, buf, 2);
+	int result = fread(buf, 1, 2, file);
 	if (result != 1) {
 		return "Returned value from read is not 1";
 	}
 	if (buf[0] != 'h') {
 		return "Data read from /etc/test/h.txt is incorrect: buf[0] != \'h\'";
 	}
-	if (close(file) < 0) {
+	if (fclose(file) < 0) {
 		return "Failed to close the file";
 	}
 	return NULL;
 }
 
-const char *TestSuite_AllocateMemoryTest() {
-	void *memory = mmap(NULL, 0x100000, PROT_WRITE | PROT_READ, MAP_ANON, -1, 0);
-	if (memory == NULL) {
-		return "Failed to allocate memory";
-	}
-	fillmem(memory, (char)0x69, 0x100000);
-	for (int i = 0; i < 0x100000; ++i) {
-		if (((char *)memory)[i] != (char)0x69) {
-			return "Failed to read/write on allocated memory";
+bool TestSuite_VerifyMemoryBlock(void *blk, char byte, int size) {
+	for (int i = 0; i < size; ++i) {
+		if (((char *)blk)[i] != byte) {
+			return false;
 		}
 	}
-	int result = munmap(memory, 0x100000);
-	if (result != 0) {
-		return "Failed to unmap memory";
+	return true;
+}
+
+const char *TestSuite_AllocateMemoryTest() {
+	void *memory1 = malloc(0x100000);
+	void *memory2 = malloc(0x100);
+	void *memory3 = malloc(0x1000);
+	void *memory4 = malloc(0x10000);
+	void *memory5 = malloc(0x100);
+	void *memory6 = malloc(0x100);
+	void *memory7 = malloc(0x1000);
+	if (memory1 == NULL || memory2 == NULL || memory3 == NULL || memory4 == NULL || memory5 == NULL ||
+		memory6 == NULL || memory7 == NULL) {
+		return "Failed to allocate memory";
 	}
+	memset(memory1, (char)0x69, 0x100000);
+	memset(memory2, (char)0x57, 0x100);
+	memset(memory3, (char)0x31, 0x1000);
+	memset(memory4, (char)0x42, 0x10000);
+	memset(memory5, (char)0x01, 0x100);
+	memset(memory6, (char)0x02, 0x100);
+	memset(memory7, (char)0x03, 0x1000);
+	if (!TestSuite_VerifyMemoryBlock(memory1, 0x69, 0x100000)) {
+		return "Failed to read/write on allocated memory (block 1)";
+	}
+	if (!TestSuite_VerifyMemoryBlock(memory2, 0x57, 0x100)) {
+		return "Failed to read/write on allocated memory (block 2)";
+	}
+	if (!TestSuite_VerifyMemoryBlock(memory3, 0x31, 0x1000)) {
+		return "Failed to read/write on allocated memory (block 3)";
+	}
+	if (!TestSuite_VerifyMemoryBlock(memory4, 0x42, 0x10000)) {
+		return "Failed to read/write on allocated memory (block 4)";
+	}
+	if (!TestSuite_VerifyMemoryBlock(memory5, 0x01, 0x100)) {
+		return "Failed to read/write on allocated memory (block 5)";
+	}
+	if (!TestSuite_VerifyMemoryBlock(memory6, 0x02, 0x100)) {
+		return "Failed to read/write on allocated memory (block 6)";
+	}
+	if (!TestSuite_VerifyMemoryBlock(memory7, 0x03, 0x1000)) {
+		return "Failed to read/write on allocated memory (block 7)";
+	}
+	free(memory1);
+	free(memory3);
+	free(memory5);
+	realloc(memory2, 0);
+	free(memory4);
+	free(memory7);
+	memory6 = realloc(memory6, 0x1000);
+	if (!TestSuite_VerifyMemoryBlock(memory6, 0x02, 0x100)) {
+		return "Failed to read/write on allocated memory (block 8)";
+	}
+	free(memory6);
 	return NULL;
 }
 
 const char *TestSuite_AllocateTooMuchMemory() {
-	void *memory = mmap(NULL, 0xFFFF0000, PROT_WRITE | PROT_READ, MAP_ANON, -1, 0);
-	if (memory != MAP_FAIL) {
+	void *memory = malloc(0xFFFF0000);
+	if (memory != NULL) {
 		return "Allocated block is definetely not large enough for 0xFFFF0000, we don't have that much RAM on the "
 			   "system.";
 	}
@@ -97,40 +126,37 @@ struct TestRunner_TestCase {
 	const char *(*testCallback)();
 };
 
-struct TestRunner_TestCase cases[] = {{"Reading from file", TestSuite_FileReadTest},
-									  {"Allocating too much memory", TestSuite_AllocateTooMuchMemory},
-									  {"Allocating memory", TestSuite_AllocateMemoryTest},
-									  {"Running processes", TestSuite_RunningProcessesTest}};
+struct TestRunner_TestCase cases[] = {{"open + read + close", TestSuite_FileReadTest},
+									  {"malloc(VERY_BIG_MEMORY_SIZE)", TestSuite_AllocateTooMuchMemory},
+									  {"malloc(SENSIBLE_MEMORY_SIZE)", TestSuite_AllocateMemoryTest},
+									  {"fork + execve + wait4", TestSuite_RunningProcessesTest}};
 
 static void TestRunner_ExecuteTestCases() {
 	for (size_t i = 0; i < sizeof(cases) / sizeof(*cases); ++i) {
-		print("[ \033[33mINFO\033[39m ]\033[97m Test Runner:\033[39m Running test case \"");
-		print(cases[i].testCaseName);
-		print("\"\n");
+		printf("[ \033[33mINFO\033[39m ]\033[97m Test Runner:\033[39m Running test case \"%s\"\n",
+			   cases[i].testCaseName);
 		const char *error = cases[i].testCallback();
 		if (error == NULL) {
-			print("[ \033[92mOKAY\033[39m ]\033[97m Test Runner:\033[39m Test case \"");
-			print(cases[i].testCaseName);
-			print("\" completed without any errors!\n");
+			printf("[ \033[92mOKAY\033[39m ]\033[97m Test Runner:\033[39m Test case \"%s\" completed without any "
+				   "errors\n",
+				   cases[i].testCaseName);
 		} else {
-			print("[ \033[94mFAIL\033[39m ]\033[97m Test Runner: \033[39m Test case \"");
-			print(cases[i].testCaseName);
-			print("\" failed with error \"");
-			print(error);
-			print("\"\n");
+			printf("[ \033[94mFAIL\033[39m ]\033[97m Test Runner: \033[39m Test case \"%s\" failed with error "
+				   "\"%s\"\n",
+				   cases[i].testCaseName, error);
 			break;
 		}
 	}
 }
 
 bool InitProcess_SetupTTYStreams() {
-	if (open("/dev/tty0", O_RDONLY) != 0) {
+	if (open("/dev/halterm", O_RDONLY) != 0) {
 		return false;
 	}
-	if (open("/dev/tty0", O_RDONLY) != 1) {
+	if (open("/dev/halterm", O_WRONLY) != 1) {
 		return false;
 	}
-	if (open("/dev/tty0", O_RDONLY) != 2) {
+	if (open("/dev/halterm", O_WRONLY) != 2) {
 		return false;
 	}
 	return true;
@@ -145,35 +171,7 @@ int main() {
 			a = a;
 		}
 	}
-	print("\033[92m\n"
-		  "              /\\\n"
-		  "             <  >\n"
-		  "              \\/\n"
-		  "              /\\\n"
-		  "             /  \\\n"
-		  "            /++++\\\n"
-		  "           /  \033[94m()\033[92m  \\\n"
-		  "           /      \\\n"
-		  "          /~`~`~`~`\\\n"
-		  "         /  \033[96m()\033[92m  \033[94m()\033[92m  \\\n"
-		  "         /          \\\n"
-		  "        /*&*&*&*&*&*&\\\n"
-		  "       /  \033[94m()\033[92m  \033[96m()\033[92m  \033[94m()\033[92m  \\\n"
-		  "       /              \\\n"
-		  "      /++++++++++++++++\\\n"
-		  "     /  \033[96m()\033[92m  \033[94m()\033[92m  \033[96m()\033[92m  \033[96m()\033[92m  \\\n"
-		  "     /                  \\\n"
-		  "    /~`~`~`~`~`~`~`~`~`~`\\\n"
-		  "   /  \033[96m()\033[92m  \033[96m()\033[92m  \033[96m()\033[92m  \033[96m()\033[92m  "
-		  "\033[94m()\033[92m  \\\n"
-		  "   /*&*&*&*&*&*&*&*&*&*&*&\\\n"
-		  "  /                        \\\n"
-		  " /,.,.,.,.,.,.,.,.,.,.,.,.,.\\\n"
-		  "            |   |\n"
-		  "           |`````|\n"
-		  "           \\_____/\t\tHappy New Year!\n"
-		  "\033[39m\n\n");
-	print("[ \033[33mINFO\033[39m ]\033[97m Test Runner:\033[39m Executing tests in init process test suite...\n");
+	printf("[ \033[33mINFO\033[39m ]\033[97m Test Runner:\033[39m Executing tests in init process test suite...\n");
 	TestRunner_ExecuteTestCases();
 	return 0;
 }

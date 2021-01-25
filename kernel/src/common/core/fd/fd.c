@@ -173,7 +173,7 @@ int File_ReadUserWithoutLocking(struct File *file, int count, char *buf) {
 		if (result < 0) {
 			return result;
 		}
-		if (result != count) {
+		if (result != blockSize) {
 			read += result;
 			return result;
 		}
