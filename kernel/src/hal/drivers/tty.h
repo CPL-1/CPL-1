@@ -10,7 +10,13 @@ void HAL_TTY_SetForegroundColor(uint8_t color);
 void HAL_TTY_SetBackgroundColor(uint8_t color);
 void HAL_TTY_Clear();
 
-void HAL_TTY_SetKeyboardPressHandler(HAL_ISR_Handler handler);
-uint8_t HAL_TTY_GetLastPressedKey();
+struct HAL_TTY_KeyEvent {
+	char character;
+	uint8_t raw;
+	bool pressed;
+	bool typeable;
+};
+
+void HAL_TTY_WaitForNextEvent(struct HAL_TTY_KeyEvent *event);
 
 #endif

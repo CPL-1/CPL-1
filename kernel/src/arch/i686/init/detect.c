@@ -1,5 +1,6 @@
 #include <arch/i686/drivers/pci.h>
 #include <arch/i686/drivers/ps2.h>
+#include <arch/i686/drivers/ps2kybrd.h>
 #include <arch/i686/drivers/storage/nvme.h>
 #include <arch/i686/init/detect.h>
 #include <common/core/memory/heap.h>
@@ -37,6 +38,9 @@ void i686_DetectHardware_PS2EnumerateCallback(bool channel, enum i686_PS2_Device
 	if (type == Keyboard) {
 		KernelLog_InfoMsg("i686 Hardware Autodetection Routine", "PS/2 Keyboard found on channel %d",
 						  ((int)channel) + 1);
+		if (!i686_PS2Keyboard_Detect(channel)) {
+			KernelLog_WarnMsg("i686 Hardware Autodetection Routine", "Failed to initialize keyboard");
+		}
 	}
 }
 

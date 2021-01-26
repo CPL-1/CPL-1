@@ -6,7 +6,7 @@
 #define i686_PS2_DATA_PORT 0x60
 #define i686_PS2_CMD_PORT 0x64
 
-static uint8_t i686_PS2_ReadData() {
+uint8_t i686_PS2_ReadData() {
 	return i686_Ports_ReadByte(i686_PS2_DATA_PORT);
 }
 
@@ -59,7 +59,7 @@ static uint8_t i686_PS2_ExecuteWordCommand(uint8_t cmd1, uint8_t cmd2, bool resp
 #define i686_PS2_IDENTIFY_CMD 0xF2
 
 bool i686_PS2_SendByteAndWaitForAck(bool channel, uint8_t byte) {
-	while (true) {
+	for (int i = 0; i < i686_PS2_ATTEMPTS_COUNT; ++i) {
 		// Try to send command
 		if (!i686_PS2_SendByte(channel, byte)) {
 			return false;
@@ -77,6 +77,8 @@ bool i686_PS2_SendByteAndWaitForAck(bool channel, uint8_t byte) {
 		// Device sent something wrong, return
 		return false;
 	}
+	// Okey, seems like device is not feeling well
+	return false;
 }
 
 // Scanning left disabled for device driver to enable it

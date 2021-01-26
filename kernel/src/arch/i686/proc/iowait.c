@@ -9,8 +9,8 @@
 #include <hal/proc/isrhandler.h>
 
 struct i686_IOWait_ListEntry {
-	i686_iowait_handler_t int_handler;
-	i686_iowait_wakeup_handler_t check_wakeup_handler;
+	i686_IOWait_Handler int_handler;
+	i686_IOWait_WakeupHandler check_wakeup_handler;
 	void *ctx;
 	struct i686_IOWait_ListEntry *next;
 	struct Proc_ProcessID id;
@@ -50,8 +50,8 @@ void i686_IOWait_HandleIRQ(void *ctx, void *frame) {
 	i686_PIC8259_NotifyOnIRQTerm(irq);
 }
 
-struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_iowait_handler_t int_handler,
-													 i686_iowait_wakeup_handler_t check_hander, void *ctx) {
+struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_IOWait_Handler int_handler,
+													 i686_IOWait_WakeupHandler check_hander, void *ctx) {
 	struct i686_IOWait_ListEntry *entry = ALLOC_OBJ(struct i686_IOWait_ListEntry);
 	if (entry == NULL) {
 		KernelLog_ErrorMsg("i686 IO wait subsystem", "Failed to allocate object for IOWait handler");

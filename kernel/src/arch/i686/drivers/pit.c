@@ -4,6 +4,7 @@
 #include <arch/i686/drivers/pit.h>
 #include <arch/i686/proc/iowait.h>
 #include <arch/i686/proc/isrhandler.h>
+#include <common/lib/kmsg.h>
 #include <hal/proc/isrhandler.h>
 
 void i686_PIT8253_Initialize(uint32_t freq) {
@@ -18,7 +19,9 @@ void i686_PIT8253_Initialize(uint32_t freq) {
 }
 
 bool HAL_Timer_SetCallback(HAL_ISR_Handler entry) {
-	i686_IOWait_AddHandler(0, (i686_iowait_handler_t)entry, NULL, NULL);
+	if (i686_IOWait_AddHandler(0, (i686_IOWait_Handler)entry, NULL, NULL) == NULL) {
+		KernelLog_ErrorMsg("PIT driver", "Failed to load timer interrupt handler");
+	}
 	HAL_ISR_Handler handler = i686_ISR_MakeNewISRHandler(entry, NULL);
 	if (handler == NULL) {
 		return false;

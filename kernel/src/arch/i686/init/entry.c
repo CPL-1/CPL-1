@@ -161,6 +161,13 @@ void i686_KernelInit_ExecuteInitProcess() {
 	if (node->base.start == 0) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
 	}
+	while (true) {
+		struct HAL_TTY_KeyEvent event;
+		HAL_TTY_WaitForNextEvent(&event);
+		if (event.typeable && !(event.pressed)) {
+			printf("%c", event.character);
+		}
+	}
 	// Stack layout for init process
 	// [ NULL ] // align
 	// [ NULL ] // align
