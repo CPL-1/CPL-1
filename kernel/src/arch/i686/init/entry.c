@@ -30,6 +30,7 @@
 #include <common/core/proc/proclayout.h>
 #include <common/lib/dynarray.h>
 #include <common/lib/kmsg.h>
+#include <common/lib/readline.h>
 #include <hal/drivers/tty.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
@@ -162,11 +163,10 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
 	}
 	while (true) {
-		struct HAL_TTY_KeyEvent event;
-		HAL_TTY_WaitForNextEvent(&event);
-		if (event.typeable && event.pressed) {
-			printf("%c", event.character);
-		}
+		char buf[30];
+		printf("$ ");
+		Readline(buf, 30);
+		printf("%s\n", buf);
 	}
 	// Stack layout for init process
 	// [ NULL ] // align
