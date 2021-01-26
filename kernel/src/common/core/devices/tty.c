@@ -1,14 +1,23 @@
+#include <common/core/devices/tty.h>
 #include <common/core/fd/fd.h>
 #include <common/core/fd/fs/devfs.h>
-#include <common/core/devices/tty.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/memory/virt.h>
 #include <common/core/proc/proc.h>
 #include <common/lib/kmsg.h>
+#include <common/lib/readline.h>
 #include <common/lib/vt100.h>
 
+#define TTY_INPUT_BUFFER_SIZE 4096
+
 static struct Mutex TTYDevice_Mutex;
+
+struct TTYDevice_File {
+	char buf[TTY_INPUT_BUFFER_SIZE];
+	int pos;
+	int len;
+};
 
 int TTYDevice_Write(MAYBE_UNUSED struct File *file, int size, const char *buf) {
 	if (size < 0) {
@@ -29,8 +38,32 @@ void TTYDevice_Flush() {
 	Mutex_Unlock(&TTYDevice_Mutex);
 }
 
-static struct FileOperations TTYDevice_FileOperations = {
-	.read = NULL, .write = TTYDevice_Write, .readdir = NULL, .lseek = NULL, .flush = NULL, .close = NULL};
+int TTYDevice_Read(struct File *file, int size, char *buf) {
+	struct TTYDevice_File *ttyFile = file->ctx;
+	if (ttyFile->pos == ttyFile->len) {
+		ttyFile->pos = 0;
+		ttyFile->len = ReadLine(ttyFile->buf, TTY_INPUT_BUFFER_SIZE);
+	}
+	int preread = ttyFile->len - ttyFile->pos;
+	if (preread > size) {
+		preread = size;
+	}
+	memcpy(buf, ttyFile->buf + ttyFile->pos, preread);
+	ttyFile->pos += preread;
+	return preread;
+}
+
+void TTYDevice_Close(struct File *file) {
+	FREE_OBJ(((struct TTYDevice_File *)(file->ctx)));
+	VFS_FinalizeFile(file);
+}
+
+static struct FileOperations TTYDevice_FileOperations = {.read = TTYDevice_Read,
+														 .write = TTYDevice_Write,
+														 .readdir = NULL,
+														 .lseek = NULL,
+														 .flush = NULL,
+														 .close = TTYDevice_Close};
 
 struct File *TTYDevice_Open(MAYBE_UNUSED struct VFS_Inode *inode, int perm) {
 	if ((perm & VFS_O_RDONLY) != 0) {
@@ -40,9 +73,14 @@ struct File *TTYDevice_Open(MAYBE_UNUSED struct VFS_Inode *inode, int perm) {
 	if (ttyFile == NULL) {
 		return NULL;
 	}
-	ttyFile->ctx = NULL;
+	struct TTYDevice_File *fileCtx = ALLOC_OBJ(struct TTYDevice_File);
+	if (fileCtx == NULL) {
+		FREE_OBJ(ttyFile);
+		return NULL;
+	}
+	ttyFile->ctx = fileCtx;
+	fileCtx->pos = fileCtx->len = 0;
 	ttyFile->ops = &(TTYDevice_FileOperations);
-	;
 	ttyFile->isATTY = true;
 	return ttyFile;
 }

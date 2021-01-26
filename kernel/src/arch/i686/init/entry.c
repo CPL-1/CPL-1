@@ -132,6 +132,8 @@ void i686_KernelInit_ExecuteInitProcess() {
 	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	i686_DetectHardware();
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");
+	ReadLine_Initialize();
+	KernelLog_InitDoneMsg("Readline");
 	if (!VFS_UserMount("/", "/dev/nvme0n1p1", "fat32")) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount FAT32 Filesystem on /");
 	}
@@ -161,12 +163,6 @@ void i686_KernelInit_ExecuteInitProcess() {
 							HAL_VIRT_FLAGS_WRITABLE | HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_READABLE, true);
 	if (node->base.start == 0) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
-	}
-	while (true) {
-		char buf[30];
-		printf("$ ");
-		Readline(buf, 30);
-		printf("%s\n", buf);
 	}
 	// Stack layout for init process
 	// [ NULL ] // align

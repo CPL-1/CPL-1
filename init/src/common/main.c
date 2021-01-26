@@ -173,5 +173,13 @@ int main() {
 	}
 	printf("[ \033[33mINFO\033[39m ]\033[97m Test Runner:\033[39m Executing tests in init process test suite...\n");
 	TestRunner_ExecuteTestCases();
+	puts("Testing reading from userspace\n");
+	while (true) {
+		puts("$ ");
+		char buf[4096];
+		int num = read(1, buf, 4096);
+		buf[num] = '\0';
+		puts(buf);
+	}
 	return 0;
 }

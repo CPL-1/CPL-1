@@ -3,6 +3,7 @@
 
 #include <common/misc/utils.h>
 
-size_t Readline(char *buf, size_t size);
+void ReadLine_Initialize();
+size_t ReadLine(char *buf, size_t size);
 
 #endif
