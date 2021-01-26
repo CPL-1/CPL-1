@@ -1,5 +1,5 @@
-#ifndef __PIC_H_INCLUDED__
-#define __PIC_H_INCLUDED__
+#ifndef __I686_PIC_H_INCLUDED__
+#define __I686_PIC_H_INCLUDED__
 
 #include <common/misc/utils.h>
 
