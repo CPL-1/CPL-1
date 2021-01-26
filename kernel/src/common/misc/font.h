@@ -5,10 +5,10 @@
 
 // Same data as the Linux kernel uses, extracted from the PC VGA font.
 
-uint16_t FONT_fontWidth = 8;
-uint16_t FONT_fontHeight = 16;
-char FONT_firstPrintableChar = 32;
-char FONT_lastPrintableChar = 127;
+uint16_t FONT_FontWidth = 8;
+uint16_t FONT_FontHeight = 16;
+char FONT_FirstPrintableChar = 32;
+char FONT_LastPrintableChar = 127;
 
 uint8_t FONT_bitmap[] = {
 	// 32 0x20 ' '

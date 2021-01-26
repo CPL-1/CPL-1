@@ -11,8 +11,9 @@ int main(int argc, char const *argv[], char const *envp[]) {
 	while (true) {
 		// Step 1. User input
 		char buf[4096];
-		puts("$ ");
+		puts("\033[92mroot\033[39m# \033[97m");
 		int inputSize = read(0, buf, 4095);
+		puts("\033[39m");
 		if (inputSize < 0) {
 			Log_ErrorMsg("Shell", "Failed to read from /dev/halterm");
 		} else if (inputSize == 0) {
@@ -50,21 +51,34 @@ int main(int argc, char const *argv[], char const *envp[]) {
 			}
 		}
 		argv[argc] = NULL;
-		// Handle a few builtins
+		// Step 3. Handle builtins
 		if (strcmp(argv[0], "help") == 0) {
 			printf("CPL-1 shell, version v0.0.1\n");
 			printf("These shell commands are defined internally\n");
 			printf("\"help\" - output this message\n");
+			printf("\"exit\" - exit shell\n");
+			continue;
+		} else if (strcmp(argv[0], "exit") == 0) {
+			exit(-1);
+		}
+		// Step 4. Parse name
+		if (argv[0] == NULL || *(argv[0]) == '\0') {
 			continue;
 		}
-		// Step 3. Execution
+		char filename_buf[4096];
+		const char *filename = argv[0];
+		if (*(argv[0]) != '/') {
+			snprintf(filename_buf, 4095, "/bin/%s", argv[0]);
+			filename = filename_buf;
+		}
+		// Step 5. Execution
 		if (argc == 0) {
 			continue;
 		}
 		int pid = fork();
 		if (pid == 0) {
-			execve(argv[0], argv + 1, envp);
-			Log_ErrorMsg("Shell", "Failed to start \"%s\"", argv[0]);
+			execve(filename, argv, envp);
+			Log_ErrorMsg("Shell", "Failed to start \"%s\"", filename);
 		} else {
 			int result = wait4(-1, &wstatus, 0, NULL);
 			if (result != pid) {

@@ -72,18 +72,23 @@ int printf(const char *fmt, ...) {
 	return result;
 }
 
-int sprintf(const char *fmt, char *buf, int size, ...) {
+int snprintf(char *buf, int size, const char *fmt, ...) {
 	va_list args;
-	va_start(args, size);
-	int result = va_sprintf(fmt, buf, size, args);
+	va_start(args, fmt);
+	int result = va_snprintf(buf, size, fmt, args);
 	va_end(args);
 	return result;
 }
 
-int va_sprintf(const char *fmt, char *buf, int size, va_list args) {
+int va_snprintf(char *buf, int size, const char *fmt, va_list args) {
+	if (size == 0) {
+		return 0;
+	}
+	size -= 1;
 	int pos = 0;
 	for (int i = 0; fmt[i] != '\0'; ++i) {
 		if (pos >= size) {
+			buf[size] = '\0';
 			return size;
 		}
 		if (fmt[i] != '%') {
@@ -131,6 +136,7 @@ int va_sprintf(const char *fmt, char *buf, int size, va_list args) {
 			}
 		}
 	}
+	buf[pos] = '\0';
 	return pos;
 }
 
@@ -146,7 +152,7 @@ int puts(const char *str) {
 
 int va_printf(const char *str, va_list args) {
 	char buf[PRINTF_BUFFER_SIZE];
-	int count = va_sprintf(str, buf, PRINTF_BUFFER_SIZE, args);
+	int count = va_snprintf(buf, PRINTF_BUFFER_SIZE, str, args);
 	__Printf_WriteString(buf, count);
 	return count;
 }

@@ -38,16 +38,18 @@ int main() {
 	}
 	logo();
 	Log_InfoMsg("Init Process", "Up and running. Starting shell");
-	int pid = fork();
-	if (pid == 0) {
-		char const *argv[] = {NULL};
-		char const *envp[] = {NULL};
-		execve("/bin/sh", argv, envp);
-		printf("failed to start shell");
-		exit(-1);
-	} else {
-		wait4(-1, NULL, 0, NULL);
+	while (true) {
+		int pid = fork();
+		if (pid == 0) {
+			char const *argv[] = {NULL};
+			char const *envp[] = {NULL};
+			execve("/bin/sh", argv, envp);
+			printf("failed to start shell");
+			exit(-1);
+		} else {
+			wait4(-1, NULL, 0, NULL);
+		}
+		Log_WarnMsg("Init Process", "Shell terminated. Restarting");
 	}
-	Log_ErrorMsg("Init Process", "Shell terminated");
 	return 0;
 }

@@ -41,12 +41,13 @@ clean:
 run: CPL-1_i686.hdd
 	qemu-system-i386 -no-reboot -no-shutdown -boot c \
 	-drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
-	-device nvme,drive=NVME1,serial=nvme-1 --enable-kvm -debugcon stdio -trace ps2* -m 128M
+	-device nvme,drive=NVME1,serial=nvme-1 --enable-kvm -debugcon stdio -m 128M \
+	-vga std
 
 run-with-ints: CPL-1_i686.hdd
 	qemu-system-i386 -no-reboot -no-shutdown -boot c \
 	-drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
-	-device nvme,drive=NVME1,serial=nvme-1 -debugcon stdio -trace nvme* -d int -singlestep -m 128M
+	-device nvme,drive=NVME1,serial=nvme-1 -debugcon stdio -d int -singlestep -m 128M
 	
 debug: CPL-1_i686.hdd
 	qemu-system-i386 -d int -no-reboot -no-shutdown -boot c \

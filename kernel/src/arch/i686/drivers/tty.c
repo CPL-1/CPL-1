@@ -43,16 +43,16 @@ static void i686_TTY_ReportFramebufferError(const char *msg, size_t size) {
 };
 
 static void i686_TTY_PutCharacterAt(uint16_t x, uint16_t y, char c) {
-	c -= FONT_firstPrintableChar;
-	for (uint16_t charY = 0; charY < FONT_fontHeight; ++charY) {
-		for (uint16_t charX = 0; charX < FONT_fontWidth; ++charX) {
-			size_t bitmapOffset = c * FONT_fontHeight * FONT_fontWidth / 8;
-			size_t bitOffset = charY * FONT_fontWidth + charX;
+	c -= FONT_FirstPrintableChar;
+	for (uint16_t charY = 0; charY < FONT_FontHeight; ++charY) {
+		for (uint16_t charX = 0; charX < FONT_FontWidth; ++charX) {
+			size_t bitmapOffset = c * FONT_FontHeight * FONT_FontWidth / 8;
+			size_t bitOffset = charY * FONT_FontWidth + charX;
 			size_t byteOffset = bitOffset / 8;
 			size_t bitOffsetModule = bitOffset % 8;
-			bool drawPixel = (FONT_bitmap[bitmapOffset + byteOffset] & (1 << (FONT_fontWidth - bitOffsetModule))) != 0;
-			uint16_t screenX = x * FONT_fontWidth + charX;
-			uint16_t screenY = y * FONT_fontHeight + charY;
+			bool drawPixel = (FONT_bitmap[bitmapOffset + byteOffset] & (1 << (FONT_FontWidth - bitOffsetModule))) != 0;
+			uint16_t screenX = x * FONT_FontWidth + charX;
+			uint16_t screenY = y * FONT_FontHeight + charY;
 			uint32_t framebufferAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch + screenX * 4;
 			uint32_t copyFramebufferAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch + screenX * 4;
 
@@ -67,15 +67,15 @@ static void i686_TTY_PutCharacterAt(uint16_t x, uint16_t y, char c) {
 
 static void i686_TTY_Scroll(bool allowBreak) {
 	for (size_t y = 0; y < m_ttyYSize - 1U; ++y) {
-		for (size_t screenY = y * FONT_fontHeight; screenY < (y + 1) * FONT_fontHeight; ++screenY) {
+		for (size_t screenY = y * FONT_FontHeight; screenY < (y + 1) * FONT_FontHeight; ++screenY) {
 			uint32_t scanlineAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch;
 			uint32_t copyFramebufferNewAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch;
-			uint32_t copyFramebufferAddr = m_backbuffer + (screenY + FONT_fontHeight) * m_fbInfo.framebufferPitch;
+			uint32_t copyFramebufferAddr = m_backbuffer + (screenY + FONT_FontHeight) * m_fbInfo.framebufferPitch;
 			memcpy((void *)scanlineAddr, (void *)copyFramebufferAddr, m_fbInfo.framebufferPitch);
 			memcpy((void *)copyFramebufferNewAddr, (void *)copyFramebufferAddr, m_fbInfo.framebufferPitch);
 		}
 	}
-	for (size_t screenY = (m_ttyYSize - 1) * FONT_fontHeight; screenY < m_ttyYSize * FONT_fontHeight; ++screenY) {
+	for (size_t screenY = (m_ttyYSize - 1) * FONT_FontHeight; screenY < m_ttyYSize * FONT_FontHeight; ++screenY) {
 		uint32_t copyFramebufferNewAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch;
 		uint32_t scanlineAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch;
 		for (size_t x = 0; x < m_fbInfo.framebufferWidth; ++x) {
@@ -151,8 +151,8 @@ void i686_TTY_Initialize() {
 						   "required to for CPL-1 kernel to boot";
 		i686_TTY_ReportFramebufferError(msg, ARR_SIZE(msg));
 	}
-	m_ttyXSize = m_fbInfo.framebufferWidth / FONT_fontWidth;
-	m_ttyYSize = m_fbInfo.framebufferHeight / FONT_fontHeight;
+	m_ttyXSize = m_fbInfo.framebufferWidth / FONT_FontWidth;
+	m_ttyYSize = m_fbInfo.framebufferHeight / FONT_FontHeight;
 	size_t framebufferSize = m_fbInfo.framebufferPitch * m_fbInfo.framebufferHeight;
 	m_backbuffer = (uint32_t)Heap_AllocateMemory(framebufferSize);
 	if (m_backbuffer == 0) {

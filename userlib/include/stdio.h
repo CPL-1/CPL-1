@@ -5,9 +5,9 @@
 #include <stddef.h>
 
 int printf(const char *fmt, ...);
-int snprintf(const char *fmt, char *buf, int size, ...);
+int snprintf(char *buf, int size, const char *fmt, ...);
 int va_printf(const char *fmt, va_list args);
-int va_sprintf(const char *fmt, char *buf, int size, va_list args);
+int va_snprintf(char *buf, int size, const char *fmt, va_list args);
 int puts(const char *str);
 
 #endif
