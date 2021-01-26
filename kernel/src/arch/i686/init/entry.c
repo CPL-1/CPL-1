@@ -164,7 +164,7 @@ void i686_KernelInit_ExecuteInitProcess() {
 	while (true) {
 		struct HAL_TTY_KeyEvent event;
 		HAL_TTY_WaitForNextEvent(&event);
-		if (event.typeable && !(event.pressed)) {
+		if (event.typeable && event.pressed) {
 			printf("%c", event.character);
 		}
 	}

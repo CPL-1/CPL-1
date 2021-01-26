@@ -27,6 +27,10 @@ static uint32_t m_VGA2RGB[] = {0x00000000, 0x00000080, 0x00008000, 0x00008080, 0
 							   0x00808000, 0x00c0c0c0, 0x00808080, 0x000000ff, 0x0000ff00, 0x0000ffff,
 							   0x00ff0000, 0x00ff00ff, 0x00ffff00, 0x00ffffff};
 
+// Array with boolean for each line
+// true if break is allowed to move to the previous line
+static bool *m_allowBreakage;
+
 static void i686_TTY_ReportFramebufferError(const char *msg, size_t size) {
 	memset((void *)(HAL_VirtualMM_KernelMappingBase + 0xb8000), 0, 4000);
 	for (size_t i = 0; i < size; ++i) {
@@ -61,8 +65,8 @@ static void i686_TTY_PutCharacterAt(uint16_t x, uint16_t y, char c) {
 	}
 }
 
-static void i686_TTY_Scroll() {
-	for (size_t y = 0; y < m_ttyXSize - 1U; ++y) {
+static void i686_TTY_Scroll(bool allowBreak) {
+	for (size_t y = 0; y < m_ttyYSize - 1U; ++y) {
 		for (size_t screenY = y * FONT_fontHeight; screenY < (y + 1) * FONT_fontHeight; ++screenY) {
 			uint32_t scanlineAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch;
 			uint32_t copyFramebufferNewAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch;
@@ -71,7 +75,7 @@ static void i686_TTY_Scroll() {
 			memcpy((void *)copyFramebufferNewAddr, (void *)copyFramebufferAddr, m_fbInfo.framebufferPitch);
 		}
 	}
-	for (size_t screenY = (m_ttyXSize - 1) * FONT_fontHeight; screenY < m_ttyXSize * FONT_fontHeight; ++screenY) {
+	for (size_t screenY = (m_ttyYSize - 1) * FONT_fontHeight; screenY < m_ttyYSize * FONT_fontHeight; ++screenY) {
 		uint32_t copyFramebufferNewAddr = m_backbuffer + screenY * m_fbInfo.framebufferPitch;
 		uint32_t scanlineAddr = m_framebuffer + screenY * m_fbInfo.framebufferPitch;
 		for (size_t x = 0; x < m_fbInfo.framebufferWidth; ++x) {
@@ -80,35 +84,60 @@ static void i686_TTY_Scroll() {
 		}
 	}
 	m_ttyX = 0;
-	m_ttyY = m_ttyXSize - 1;
+	m_ttyY = m_ttyYSize - 1;
+	for (int y = 1; y < m_ttyYSize - 1; ++y) {
+		m_allowBreakage[y] = m_allowBreakage[y + 1];
+	}
+	m_allowBreakage[m_ttyYSize - 1] = allowBreak;
+	m_allowBreakage[0] = false;
 }
 
 static void i686_TTY_PutCharacterRaw(char c) {
 	i686_TTY_PutCharacterAt(m_ttyX++, m_ttyY, c);
-	if (m_ttyX == m_ttyYSize) {
+	if (m_ttyX == m_ttyXSize) {
 		m_ttyX = 0;
 		m_ttyY++;
+		if (m_ttyY < m_ttyYSize) {
+			m_allowBreakage[m_ttyY] = true;
+		}
 	}
 }
 
 static void i686_TTY_PutCharacter(char c) {
-	if (m_ttyY == m_ttyXSize) {
-		i686_TTY_Scroll();
+	if (m_ttyY == m_ttyYSize) {
+		i686_TTY_Scroll(true);
 	}
 	if (c == '\n') {
 		uint16_t oldY = m_ttyY;
 		while (oldY == m_ttyY) {
 			i686_TTY_PutCharacterRaw(' ');
 		}
+		if (m_ttyY == m_ttyYSize) {
+			i686_TTY_Scroll(false);
+		} else {
+			m_allowBreakage[m_ttyY] = false;
+		}
 	} else if (c == '\t') {
 		uint16_t newX = m_ttyX;
 		newX += 1;
 		newX += m_ttyTabSize - (newX % m_ttyTabSize);
-		if (newX >= m_ttyYSize) {
-			newX -= m_ttyYSize;
+		if (newX >= m_ttyXSize) {
+			newX -= m_ttyXSize;
 		}
 		while (m_ttyX != newX) {
 			i686_TTY_PutCharacterRaw(' ');
+		}
+	} else if (c == '\b') {
+		if (m_ttyX == 0) {
+			if (m_allowBreakage[m_ttyY]) {
+				if (m_ttyY == 0) {
+					KernelLog_ErrorMsg("i686 Terminal", "Breakage out of line 0 is allowed");
+				}
+				m_ttyY--;
+				m_ttyX = m_ttyXSize - 1;
+			}
+		} else {
+			m_ttyX--;
 		}
 	} else {
 		i686_TTY_PutCharacterRaw(c);
@@ -122,8 +151,8 @@ void i686_TTY_Initialize() {
 						   "required to for CPL-1 kernel to boot";
 		i686_TTY_ReportFramebufferError(msg, ARR_SIZE(msg));
 	}
-	m_ttyYSize = m_fbInfo.framebufferWidth / FONT_fontWidth;
-	m_ttyXSize = m_fbInfo.framebufferHeight / FONT_fontHeight;
+	m_ttyXSize = m_fbInfo.framebufferWidth / FONT_fontWidth;
+	m_ttyYSize = m_fbInfo.framebufferHeight / FONT_fontHeight;
 	size_t framebufferSize = m_fbInfo.framebufferPitch * m_fbInfo.framebufferHeight;
 	m_backbuffer = (uint32_t)Heap_AllocateMemory(framebufferSize);
 	if (m_backbuffer == 0) {
@@ -140,6 +169,14 @@ void i686_TTY_Initialize() {
 	if (framebufferMapping == 0) {
 		// This will only be printed in e9 log
 		KernelLog_ErrorMsg("i686 Terminal", "Failed to map framebuffer");
+	}
+	m_allowBreakage = Heap_AllocateMemory(sizeof(bool) * m_ttyXSize);
+	if (m_allowBreakage == NULL) {
+		// This will only be printed in e9 log
+		KernelLog_ErrorMsg("i686 Terminal", "Failed to map framebuffer");
+	}
+	for (int i = 0; i < m_ttyXSize; ++i) {
+		m_allowBreakage[i] = false;
 	}
 	m_framebuffer = framebufferMapping + framebufferPageOffset;
 	m_ttyForegroundColor = m_VGA2RGB[7];
