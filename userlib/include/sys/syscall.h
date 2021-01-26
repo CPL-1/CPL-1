@@ -39,7 +39,7 @@ void exit(int exitCode);
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, long offset);
 int munmap(void *addr, size_t length);
 int fork();
-int execve(char *fname, char const *argp[], char const *envp[]);
+int execve(const char *fname, char const *argp[], char const *envp[]);
 
 struct rusage;
 int wait4(int pid, int *wstatus, int options, struct rusage *rusage);

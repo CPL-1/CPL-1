@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/libsyscall.h>
+#include <sys/syscall.h>
 
 #define BLOCK_SIZE 65536
 #define HEAP_SIZE_CLASSES_COUNT 13

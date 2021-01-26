@@ -144,8 +144,8 @@ void i686_KernelInit_ExecuteInitProcess() {
 	KernelLog_InfoMsg("i686 Kernel Init", "Remounted Device Filesystem on /dev/");
 	TTYDevice_Register();
 	KernelLog_InitDoneMsg("TTY Character Device Driver");
-	KernelLog_InfoMsg("i686 Kernel Init", "Loading \"/bin/init\" executable");
-	struct File *file = VFS_Open("/bin/init", VFS_O_RDONLY);
+	KernelLog_InfoMsg("i686 Kernel Init", "Loading \"/sbin/init\" executable");
+	struct File *file = VFS_Open("/sbin/init", VFS_O_RDONLY);
 	if (file == NULL) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open init binary file");
 	}

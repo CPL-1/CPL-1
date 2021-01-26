@@ -8,6 +8,7 @@ build: ../x86/limine/limine-install
 	cd ../../kernel/build/i686 && make build -j`nproc` && sudo cp kernel.elf ../../../build/i686/kernel.elf
 	cd ../../userlib/build/i686 && make build -j`nproc`
 	cd ../../init/build/i686 && make build -j`nproc` && sudo cp init ../../../build/i686/init
+	cd ../../sh/build/i686 && make build -j`nproc` && sudo cp sh ../../../build/i686/sh
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	parted -s CPL-1_i686.hdd mklabel gpt
 	parted -s CPL-1_i686.hdd mkpart primary 2048s 100%
@@ -20,7 +21,8 @@ build: ../x86/limine/limine-install
 	sudo test -d mount/boot || sudo mkdir mount/boot
 	sudo cp limine.cfg mount/boot/limine.cfg
 	sudo cp kernel.elf mount/boot/kernel.elf
-	sudo cp init mount/bin/init
+	sudo cp init mount/sbin/init
+	sudo cp sh mount/bin/sh
 	sudo umount mount
 	sudo losetup -d `cat loopback_dev`
 	rm -rf mount

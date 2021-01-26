@@ -33,19 +33,21 @@ char *strcat(char *dest, const char *src) {
 int strcmp(const char *s1, const char *s2) {
 	size_t s1len = strlen(s1);
 	size_t s2len = strlen(s2);
-	if (s1len < s2len) {
-		return -1;
-	}
-	if (s2len > s1len) {
-		return -1;
-	}
-	for (size_t i = 0; i < s1len; ++i) {
+	size_t i = 0;
+	for (; i < s1len && i < s2len; ++i) {
 		if (s1[i] < s2[i]) {
 			return -1;
 		}
 		if (s1[i] > s2[i]) {
 			return 1;
 		}
+	}
+	if (s1len < s2len) {
+		return -1;
+	} else if (s1len > s2len) {
+		return 1;
+	} else {
+		return 0;
 	}
 	return 0;
 }

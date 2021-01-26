@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/libsyscall.h>
+#include <sys/syscall.h>
 
 static char __Printf_GetCharFromDigit(uint8_t digit) {
 	if (digit >= 10) {
@@ -149,93 +149,4 @@ int va_printf(const char *str, va_list args) {
 	int count = va_sprintf(str, buf, PRINTF_BUFFER_SIZE, args);
 	__Printf_WriteString(buf, count);
 	return count;
-}
-
-struct __FILE {
-	long offset;
-	int fd;
-};
-
-#define FILE struct __FILE
-
-FILE *fopen(const char *name, const char *attr) {
-	int perm = 0;
-	if (strcmp(attr, "r") == 0 || strcmp(attr, "rb") == 0) {
-		perm = O_RDONLY;
-	} else if (strcmp(attr, "w") == 0 || strcmp(attr, "wb") == 0) {
-		perm = O_WRONLY;
-	} else if (strcmp(attr, "r+") == 0 || strcmp(attr, "rb+") == 0 || strcmp(attr, "r+b") == 0) {
-		perm = O_RDWR;
-	} else {
-		errno = EINVAL;
-		return NULL;
-	}
-	FILE *f = malloc(sizeof(FILE));
-	if (f == NULL) {
-		return NULL;
-	}
-	int fd = open(name, perm);
-	if (fd == -1) {
-		free(f);
-		return NULL;
-	}
-	f->fd = fd;
-	f->offset = 0;
-	return f;
-}
-
-static size_t __File_Read(int fd, void *buf, size_t size) {
-	size_t pos = 0;
-	while (size != 0) {
-		int result = read(fd, buf + pos, size);
-		if (result < 0) {
-			errno = result;
-			return 0;
-		}
-		if (result == 0) {
-			return pos;
-		}
-		pos += (size_t)result;
-	}
-	return pos;
-}
-
-static size_t __File_Write(int fd, const void *buf, size_t size) {
-	size_t pos = 0;
-	while (size != 0) {
-		int result = write(fd, buf + pos, size);
-		if (result < 0) {
-			errno = result;
-			return 0;
-		}
-		if (result == 0) {
-			return pos;
-		}
-		pos += (size_t)result;
-	}
-	return pos;
-}
-
-size_t fread(void *buf, size_t size, size_t nmemb, FILE *stream) {
-	int result = __File_Read(stream->fd, buf, size * nmemb);
-	if (result < 0) {
-		errno = result;
-		return 0;
-	}
-	return result / ((int)size);
-}
-
-size_t fwrite(const void *buf, size_t size, size_t nmemb, FILE *stream) {
-	int result = __File_Write(stream->fd, buf, size * nmemb);
-	if (result < 0) {
-		errno = result;
-		return 0;
-	}
-	return result / ((int)size);
-}
-
-int fclose(FILE *stream) {
-	int result = close(stream->fd);
-	free(stream);
-	return result;
 }

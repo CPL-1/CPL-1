@@ -10,11 +10,4 @@ int va_printf(const char *fmt, va_list args);
 int va_sprintf(const char *fmt, char *buf, int size, va_list args);
 int puts(const char *str);
 
-#define FILE struct __FILE
-
-FILE *fopen(const char *name, const char *attr);
-size_t fread(void *buf, size_t size, size_t nmemb, FILE *stream);
-size_t fwrite(const void *buf, size_t size, size_t nmemb, FILE *stream);
-int fclose(FILE *stream);
-
 #endif
