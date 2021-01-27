@@ -31,7 +31,7 @@ build: ../x86/limine/limine-install
 	sudo cp -r ../../kernel mount/etc/src/kernel
 	sudo cp -r ../../userlib mount/etc/src/userlib
 	sudo cp -r ../../userspace mount/etc/src/userspace
-	sudo cp -r ../../LICENSE mount/etc/src/LICENSE
+	sudo cp -r ../../COPYING mount/etc/src/COPYING
 	sudo umount mount
 	sudo losetup -d `cat loopback_dev`
 	rm -rf mount
