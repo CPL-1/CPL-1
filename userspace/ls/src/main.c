@@ -7,7 +7,7 @@
 void Ls_ListDirectory(const char *dir) {
 	int fd = open(dir, O_RDONLY);
 	if (fd < 0) {
-		Log_ErrorMsg("Directory enumerator", "Failed to open directory \"%s\"", dir);
+		Log_ErrorMsg("\"ls\" Utility", "Failed to open directory \"%s\"", dir);
 	}
 	struct dirent buf;
 	bool first = true;
@@ -17,7 +17,7 @@ void Ls_ListDirectory(const char *dir) {
 			if (!first) {
 				puts("\n");
 			}
-			Log_ErrorMsg("Directory enumerator", "Error occured while enumerating the directory \"%s\"", dir);
+			Log_ErrorMsg("\"ls\" Utility", "Error occured while enumerating the directory \"%s\"", dir);
 		}
 		if (result == 0) {
 			break;

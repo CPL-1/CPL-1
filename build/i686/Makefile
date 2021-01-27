@@ -10,6 +10,8 @@ build: ../x86/limine/limine-install
 	cd ../../userspace/init/build/i686 && make build -j`nproc` && sudo cp init ../../../../build/i686/init
 	cd ../../userspace/sh/build/i686 && make build -j`nproc` && sudo cp sh ../../../../build/i686/sh
 	cd ../../userspace/ls/build/i686 && make build -j`nproc` && sudo cp ls ../../../../build/i686/ls
+	cd ../../userspace/cat/build/i686 && make build -j`nproc` && sudo cp cat ../../../../build/i686/cat
+	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	parted -s CPL-1_i686.hdd mklabel gpt
 	parted -s CPL-1_i686.hdd mkpart primary 2048s 100%
@@ -25,6 +27,11 @@ build: ../x86/limine/limine-install
 	sudo cp init mount/sbin/init
 	sudo cp sh mount/bin/sh
 	sudo cp ls mount/bin/ls
+	sudo cp cat mount/bin/cat
+	sudo cp -r ../../kernel mount/etc/src/kernel
+	sudo cp -r ../../userlib mount/etc/src/userlib
+	sudo cp -r ../../userspace mount/etc/src/userspace
+	sudo cp -r ../../LICENSE mount/etc/src/LICENSE
 	sudo umount mount
 	sudo losetup -d `cat loopback_dev`
 	rm -rf mount
@@ -37,6 +44,7 @@ obj-clean:
 	cd ../../userspace/init/build/i686 && make clean
 	cd ../../userspace/sh/build/i686 && make clean
 	cd ../../userspace/ls/build/i686 && make clean
+	cd ../../userspace/cat/build/i686 && make clean
 	cd ../../userlib/build/i686 && make clean
 	rm -rf kernel.elf
 	rm -rf init

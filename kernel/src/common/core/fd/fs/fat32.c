@@ -229,13 +229,6 @@ static char FAT32_ConvertToUppercase(char c) {
 	return c;
 }
 
-static char FAT32_ConvertToLowercase(char c) {
-	if (c >= 'A' && c <= 'Z') {
-		c = c - 'A' + 'a';
-	}
-	return c;
-}
-
 static void FAT32_ConvertShortFilename(struct FAT32_ShortDirectoryEntry *entry, char *buf) {
 	size_t size = 0;
 	if (entry->name[0] == ' ' || entry->name[0] == '\0') {
@@ -261,7 +254,7 @@ ext:
 			buf[size] = '\0';
 			return;
 		}
-		buf[size] = FAT32_ConvertToLowercase(entry->ext[i]);
+		buf[size] = FAT32_ConvertToUppercase(entry->ext[i]);
 		size++;
 	}
 	buf[size] = '\0';
