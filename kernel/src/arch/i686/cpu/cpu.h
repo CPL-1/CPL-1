@@ -14,6 +14,28 @@ static INLINE uint32_t i686_CPU_SetCR3(uint32_t val) {
 	return val;
 }
 
+static INLINE uint32_t i686_CPU_GetCR0() {
+	uint32_t val;
+	asm VOLATILE("mov %%cr0, %0" : "=r"(val));
+	return val;
+}
+
+static INLINE uint32_t i686_CPU_SetCR0(uint32_t val) {
+	asm VOLATILE("mov %0, %%cr0" : : "r"(val));
+	return val;
+}
+
+static INLINE uint32_t i686_CPU_GetCR4() {
+	uint32_t val;
+	asm VOLATILE("mov %%cr4, %0" : "=r"(val));
+	return val;
+}
+
+static INLINE uint32_t i686_CPU_SetCR4(uint32_t val) {
+	asm VOLATILE("mov %0, %%cr4" : : "r"(val));
+	return val;
+}
+
 static INLINE void i686_CPU_InvalidatePage(uint32_t vaddr) {
 	asm VOLATILE("invlpg (%0)" : : "b"(vaddr) : "memory");
 }

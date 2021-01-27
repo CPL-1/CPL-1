@@ -5,6 +5,7 @@
 #include <common/lib/kmsg.h>
 #include <hal/memory/phys.h>
 #include <hal/memory/virt.h>
+#include <hal/proc/extended.h>
 #include <hal/proc/intlevel.h>
 #include <hal/proc/isrhandler.h>
 #include <hal/proc/stack.h>
@@ -73,19 +74,27 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	if (stack == 0) {
 		goto free_process_obj;
 	}
-	char *process_state = (char *)(Heap_AllocateMemory(HAL_ProcessStateSize));
-	if (process_state == NULL) {
+	char *processState = (char *)(Heap_AllocateMemory(HAL_ProcessStateSize));
+	if (processState == NULL) {
 		goto free_stack;
+	}
+	char *extendedState = (char *)(Heap_AllocateMemory(HAL_ExtendedStateSize));
+	if (extendedState == NULL) {
+		goto free_process_state;
 	}
 	struct Proc_ProcessID new_id = Proc_AllocateProcessID(process);
 	if (!Proc_IsValidProcessID(new_id)) {
-		goto free_process_state;
+		goto free_extended_state;
 	}
-	memset(process_state, 0, HAL_ProcessStateSize);
+	memset(processState, 0, HAL_ProcessStateSize);
 	process->next = process->prev = process->waitQueueHead = process->waitQueueTail = process->nextInQueue = NULL;
 	process->ppid = parent;
 	process->pid = new_id;
-	process->processState = process_state;
+	process->processState = processState;
+	process->extendedState = extendedState;
+	if ((uintptr_t)(process->extendedState) % 16 != 0) {
+		KernelLog_ErrorMsg(PROC_MOD_NAME, "Incorrect align for the extended state");
+	}
 	process->kernelStack = stack;
 	process->returnCode = 0;
 	process->state = SLEEPING;
@@ -96,8 +105,10 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 		parentProcess->childCount++;
 	}
 	return new_id;
+free_extended_state:
+	Heap_FreeMemory(extendedState, HAL_ExtendedStateSize);
 free_process_state:
-	Heap_FreeMemory(process_state, HAL_ProcessStateSize);
+	Heap_FreeMemory(processState, HAL_ProcessStateSize);
 free_stack:
 	Heap_FreeMemory((void *)stack, PROC_KERNEL_STACK_SIZE);
 free_process_obj:
@@ -270,7 +281,9 @@ void Proc_Yield() {
 
 void Proc_PreemptCallback(MAYBE_UNUSED void *ctx, char *state) {
 	memcpy(m_CurrentProcess->processState, state, HAL_ProcessStateSize);
+	HAL_ExtendedState_StoreTo(m_CurrentProcess->extendedState);
 	m_CurrentProcess = m_CurrentProcess->next;
+	HAL_ExtendedState_LoadFrom(m_CurrentProcess->extendedState);
 	memcpy(state, m_CurrentProcess->processState, HAL_ProcessStateSize);
 	VirtualMM_PreemptToAddressSpace(m_CurrentProcess->addressSpace);
 	HAL_ISRStacks_SetSyscallsStack(m_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
@@ -321,6 +334,12 @@ bool Proc_PollDisposeQueue() {
 	HAL_InterruptLevel_Recover(level);
 	if (process->addressSpace != NULL) {
 		VirtualMM_DropAddressSpace(process->addressSpace);
+	}
+	if (process->extendedState != NULL) {
+		Heap_FreeMemory((void *)(process->extendedState), HAL_ExtendedStateSize);
+	}
+	if (process->processState != NULL) {
+		Heap_FreeMemory((void *)(process->processState), HAL_ProcessStateSize);
 	}
 	if (process->kernelStack != 0) {
 		Heap_FreeMemory((void *)(process->kernelStack), PROC_KERNEL_STACK_SIZE);

@@ -31,6 +31,8 @@ i686_Ring3_Switch:
     mov esi, eax
     mov ebp, eax
 
+    fninit
+
     iretd
 
 i686_Ring3_SyscallEntry:

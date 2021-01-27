@@ -13,17 +13,12 @@ struct Proc_Process {
 	struct Proc_Process *waitQueueTail;
 	struct Proc_Process *nextInQueue;
 	char *processState;
+	char *extendedState;
 	struct VirtualMM_AddressSpace *addressSpace;
 	struct FileTable *fdTable;
 	uintptr_t kernelStack;
 	int returnCode;
-	enum
-	{
-		SLEEPING,
-		RUNNING,
-		WAITING_FOR_CHILD_TERM,
-		ZOMBIE
-	} state;
+	enum { SLEEPING, RUNNING, WAITING_FOR_CHILD_TERM, ZOMBIE } state;
 	bool terminatedNormally;
 	size_t childCount;
 };

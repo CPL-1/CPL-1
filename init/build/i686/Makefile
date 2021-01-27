@@ -5,7 +5,7 @@ asm_obj := $(asm_src:.s=.o)
 CC := i686-elf-gcc
 AS := nasm
 LD := i686-elf-gcc
-CFLAGS := -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-80387 -I../../../userlib/include -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -ffreestanding -fstrict-volatile-bitfields -O2 -g
+CFLAGS := -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx  -I../../../userlib/include -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -ffreestanding -fstrict-volatile-bitfields -O2 -g
 ASFLAGS := -f elf
 LDFLAGS := -ffreestanding -static -nostdlib -no-pie
 

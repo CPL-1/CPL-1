@@ -12,6 +12,7 @@
 #include <common/core/proc/proc.h>
 #include <common/core/proc/proclayout.h>
 #include <common/lib/kmsg.h>
+#include <hal/proc/extended.h>
 
 #define MAX_PATH_LEN 65536
 #define MAX_IO_BUF_LEN 65536
@@ -284,6 +285,7 @@ void i686_Syscall_Fork(struct i686_CPUState *state) {
 		return;
 	}
 	memcpy(newProcessData->processState, state, sizeof(struct i686_CPUState));
+	HAL_ExtendedState_StoreTo(newProcessData->extendedState);
 	((struct i686_CPUState *)newProcessData->processState)->eax = 0;
 	state->eax = newProcessData->pid.id;
 	Proc_Resume(newProcess);

@@ -7,6 +7,11 @@
 int main(int argc, char const *argv[], char const *envp[]) {
 	(void)argv;
 	(void)argc;
+	// test FPU
+	volatile float a = 1.0f;
+	volatile float b = 2.0f;
+	volatile float c = a * b;
+	(void)c;
 	int wstatus;
 	while (true) {
 		// Step 1. User input

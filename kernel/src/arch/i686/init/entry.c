@@ -1,4 +1,5 @@
 #include <arch/i686/cpu/cr3.h>
+#include <arch/i686/cpu/fpu.h>
 #include <arch/i686/cpu/gdt.h>
 #include <arch/i686/cpu/idt.h>
 #include <arch/i686/cpu/tss.h>
@@ -11,6 +12,7 @@
 #include <arch/i686/memory/phys.h>
 #include <arch/i686/memory/virt.h>
 #include <arch/i686/proc/elf32.h>
+#include <arch/i686/proc/except.h>
 #include <arch/i686/proc/iowait.h>
 #include <arch/i686/proc/priv.h>
 #include <arch/i686/proc/ring1.h>
@@ -59,6 +61,8 @@ void i686_KernelInit_ExecuteInitProcess();
 void i686_KernelInit_Main(uint32_t mb_offset) {
 	i686_Stivale_Initialize(mb_offset);
 	KernelLog_InfoMsg("i686 Kernel Init", "Preparing to unleash the real power of your CPU...");
+	i686_FPU_Enable();
+	KernelLog_InfoMsg("i686 Kernel Init", "Enabled FPU");
 	KernelLog_InitDoneMsg("i686 Stivale v1.0 Tables Parser");
 	i686_CR3_Initialize();
 	KernelLog_InitDoneMsg("i686 Root Page Table Manager");
@@ -164,6 +168,8 @@ void i686_KernelInit_ExecuteInitProcess() {
 	if (node->base.start == 0) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
 	}
+	KernelLog_InfoMsg("i686 Kernel Init", "Starting Exception Monitor");
+	i686_ExceptionMonitor_Initialize();
 	// Stack layout for init process
 	// [ NULL ] // align
 	// [ NULL ] // align
