@@ -28,6 +28,7 @@ void Ls_ListDirectory(const char *dir) {
 		printf("%s ", buf.d_name);
 		first = false;
 	}
+	close(fd);
 }
 
 int main(int argc, char const *argv[]) {

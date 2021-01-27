@@ -16,6 +16,7 @@ void Cat_PrintFile(const char *path) {
 		printedAnything = true;
 		if (result < 0) {
 			Log_WarnMsg("\"cat\" Utility", "Failed to finish printing the file \"%s\"", path);
+			close(file);
 			return;
 		}
 		buf[result] = '\0';
@@ -24,6 +25,7 @@ void Cat_PrintFile(const char *path) {
 	if (printedAnything) {
 		puts("\n");
 	}
+	close(file);
 }
 
 int main(int argc, char const *argv[]) {

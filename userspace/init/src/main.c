@@ -33,6 +33,7 @@ void logo() {
 	int count = read(logo, buf, 4096);
 	buf[count] = '\0';
 	printf("%s", buf);
+	close(logo);
 }
 
 int main() {
