@@ -7,15 +7,11 @@
 int main(int argc, char const *argv[], char const *envp[]) {
 	(void)argv;
 	(void)argc;
-	// test FPU
-	volatile float a = 1.0f;
-	volatile float b = 2.0f;
-	volatile float c = a * b;
-	(void)c;
 	int wstatus;
 	while (true) {
 		// Step 1. User input
 		char buf[4096];
+	start:
 		puts("\033[92mroot\033[39m# \033[97m");
 		int inputSize = read(0, buf, 4095);
 		puts("\033[39m");
@@ -25,34 +21,42 @@ int main(int argc, char const *argv[], char const *envp[]) {
 			continue;
 		} else {
 			buf[inputSize - 1] = '\0';
+			inputSize--;
 		}
 		// Step 2. Argument parsing
 		const char *argv[4097];
 		int argc = 0;
 		for (int i = 0; i < inputSize; ++i) {
-			if (buf[i] != ' ') {
-				bool scoped = (buf[i] == '\'' || buf[i] == '\"');
-				char start = buf[i];
-				argv[argc++] = buf + (i + (scoped ? 1 : 0));
-				++i;
-				bool found = false;
-				while (i < inputSize) {
-					if (scoped) {
-						if (buf[i] == start) {
-							found = true;
-							break;
-						}
-					} else {
-						if (buf[i] == ' ') {
-							break;
+		mainLoop:
+			if (i >= inputSize) {
+				break;
+			}
+			if (buf[i] != ' ' && buf[i] != '\n') {
+				if (buf[i] == '\'' || buf[i] == '\"') {
+					char sep = buf[i];
+					++i;
+					if (i == inputSize) {
+						Log_WarnMsg("Shell", "Syntax error. Try entering your command again");
+						goto start;
+					}
+					argv[argc++] = buf + i;
+					for (; i < inputSize; ++i) {
+						if (buf[i] == sep) {
+							buf[i++] = '\0';
+							goto mainLoop;
 						}
 					}
-					++i;
+					Log_WarnMsg("Shell", "Syntax error. Try entering your command again");
+					goto start;
+				} else {
+					argv[argc++] = buf + i;
+					for (; i < inputSize; ++i) {
+						if (buf[i] == ' ') {
+							buf[i++] = '\0';
+							goto mainLoop;
+						}
+					}
 				}
-				if ((!found) && scoped) {
-					argc--;
-				}
-				buf[i] = '\0';
 			}
 		}
 		argv[argc] = NULL;
@@ -64,7 +68,7 @@ int main(int argc, char const *argv[], char const *envp[]) {
 			printf("\"exit\" - exit shell\n");
 			continue;
 		} else if (strcmp(argv[0], "exit") == 0) {
-			exit(-1);
+			exit(0);
 		}
 		// Step 4. Parse name
 		if (argv[0] == NULL || *(argv[0]) == '\0') {
@@ -91,4 +95,5 @@ int main(int argc, char const *argv[], char const *envp[]) {
 			}
 		}
 	}
+	return 0;
 }

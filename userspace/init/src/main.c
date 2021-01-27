@@ -8,7 +8,11 @@
 #include <sys/syscall.h>
 
 bool InitProcess_SetupTTYStreams() {
-	if (open("/dev/halterm", O_RDONLY) != 0) {
+	int term = open("/dev/halterm", O_RDONLY);
+	// TODO: dirty hack, change to getpid later
+	if (term > 0) {
+		Log_ErrorMsg("Init Process", "One init process is already running");
+	} else if (term < 0) {
 		return false;
 	}
 	if (open("/dev/halterm", O_WRONLY) != 1) {

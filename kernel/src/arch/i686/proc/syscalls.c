@@ -582,3 +582,43 @@ void i686_Syscall_Wait4(struct i686_CPUState *state) {
 	state->eax = childProcess->pid.id;
 	Proc_Dispose(childProcess);
 }
+
+void i686_Syscall_GetDirectoryEntries(struct i686_CPUState *state) {
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 16;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	int fd = *(int *)(paramsStart);
+	struct DirectoryEntry *entries = *(struct DirectoryEntry **)(paramsStart + 4);
+	int bufLength = *(int *)(paramsStart + 8);
+	if (bufLength < 0 || bufLength > (int)(MAX_IO_BUF_LEN / sizeof(struct DirectoryEntry))) {
+		state->eax = -1;
+		return;
+	}
+	struct DirectoryEntry *entriesEnd = entries + bufLength;
+	Mutex_Unlock(&(space->mutex));
+	struct DirectoryEntry *inKernelCopy = Heap_AllocateMemory(bufLength * sizeof(struct DirectoryEntry));
+	if (inKernelCopy == NULL) {
+		state->eax = -1;
+		return;
+	}
+	memset(inKernelCopy, 0, bufLength * sizeof(struct DirectoryEntry));
+	int result = FileTable_FileReaddir(NULL, fd, inKernelCopy, bufLength);
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions((uintptr_t)entries, (uintptr_t)entriesEnd, MSECURITY_UW)) {
+		Mutex_Unlock(&(space->mutex));
+		Heap_FreeMemory(inKernelCopy, bufLength * sizeof(struct DirectoryEntry));
+		state->eax = -1;
+		return;
+	}
+	if (result > 0) {
+		memcpy(entries, inKernelCopy, result * sizeof(struct DirectoryEntry));
+	}
+	Mutex_Unlock(&(space->mutex));
+	state->eax = result;
+}

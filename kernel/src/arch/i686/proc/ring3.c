@@ -18,8 +18,9 @@ void i686_Ring3_SyscallInit() {
 	i686_Ring3_SyscallTable[4] = (uint32_t)i686_Syscall_Write;
 	i686_Ring3_SyscallTable[5] = (uint32_t)i686_Syscall_Open;
 	i686_Ring3_SyscallTable[6] = (uint32_t)i686_Syscall_Close;
+	i686_Ring3_SyscallTable[11] = (uint32_t)i686_Syscall_Wait4;
 	i686_Ring3_SyscallTable[59] = (uint32_t)i686_Syscall_Execve;
 	i686_Ring3_SyscallTable[73] = (uint32_t)i686_Syscall_MemoryUnmap;
+	i686_Ring3_SyscallTable[99] = (uint32_t)i686_Syscall_GetDirectoryEntries;
 	i686_Ring3_SyscallTable[197] = (uint32_t)i686_Syscall_MemoryMap;
-	i686_Ring3_SyscallTable[400] = (uint32_t)i686_Syscall_Wait4;
 }

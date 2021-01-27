@@ -44,4 +44,10 @@ int execve(const char *fname, char const *argp[], char const *envp[]);
 struct rusage;
 int wait4(int pid, int *wstatus, int options, struct rusage *rusage);
 
+struct dirent {
+	unsigned int d_ino;
+	char d_name[256];
+};
+int getdents(int fd, struct dirent *entries, int count);
+
 #endif

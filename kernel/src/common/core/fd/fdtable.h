@@ -13,7 +13,7 @@ int FileTable_FilePRead(struct FileTable *table, int fd, char *buf, int size, of
 int FileTable_FilePWrite(struct FileTable *table, int fd, const char *buf, int size, off_t offset);
 int FileTable_IsATTY(struct FileTable *table, int fd);
 off_t FileTable_FileLseek(struct FileTable *table, int fd, off_t newOffset, int whence);
-int FileTable_Readdir(struct FileTable *table, int fd, struct DirectoryEntry *buf, int count);
+int FileTable_FileReaddir(struct FileTable *table, int fd, struct DirectoryEntry *buf, int count);
 
 int FileTable_FileClose(struct FileTable *table, int fd);
 struct FileTable *FileTable_Ref(struct FileTable *table);
