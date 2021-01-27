@@ -122,8 +122,7 @@ struct FAT32_RegularFileContext {
 	struct FAT32_RWStream stream;
 };
 
-enum
-{
+enum {
 	FAT32_ATTR_READ_ONLY = 0x01,
 	FAT32_ATTR_HIDDEN = 0x02,
 	FAT32_ATTR_SYSTEM = 0x04,
@@ -133,14 +132,11 @@ enum
 	FAT32_ATTR_LONG_NAME = (FAT32_ATTR_READ_ONLY | FAT32_ATTR_HIDDEN | FAT32_ATTR_SYSTEM | FAT32_ATTR_VOLUME_ID)
 };
 
-enum
-{
-	FAT32_END_OF_DIRECTORY = 0x00,
-	FAT32_MAYBE_UNUSED_ENTRY = 0xe5
-};
+enum { FAT32_END_OF_DIRECTORY = 0x00, FAT32_MAYBE_UNUSED_ENTRY = 0xe5 };
 
-enum
-{ FAT32_LAST_LFN_ENTRY_ORDINAL_MASK = 0x40, };
+enum {
+	FAT32_LAST_LFN_ENTRY_ORDINAL_MASK = 0x40,
+};
 
 static uint64_t FAT32_GetClusterOffset(struct FAT32_Superblock *fat32Superblock, uint32_t clusterID) {
 	return fat32Superblock->clustersOffset + (clusterID - 2) * fat32Superblock->clusterSize;
@@ -226,6 +222,13 @@ static int64_t FAT32_SkipInStream(struct FAT32_Superblock *fat32Superblock, stru
 	return result;
 }
 
+static char FAT32_ConvertToUppercase(char c) {
+	if (c >= 'a' && c <= 'z') {
+		c = c - 'a' + 'A';
+	}
+	return c;
+}
+
 static char FAT32_ConvertToLowercase(char c) {
 	if (c >= 'A' && c <= 'Z') {
 		c = c - 'A' + 'a';
@@ -243,7 +246,7 @@ static void FAT32_ConvertShortFilename(struct FAT32_ShortDirectoryEntry *entry, 
 			buf[size] = '\0';
 			goto ext;
 		}
-		buf[size] = FAT32_ConvertToLowercase(entry->name[i]);
+		buf[size] = FAT32_ConvertToUppercase(entry->name[i]);
 		size++;
 	}
 ext:
@@ -323,8 +326,7 @@ static int FAT32_ConvertLongFilename(Dynarray(struct FAT32_LongDirectoryEntry) e
 
 #undef FAT32_LFN_FILL_FROM_ENTRY
 
-static enum
-{
+static enum {
 	FAT32_READ_ENTRY_READ,
 	FAT32_READ_ENTRY_SKIP,
 	FAT32_READ_ENTRY_END,
