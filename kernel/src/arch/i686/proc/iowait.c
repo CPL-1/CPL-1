@@ -64,7 +64,7 @@ struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_IOWait_Ha
 	m_handlerLists[irq] = entry;
 	if (entry->next == NULL) {
 		void *interrupt_handler =
-			i686_ISR_MakeNewISRHandler((HAL_ISR_Handler)i686_IOWait_HandleIRQ, m_irqContexts + irq);
+			i686_ISR_MakeNewISRHandler((HAL_ISR_Handler)i686_IOWait_HandleIRQ, m_irqContexts + irq, false);
 		if (interrupt_handler == NULL) {
 			KernelLog_ErrorMsg("i686 IO wait subsystem", "Failed to allocate function object for IRQ handler");
 		}

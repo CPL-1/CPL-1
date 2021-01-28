@@ -69,7 +69,7 @@ static bool m_shiftPressed;
 static struct HAL_TTY_KeyEvent m_event;
 static struct i686_IOWait_ListEntry *m_iowaitObject;
 
-void i686_PS2Keyboard_IRQCallback(MAYBE_UNUSED void *ctx, MAYBE_UNUSED char *state) {
+void i686_PS2Keyboard_GetEvent() {
 	uint8_t code = i686_PS2_ReadData();
 	m_event.raw = code;
 	m_event.typeable = false;
@@ -121,6 +121,10 @@ void i686_PS2Keyboard_IRQCallback(MAYBE_UNUSED void *ctx, MAYBE_UNUSED char *sta
 	m_event.character = keymap[key];
 }
 
+void i686_PS2Keyboard_IRQCallback(MAYBE_UNUSED void *ctx, MAYBE_UNUSED char *state) {
+	i686_PS2Keyboard_GetEvent();
+}
+
 bool i686_PS2Keyboard_Detect(bool channel) {
 	if (m_isKeyboardInitialized) {
 		// If keyboard is already attached, ignore a new one
@@ -158,6 +162,11 @@ bool i686_PS2Keyboard_Detect(bool channel) {
 }
 
 void HAL_TTY_WaitForNextEvent(struct HAL_TTY_KeyEvent *event) {
+	if (i686_PS2_ReadyToRead()) {
+		i686_PS2Keyboard_GetEvent();
+		*event = m_event;
+		return;
+	}
 	i686_IOWait_WaitForIRQ(m_iowaitObject);
 	*event = m_event;
 }

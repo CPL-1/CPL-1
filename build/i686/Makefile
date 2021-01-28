@@ -11,6 +11,7 @@ build: ../x86/limine/limine-install
 	cd ../../userspace/sh/build/i686 && make build -j`nproc` && sudo cp sh ../../../../build/i686/sh
 	cd ../../userspace/ls/build/i686 && make build -j`nproc` && sudo cp ls ../../../../build/i686/ls
 	cd ../../userspace/cat/build/i686 && make build -j`nproc` && sudo cp cat ../../../../build/i686/cat
+	cd ../../userspace/test/build/i686 && make build -j`nproc` && sudo cp test ../../../../build/i686/test
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	parted -s CPL-1_i686.hdd mklabel gpt
@@ -28,6 +29,7 @@ build: ../x86/limine/limine-install
 	sudo cp sh mount/bin/sh
 	sudo cp ls mount/bin/ls
 	sudo cp cat mount/bin/cat
+	sudo cp test mount/bin/test
 	sudo cp -r ../../kernel mount/etc/src/kernel
 	sudo cp -r ../../userlib mount/etc/src/userlib
 	sudo cp -r ../../userspace mount/etc/src/userspace
@@ -45,11 +47,14 @@ obj-clean:
 	cd ../../userspace/sh/build/i686 && make clean
 	cd ../../userspace/ls/build/i686 && make clean
 	cd ../../userspace/cat/build/i686 && make clean
+	cd ../../userspace/test/build/i686 && make clean
 	cd ../../userlib/build/i686 && make clean
 	rm -rf kernel.elf
 	rm -rf init
 	rm -rf sh
 	rm -rf ls
+	rm -rf cat
+	rm -rf test
 
 clean: obj-clean
 	rm -rf CPL-1_i686.hdd

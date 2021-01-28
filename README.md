@@ -27,7 +27,11 @@ Currently there is only support for i686 CPUS with PIC 8259 interrupt controller
 * Virtual File System
 * NVMe controllers driver
 * FAT32 readonly filesystem support
-* Basic userspace support (open/read/write/close system calls) 
+* Basic userspace support
+* PS/2 keyboard driver
+* VBE framebuffer driver
+* Custom C standard library (very WIP)
+* Basic shell and utilities
 
 ### What I need to build CPL-1?
 
@@ -62,18 +66,19 @@ To debug system, run
 ```bash
 make debug
 ```
+(Do not forget to run ```make build``` beforehand, as debugging requires binaries that are by default deleted with ```make```)
 
 To cleanup object files (if you are not using source watcher for some reason), run
 ```bash
 make clean
 ```
 
-To do ```make``` and ```make run`` in a single command, run
+To do ```make``` and ```make run``` in a single command, run
 ```bash
 make testrun
 ```
 
-To do ```make`` and ```make debug``` in a single command, run
+To do ```make``` and ```make debug``` in a single command, run
 ```bash
 make testdebug
 ```

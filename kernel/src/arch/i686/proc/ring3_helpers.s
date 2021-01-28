@@ -36,6 +36,7 @@ i686_Ring3_Switch:
     iretd
 
 i686_Ring3_SyscallEntry:
+    push 0
     pusha
     mov ecx, dword [i686_Ring3_SyscallTableSize]
     cmp eax, ecx
@@ -65,6 +66,7 @@ i686_Ring3_SyscallEntry:
     pop es
 
     popa
+    add esp, 4
     iretd
 
 .fail:

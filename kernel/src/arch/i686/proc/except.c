@@ -12,6 +12,7 @@ static const char *m_exceptionNames[0x20] = {"Divide-by-zero Error",
 											 "Bound Range Exceeded",
 											 "Invalid Opcode",
 											 "Device Not Available",
+											 "Double Fault",
 											 "Coprocessor Segment Overrun",
 											 "Invalid TSS",
 											 "Segment Not Present",
@@ -33,10 +34,13 @@ void i686_ExceptionMonitor_ExceptionHandler(void *ctx, char *frame) {
 					   state->esp, state->eflags);
 }
 
+static bool m_errorCodes[0x20] = {false, false, false, false, false, false, false, false, true,	 false, true, true,
+								  true,	 true,	true,  false, false, true,	false, false, false, false, true, false};
+
 void i686_ExceptionMonitor_Initialize() {
 	for (size_t i = 0; i < 0x20; ++i) {
-		HAL_ISR_Handler handler =
-			i686_ISR_MakeNewISRHandler(i686_ExceptionMonitor_ExceptionHandler, (void *)(m_exceptionNames + i));
+		HAL_ISR_Handler handler = i686_ISR_MakeNewISRHandler(i686_ExceptionMonitor_ExceptionHandler,
+															 (void *)(m_exceptionNames + i), m_errorCodes[i]);
 		i686_IDT_InstallISR(i, (uint32_t)handler);
 	}
 }

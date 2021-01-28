@@ -22,10 +22,13 @@ static void i686_PS2_WriteCommand(uint8_t cmd) {
 	return i686_Ports_WriteByte(i686_PS2_CMD_PORT, cmd);
 }
 
-static void i686_PS2_AwaitResult() {
+bool i686_PS2_ReadyToRead() {
 	uint8_t status = i686_PS2_ReadStatus();
-	while ((status & (1 << 0)) == 0) {
-		status = i686_PS2_ReadStatus();
+	return (status & (1 << 0)) != 0;
+}
+
+void i686_PS2_AwaitResult() {
+	while (!i686_PS2_ReadyToRead()) {
 	}
 }
 
