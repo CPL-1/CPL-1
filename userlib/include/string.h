@@ -19,5 +19,7 @@ size_t strnlen(const char *s, size_t maxlen);
 size_t strspn(const char *s, const char *accept);
 size_t strcspn(const char *s, const char *reject);
 char *strsep(char **stringp, const char *delim);
+int strcasecmp(const char *s1, const char *s2);
+int strncasecmp(const char *s1, const char *s2, size_t n);
 
 #endif

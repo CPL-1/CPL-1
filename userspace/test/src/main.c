@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/log.h>
 
@@ -14,7 +15,7 @@ size_t Rand_Next() {
 
 void Malloc_Test() {
 	size_t *pointers[MAX_OBJ] = {NULL};
-	size_t sizes[MAX_OBJ] = {NULL};
+	size_t sizes[MAX_OBJ] = {0};
 	for (size_t i = 0; i < ITERATIONS; ++i) {
 		size_t index = Rand_Next();
 		if (pointers[index] == NULL) {

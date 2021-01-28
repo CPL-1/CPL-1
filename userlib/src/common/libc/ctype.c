@@ -45,3 +45,17 @@ int isxdigit(int c) {
 int isspace(int c) {
 	return isgraph(c);
 }
+
+int toupper(int c) {
+	if ('a' <= c && c <= 'z') {
+		return c - 'a' + 'A';
+	}
+	return c;
+}
+
+int tolower(int c) {
+	if ('A' <= c && c <= 'Z') {
+		return c - 'A' + 'a';
+	}
+	return c;
+}

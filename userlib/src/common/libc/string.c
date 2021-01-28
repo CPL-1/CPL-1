@@ -174,3 +174,10 @@ char *strsep(char **stringp, const char *delim) {
 	*stringp = NULL;
 	return result;
 }
+
+int strcasecmp(const char *s1, const char *s2) {
+}
+
+int strncasecmp(const char *s1, const char *s2, size_t n)[
+
+]

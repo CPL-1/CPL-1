@@ -105,6 +105,9 @@ int main(int argc, char const *argv[], char const *envp[]) {
 		}
 		argv[argc] = NULL;
 		// Step 3. Handle builtins
+		if (argv[0] == NULL) {
+			continue;
+		}
 		if (strcmp(argv[0], "help") == 0) {
 			printf("CPL-1 shell, version v0.0.1\n");
 			printf("These shell commands are defined internally\n");
