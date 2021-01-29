@@ -1,7 +1,9 @@
 #include <arch/i686/cpu/idt.h>
+#include <arch/i686/memory/config.h>
 #include <arch/i686/proc/except.h>
 #include <arch/i686/proc/isrhandler.h>
 #include <arch/i686/proc/state.h>
+#include <common/core/proc/proc.h>
 #include <common/lib/kmsg.h>
 
 static const char *m_exceptionNames[0x20] = {"Divide-by-zero Error",
@@ -29,6 +31,9 @@ static const char *m_exceptionNames[0x20] = {"Divide-by-zero Error",
 
 void i686_ExceptionMonitor_ExceptionHandler(void *ctx, char *frame) {
 	struct i686_CPUState *state = (struct i686_CPUState *)frame;
+	if (state->eip < I686_KERNEL_MAPPING_BASE) {
+		Proc_Exit(-1);
+	}
 	KernelLog_ErrorMsg("CPU Exception monitor", "Unhandled interrupt: \"%s\" (%u). EIP: %p, ESP: %p, EFLAGS: %p\n",
 					   *(const char **)ctx, (((uint32_t)ctx) - ((uint32_t)m_exceptionNames)) / 4, state->eip,
 					   state->esp, state->eflags);
