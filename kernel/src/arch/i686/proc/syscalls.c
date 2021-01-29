@@ -323,6 +323,7 @@ static void i686_Syscall_ExecveCleanupArgs(char *pathCopy, char **argsCopy, char
 }
 
 void i686_Syscall_Execve(struct i686_CPUState *state) {
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
 	uint32_t paramsStart = state->esp + 4;
 	uint32_t paramsEnd = state->esp + 16;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
@@ -490,7 +491,7 @@ void i686_Syscall_Execve(struct i686_CPUState *state) {
 		areaOffset += envLength + 1;
 	}
 
-	struct File *file = VFS_Open(pathCopy, VFS_O_RDONLY);
+	struct File *file = VFS_OpenAt(thisProcess->cwd, pathCopy, VFS_O_RDONLY);
 	i686_Syscall_ExecveCleanupArgs(pathCopy, argsKernelCopy, envpKernelCopy);
 	if (file == NULL) {
 		VirtualMM_SwitchToAddressSpace(space);

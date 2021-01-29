@@ -147,7 +147,7 @@ int main(int argc, char const *argv[], char const *envp[]) {
 		}
 		char filename_buf[4096];
 		const char *filename = argv[0];
-		if (*(argv[0]) != '/' || *(argv[0]) != '.') {
+		if (*(argv[0]) != '/' && *(argv[0]) != '.') {
 			// No support for $PATH parsing yet =(
 			snprintf(filename_buf, 4095, "/bin/%s", argv[0]);
 			filename = filename_buf;
