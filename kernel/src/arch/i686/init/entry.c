@@ -95,6 +95,8 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 	KernelLog_InitDoneMsg("i686 Terminal");
 	i686_Ring3_SyscallInit();
 	KernelLog_InitDoneMsg("i686 System Call Interface");
+	i686_ExceptionMonitor_Initialize();
+	KernelLog_InitDoneMsg("Exception monitor");
 	KernelLog_InfoMsg("i686 Kernel Init", "Starting Init Process...");
 	struct Proc_ProcessID initID = Proc_MakeNewProcess(Proc_GetProcessID());
 	struct Proc_Process *initData = Proc_GetProcessData(initID);
@@ -120,6 +122,8 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 }
 
 void i686_KernelInit_ExecuteInitProcess() {
+	struct Proc_ProcessID selfID = Proc_GetProcessID();
+	struct Proc_Process *selfData = Proc_GetProcessData(selfID);
 	KernelLog_InfoMsg("i686 Kernel Init", "Executing in a separate init process");
 	KernelLog_InfoMsg("Entry Process", "Enumerating PCI Bus...");
 	i686_PCI_Enumerate(i686_KernelInit_DisplayPCIDevice, NULL);
@@ -168,8 +172,11 @@ void i686_KernelInit_ExecuteInitProcess() {
 	if (node->base.start == 0) {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to map stack for init process");
 	}
-	KernelLog_InfoMsg("i686 Kernel Init", "Starting Exception Monitor");
-	i686_ExceptionMonitor_Initialize();
+	KernelLog_InfoMsg("i686 Kernel Init", "Creating current working directory object");
+	selfData->cwd = VFS_Open("/", VFS_O_RDONLY);
+	if (selfData->cwd == NULL) {
+		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to open root as current working directory");
+	}
 	// Stack layout for init process
 	// [ NULL ] // align
 	// [ NULL ] // align

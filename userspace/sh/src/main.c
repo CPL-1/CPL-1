@@ -15,6 +15,7 @@ void Shell_PrintHelp() {
 	printf("These commands are builtin\n");
 	printf("* \"help\" - output this message\n");
 	printf("* \"exit\" - exit shell\n");
+	printf("* \"cd\" - change current working directory\n");
 	printf("To start the program, type its full absolute path.\n");
 	printf("If the file is in /bin directory, just type its name.\n");
 	printf("Arguments are typed right after the command name.\n");
@@ -55,8 +56,14 @@ int main(int argc, char const *argv[], char const *envp[]) {
 	while (true) {
 		// Step 1. User input
 		char buf[4096];
+		char pwd[8192];
+		int result;
 	start:
-		puts("\033[92mroot\033[39m# \033[97m");
+		result = getcwd(pwd, 8192);
+		if (result < 0) {
+			Log_ErrorMsg("Shell", "Failed to get current working directory path");
+		}
+		printf("\033[92mroot\033[39m %s> \033[97m", pwd);
 		int inputSize = read(0, buf, 4095);
 		puts("\033[39m");
 		if (inputSize < 0) {
@@ -113,17 +120,35 @@ int main(int argc, char const *argv[], char const *envp[]) {
 			printf("These shell commands are defined internally\n");
 			printf("\"help\" - output this message\n");
 			printf("\"exit\" - exit shell\n");
+			printf("\"cd\" - change current working directory\n");
 			continue;
 		} else if (strcmp(argv[0], "exit") == 0) {
+			if (argc > 1) {
+				Log_WarnMsg("Shell", "exit: Too many arguments");
+			}
 			exit(0);
+		} else if (strcmp(argv[0], "cd") == 0) {
+			if (argc > 2) {
+				Log_WarnMsg("Shell", "cd: Too many arguments");
+			}
+			const char *path = argv[1];
+			if (path == NULL) {
+				path = "/";
+			}
+			int result = chdir(path);
+			if (result < 0) {
+				Log_WarnMsg("Shell", "Failed to switch current working directory to \"%s\"", path);
+			}
+			continue;
 		}
-		// Step 4. Parse name
+		// Step 4. Parse executable path
 		if (argv[0] == NULL || *(argv[0]) == '\0') {
 			continue;
 		}
 		char filename_buf[4096];
 		const char *filename = argv[0];
-		if (*(argv[0]) != '/') {
+		if (*(argv[0]) != '/' || *(argv[0]) != '.') {
+			// No support for $PATH parsing yet =(
 			snprintf(filename_buf, 4095, "/bin/%s", argv[0]);
 			filename = filename_buf;
 		}

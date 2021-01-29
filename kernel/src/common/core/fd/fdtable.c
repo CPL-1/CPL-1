@@ -230,3 +230,18 @@ struct FileTable *FileTable_Fork(struct FileTable *table) {
 	Mutex_Unlock(&(table->mutex));
 	return newTable;
 }
+
+struct File *FileTable_Grab(struct FileTable *table, int fd) {
+	if (table == NULL) {
+		table = FileTable_GetProcessFileTable();
+	}
+	Mutex_Lock(&(table->mutex));
+	if (!FileTable_CheckFd(table, fd)) {
+		Mutex_Unlock(&(table->mutex));
+		return NULL;
+	}
+	File_Ref(table->descriptors[fd]);
+	struct File *file = table->descriptors[fd];
+	Mutex_Unlock(&(table->mutex));
+	return file;
+}

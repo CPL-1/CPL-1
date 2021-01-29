@@ -30,6 +30,12 @@
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE -1
 
+struct rusage;
+struct dirent {
+	unsigned int d_ino;
+	char d_name[256];
+};
+
 int open(const char *path, int perm);
 int isatty(int fd);
 int read(int fd, char *buf, int size);
@@ -40,14 +46,10 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, long offset);
 int munmap(void *addr, size_t length);
 int fork();
 int execve(const char *fname, char const *argp[], char const *envp[]);
-
-struct rusage;
 int wait4(int pid, int *wstatus, int options, struct rusage *rusage);
-
-struct dirent {
-	unsigned int d_ino;
-	char d_name[256];
-};
 int getdents(int fd, struct dirent *entries, int count);
+int getcwd(char *buf, int length);
+int chdir(const char *path);
+int fchdir(int fd);
 
 #endif

@@ -1,7 +1,7 @@
 #ifndef __PROCLAYOUT_H_INCLUDED__
 #define __PROCLAYOUT_H_INCLUDED__
 
-#include <common/core/fd/fdtable.h>
+#include <common/core/fd/fd.h>
 #include <common/core/proc/proc.h>
 
 #define PROC_KERNEL_STACK_SIZE 65536
@@ -16,6 +16,7 @@ struct Proc_Process {
 	char *extendedState;
 	struct VirtualMM_AddressSpace *addressSpace;
 	struct FileTable *fdTable;
+	struct File *cwd;
 	uintptr_t kernelStack;
 	int returnCode;
 	enum { SLEEPING, RUNNING, WAITING_FOR_CHILD_TERM, ZOMBIE } state;

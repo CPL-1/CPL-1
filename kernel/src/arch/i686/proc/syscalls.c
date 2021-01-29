@@ -1,6 +1,7 @@
 #include <arch/i686/proc/elf32.h>
 #include <arch/i686/proc/ring3.h>
 #include <arch/i686/proc/syscalls.h>
+#include <common/core/fd/cwd.h>
 #include <common/core/fd/fdtable.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
@@ -38,6 +39,7 @@ void i686_Syscall_Exit(struct i686_CPUState *state) {
 }
 
 void i686_Syscall_Open(struct i686_CPUState *state) {
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
 	uint32_t paramsStart = state->esp + 4;
 	uint32_t paramsEnd = state->esp + 12;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
@@ -50,7 +52,10 @@ void i686_Syscall_Open(struct i686_CPUState *state) {
 	uint32_t pathAddr = (*(uint32_t *)paramsStart);
 	int perms = *(int *)(paramsStart + 4);
 	int pathLen = MemorySecurity_VerifyCString(pathAddr, MAX_PATH_LEN, MSECURITY_UR);
-	if (pathLen < -1) {
+	if (pathLen == -1) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
 	}
 	char *pathCopy = Heap_AllocateMemory(pathLen + 1);
 	if (pathCopy == NULL) {
@@ -61,7 +66,7 @@ void i686_Syscall_Open(struct i686_CPUState *state) {
 	memcpy(pathCopy, (void *)pathAddr, pathLen);
 	pathCopy[pathLen] = '\0';
 	Mutex_Unlock(&(space->mutex));
-	struct File *file = VFS_Open(pathCopy, perms);
+	struct File *file = VFS_OpenAt(thisProcess->cwd, pathCopy, perms);
 	if (file == NULL) {
 		Heap_FreeMemory(pathCopy, pathLen + 1);
 		state->eax = -1;
@@ -265,6 +270,7 @@ void i686_Syscall_MemoryMap(struct i686_CPUState *state) {
 }
 
 void i686_Syscall_Fork(struct i686_CPUState *state) {
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
 	struct Proc_ProcessID newProcess = Proc_MakeNewProcess(Proc_GetProcessID());
 	if (!Proc_IsValidProcessID(newProcess)) {
 		state->eax = -1;
@@ -277,6 +283,8 @@ void i686_Syscall_Fork(struct i686_CPUState *state) {
 		state->eax = -1;
 		return;
 	}
+	File_Ref(thisProcess->cwd);
+	newProcessData->cwd = thisProcess->cwd;
 	newProcessData->addressSpace = VirtualMM_CopyCurrentAddressSpace();
 	if (newProcessData->addressSpace == NULL) {
 		FileTable_Drop(newProcessData->fdTable);
@@ -619,6 +627,98 @@ void i686_Syscall_GetDirectoryEntries(struct i686_CPUState *state) {
 	if (result > 0) {
 		memcpy(entries, inKernelCopy, result * sizeof(struct DirectoryEntry));
 	}
+	Mutex_Unlock(&(space->mutex));
+	state->eax = result;
+}
+
+void i686_Syscall_Chdir(struct i686_CPUState *state) {
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 8;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	uintptr_t pathAddr = *(uintptr_t *)(paramsStart);
+	int pathLen = MemorySecurity_VerifyCString(pathAddr, MAX_PATH_LEN, MSECURITY_UR);
+	if (pathLen == -1) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	struct File *newWorkingDirectory = VFS_OpenAt(thisProcess->cwd, (char *)pathAddr, VFS_O_RDONLY);
+	if (newWorkingDirectory == NULL) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	if (newWorkingDirectory->dentry->cwd == NULL) {
+		File_Drop(newWorkingDirectory);
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	Mutex_Unlock(&(space->mutex));
+	File_Drop(thisProcess->cwd);
+	thisProcess->cwd = newWorkingDirectory;
+	state->eax = 0;
+	return;
+}
+
+void i686_Syscall_Fchdir(struct i686_CPUState *state) {
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 8;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	int fd = *(int *)(paramsStart);
+	Mutex_Unlock(&(space->mutex));
+	struct File *file = FileTable_Grab(NULL, fd);
+	if (file == NULL) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	if (file->dentry->cwd == NULL) {
+		File_Drop(file);
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	File_Drop(thisProcess->cwd);
+	thisProcess->cwd = file;
+	state->eax = 0;
+	return;
+}
+
+void i686_Syscall_GetCWD(struct i686_CPUState *state) {
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 12;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	uintptr_t bufferAddr = *(uintptr_t *)(paramsStart);
+	size_t size = *(size_t *)(paramsStart + 4);
+	if (!MemorySecurity_VerifyMemoryRangePermissions(bufferAddr, bufferAddr + size, MSECURITY_UW)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
+	struct File *cwd = thisProcess->cwd;
+	int result = CWD_GetWorkingDirectoryPath(cwd->dentry->cwd, (char *)bufferAddr, size);
 	Mutex_Unlock(&(space->mutex));
 	state->eax = result;
 }

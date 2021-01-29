@@ -1,11 +1,11 @@
 #ifndef __VFS_H_INCLUDED__
 #define __VFS_H_INCLUDED__
 
+#include <common/core/fd/cwd.h>
 #include <common/core/fd/fd.h>
 #include <common/core/proc/mutex.h>
 
-enum
-{
+enum {
 	VFS_DT_UNKNOWN = 0,
 	VFS_DT_FIFO = 1,
 	VFS_DT_CHR = 2,
@@ -17,13 +17,7 @@ enum
 	VFS_DT_WHT = 14,
 };
 
-enum
-{
-	VFS_O_RDONLY = 0,
-	VFS_O_WRONLY = 1,
-	VFS_O_RDWR = 2,
-	VFS_O_ACCMODE = 3
-};
+enum { VFS_O_RDONLY = 0, VFS_O_WRONLY = 1, VFS_O_RDWR = 2, VFS_O_ACCMODE = 3 };
 
 struct VFS_Dentry {
 	char name[VFS_MAX_NAME_LENGTH + 1];
@@ -32,6 +26,7 @@ struct VFS_Dentry {
 	struct VFS_Inode *inode;
 	struct Mutex mutex;
 	struct VFS_Dentry *parent, *head, *prev, *next;
+	struct CWD_Info *cwd;
 };
 
 struct VFS_InodeOperations {
@@ -94,6 +89,7 @@ bool VFS_UserUnmount(const char *path);
 void VFS_RegisterFilesystem(struct VFS_Superblock_type *type);
 
 struct File *VFS_Open(const char *path, int perm);
+struct File *VFS_OpenAt(struct File *file, const char *path, int perm);
 void VFS_FinalizeFile(struct File *fd);
 
 #endif

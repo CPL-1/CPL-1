@@ -1,3 +1,5 @@
+#include <common/core/fd/cwd.h>
+#include <common/core/fd/fdtable.h>
 #include <common/core/memory/heap.h>
 #include <common/core/memory/virt.h>
 #include <common/core/proc/proc.h>
@@ -100,6 +102,7 @@ struct Proc_ProcessID Proc_MakeNewProcess(struct Proc_ProcessID parent) {
 	process->state = SLEEPING;
 	process->addressSpace = NULL;
 	process->childCount = 0;
+	process->cwd = NULL;
 	struct Proc_Process *parentProcess = Proc_GetProcessData(parent);
 	if (parentProcess != NULL) {
 		parentProcess->childCount++;
@@ -346,6 +349,9 @@ bool Proc_PollDisposeQueue() {
 	}
 	if (process->fdTable != NULL) {
 		FileTable_Drop(process->fdTable);
+	}
+	if (process->cwd != NULL) {
+		File_Drop(process->cwd);
 	}
 	FREE_OBJ(process);
 	return true;

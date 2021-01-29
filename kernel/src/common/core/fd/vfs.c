@@ -1,3 +1,4 @@
+#include <common/core/fd/cwd.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/lib/kmsg.h>
@@ -168,6 +169,9 @@ bool VFS_DropDentry(struct VFS_Dentry *dentry) {
 	}
 	VFS_CutDentryFromChildList(dentry);
 	VFS_DropInode(dentry->inode->sb, dentry->inode);
+	if (dentry->cwd != NULL) {
+		CWD_DisposeInfo(dentry->cwd);
+	}
 	Mutex_Unlock(&(dentry->mutex));
 	FREE_OBJ(dentry);
 	return true;
@@ -202,6 +206,9 @@ struct VFS_Dentry *VFS_GetLoadedDentryChild(struct VFS_Dentry *dentry, const cha
 }
 
 struct VFS_Dentry *VFS_DentryLoadChild(struct VFS_Dentry *dentry, const char *name) {
+	if (dentry->cwd == NULL) {
+		return NULL;
+	}
 	size_t nameLength = strlen(name);
 	if (nameLength > 255) {
 		return NULL;
@@ -220,7 +227,25 @@ struct VFS_Dentry *VFS_DentryLoadChild(struct VFS_Dentry *dentry, const char *na
 	}
 	struct VFS_Dentry *newDentry = ALLOC_OBJ(struct VFS_Dentry);
 	if (dentry == NULL) {
+		VFS_DropInode(newInode->sb, newInode);
 		return NULL;
+	}
+	if (newInode->stat.stType == VFS_DT_DIR) {
+		struct CWD_Info *info = CWD_ForkCwdInfo(dentry->cwd);
+		if (info == NULL) {
+			VFS_DropInode(newInode->sb, newInode);
+			FREE_OBJ(newDentry);
+			return NULL;
+		}
+		if (!CWD_ChangeDirectory(info, name)) {
+			CWD_DisposeInfo(info);
+			VFS_DropInode(newInode->sb, newInode);
+			FREE_OBJ(newDentry);
+			return NULL;
+		}
+		newDentry->cwd = info;
+	} else {
+		newDentry->cwd = NULL;
 	}
 	newDentry->inode = newInode;
 	newDentry->hash = GetStringHash(name);
@@ -323,15 +348,12 @@ struct VFS_Dentry *VFS_Dentry_Walk(struct VFS_Dentry *dentry, struct PathSplitte
 	return current;
 }
 
-struct VFS_Dentry *VFS_Dentry_WalkFromRoot(const char *path) {
+struct VFS_Dentry *VFS_Dentry_WalkFromDentry(struct VFS_Dentry *dentry, const char *path) {
 	struct PathSplitter splitter;
 	if (!PathSplitter_Init(path, &splitter)) {
 		return NULL;
 	}
-	struct VFS_Dentry *fsRoot = m_root->root;
-	if (fsRoot == NULL) {
-		KernelLog_ErrorMsg("Virtual File System", "Filesystem root should never be NULL");
-	}
+	struct VFS_Dentry *fsRoot = dentry;
 	Mutex_Lock(&(fsRoot->mutex));
 	ATOMIC_INCREMENT(&(fsRoot->refCount));
 	fsRoot = VFS_TraceMounts(fsRoot);
@@ -344,7 +366,7 @@ struct VFS_Dentry *VFS_Dentry_WalkFromRoot(const char *path) {
 }
 
 bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) {
-	struct VFS_Dentry *dir = VFS_Dentry_WalkFromRoot(path);
+	struct VFS_Dentry *dir = VFS_Dentry_WalkFromDentry(m_root->root, path);
 	if (dir == NULL) {
 		VFS_Dentry_DropRecursively(dir);
 		return false;
@@ -382,9 +404,18 @@ bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) 
 		VFS_DropInode(inode->sb, inode);
 		return false;
 	}
+	dentry->inode = inode;
+	if (dentry->inode->stat.stType != VFS_DT_DIR) {
+		KernelLog_ErrorMsg("Virtual File System", "Root of the filesystem should be a directory");
+	}
+	if ((dentry->cwd = CWD_MakeRootCwdInfo()) == NULL) {
+		VFS_Dentry_DropRecursively(dir);
+		VFS_DropInode(inode->sb, inode);
+		FREE_OBJ(dentry);
+		return false;
+	}
 	dentry->parent = dentry->head = dentry->next = dentry->prev = NULL;
 	dentry->refCount = 1;
-	dentry->inode = inode;
 	Mutex_Initialize(&(dentry->mutex));
 	sb->root = dentry;
 	Mutex_Lock(&m_mutex);
@@ -439,7 +470,7 @@ bool VFS_UserMount(const char *path, const char *devpath, const char *fsTypeName
 }
 
 bool VFS_UserUnmount(const char *path) {
-	struct VFS_Dentry *fsRoot = VFS_Dentry_WalkFromRoot(path);
+	struct VFS_Dentry *fsRoot = VFS_Dentry_WalkFromDentry(m_root->root, path);
 	if (fsRoot == NULL) {
 		return false;
 	}
@@ -482,6 +513,11 @@ void VFS_Initialize(struct VFS_Superblock *sb) {
 	dentry->hash = 0;
 	dentry->inode = inode;
 	dentry->refCount = 1;
+	dentry->cwd = CWD_MakeRootCwdInfo();
+	if (dentry->cwd == NULL) {
+		KernelLog_ErrorMsg("Virtual File System",
+						   "Failed to allocate current working directory object for root dirent");
+	}
 	sb->root = dentry;
 	sb->mountLocation = NULL;
 	sb->nextMounted = sb->prevMounted;
@@ -502,24 +538,40 @@ void VFS_RegisterFilesystem(struct VFS_Superblock_type *type) {
 	Mutex_Unlock(&m_mutex);
 }
 
-struct File *VFS_Open(const char *path, int perm) {
-	struct VFS_Dentry *file = VFS_Dentry_WalkFromRoot(path);
+struct File *VFS_OpenAtDentry(struct VFS_Dentry *dentry, const char *path, int perm) {
+	struct VFS_Dentry *file = VFS_Dentry_WalkFromDentry(dentry, path);
 	if (file == NULL) {
-		return false;
+		return NULL;
 	}
 	if (file->inode->ops->open == NULL) {
 		VFS_Dentry_DropRecursively(file);
+		return NULL;
 	}
-	Mutex_Unlock(&(file->mutex));
 	struct File *fd = file->inode->ops->open(file->inode, perm);
 	if (fd == NULL) {
-		Mutex_Lock(&(file->mutex));
 		VFS_Dentry_DropRecursively(file);
+		return NULL;
 	}
-	fd->dentry = file;
 	Mutex_Initialize(&(fd->mutex));
 	fd->refCount = 1;
+	Mutex_Unlock(&(file->mutex));
+	fd->dentry = file;
 	return fd;
+}
+
+struct File *VFS_Open(const char *path, int perm) {
+	struct VFS_Dentry *root = m_root->root;
+	if (root == NULL) {
+		KernelLog_ErrorMsg("Virtual File System", "Root of file system should not be null at all times");
+	}
+	return VFS_OpenAtDentry(root, path, perm);
+}
+
+struct File *VFS_OpenAt(struct File *file, const char *path, int perm) {
+	if (path[0] == '/') {
+		return VFS_Open(path, perm);
+	}
+	return VFS_OpenAtDentry(file->dentry, path, perm);
 }
 
 void VFS_FinalizeFile(struct File *fd) {

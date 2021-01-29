@@ -5,12 +5,7 @@
 #include <common/core/proc/mutex.h>
 #include <common/core/proc/proc.h>
 
-enum
-{
-	SEEK_SET = 0,
-	SEEK_CUR = 1,
-	SEEK_END = 2
-};
+enum { SEEK_SET = 0, SEEK_CUR = 1, SEEK_END = 2 };
 
 struct File {
 	off_t offset;

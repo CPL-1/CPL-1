@@ -6,6 +6,7 @@
 struct FileTable *FileTable_MakeNewTable();
 struct FileTable *FileTable_GetProcessFileTable();
 int FileTable_AllocateFileSlot(struct FileTable *table, struct File *file);
+struct File *FileTable_Grab(struct FileTable *table, int fd);
 
 int FileTable_FileRead(struct FileTable *table, int fd, char *buf, int size);
 int FileTable_FileWrite(struct FileTable *table, int fd, const char *buf, int size);
