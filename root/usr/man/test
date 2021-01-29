@@ -1,0 +1,14 @@
+.SH DESCRIPTION
+.B foo
+is a text editor that I wrote. It is extremely simple to use,
+yet powerful enough to compete with other editors like
+.BR vi "(1) and " emacs "(1). Instead of making use of the CTRL and ESC keys, "
+.BR foo " makes use of the F1-F12 keys, thus making it simple."
+
+." next paragraph
+.PP
+Note however that
+.B foo "(1) is still in Beta testing mode, and may not work as expected. "
+If you have any problems with it, please feel free to email me and let me know.
+If you wish to join the development team, check out our website at
+.B http://foo.bar.org

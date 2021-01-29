@@ -156,3 +156,22 @@ int va_printf(const char *str, va_list args) {
 	__Printf_WriteString(buf, count);
 	return count;
 }
+
+int getchar() {
+	char buf[1];
+	int result = read(0, buf, 1);
+	if (result <= 0) {
+		return EOF;
+	}
+	return buf[0];
+}
+
+int putchar(int c) {
+	char buf[1];
+	buf[0] = (char)c;
+	int result = write(1, buf, 1);
+	if (result <= 0) {
+		return EOF;
+	}
+	return c;
+}

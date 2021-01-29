@@ -14,6 +14,7 @@ build: ../x86/limine/limine-install
 	cd ../../userspace/test/build/i686 && make build -j`nproc` && sudo cp test ../../../../build/i686/test
 	cd ../../userspace/echo/build/i686 && make build -j`nproc` && sudo cp echo ../../../../build/i686/echo
 	cd ../../userspace/pwd/build/i686 && make build -j`nproc` && sudo cp pwd ../../../../build/i686/pwd
+	cd ../../userspace/forth/build/i686 && make build -j`nproc` && sudo cp forth ../../../../build/i686/forth
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	dd if=/dev/zero bs=1M count=0 seek=64 of=CPL-1_i686.hdd
 	parted -s CPL-1_i686.hdd mklabel gpt
@@ -21,10 +22,17 @@ build: ../x86/limine/limine-install
 	sudo losetup -Pf --show CPL-1_i686.hdd > loopback_dev
 	sudo partprobe `cat loopback_dev`
 	sudo mkdosfs -F32 `cat loopback_dev`p1
-	mkdir mount
+	mkdir -p mount
 	sudo mount -tvfat `cat loopback_dev`p1 mount
-	sudo cp -R fsroot/* mount
 	sudo test -d mount/boot || sudo mkdir mount/boot
+	sudo cp -r ../../root/* mount
+	sudo mkdir -p mount/bin
+	sudo mkdir -p mount/etc
+	sudo mkdir -p mount/etc/src
+	sudo mkdir -p mount/sbin
+	sudo mkdir -p mount/dev
+	sudo mkdir -p mount/usr
+	sudo mkdir -p mount/home
 	sudo cp limine.cfg mount/boot/limine.cfg
 	sudo cp kernel.elf mount/boot/kernel.elf
 	sudo cp init mount/sbin/init
@@ -34,6 +42,7 @@ build: ../x86/limine/limine-install
 	sudo cp test mount/bin/test
 	sudo cp echo mount/bin/echo
 	sudo cp pwd mount/bin/pwd
+	sudo cp forth mount/bin/forth
 	sudo cp -r ../../kernel mount/etc/src/kernel
 	sudo cp -r ../../userlib mount/etc/src/userlib
 	sudo cp -r ../../userspace mount/etc/src/userspace
@@ -54,6 +63,7 @@ obj-clean:
 	cd ../../userspace/test/build/i686 && make clean
 	cd ../../userspace/echo/build/i686 && make clean
 	cd ../../userspace/pwd/build/i686 && make clean
+	cd ../../userspace/forth/build/i686 && make clean
 	cd ../../userlib/build/i686 && make clean
 	rm -rf kernel.elf
 	rm -rf init
@@ -63,6 +73,7 @@ obj-clean:
 	rm -rf test
 	rm -rf echo
 	rm -rf pwd
+	rm -rf forth
 
 clean: obj-clean
 	rm -rf CPL-1_i686.hdd
