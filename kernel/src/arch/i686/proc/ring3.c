@@ -23,6 +23,7 @@ void i686_Ring3_SyscallInit() {
 	i686_Ring3_SyscallTable[13] = (uint32_t)i686_Syscall_Fchdir;
 	i686_Ring3_SyscallTable[20] = (uint32_t)i686_Syscall_GetPID;
 	i686_Ring3_SyscallTable[39] = (uint32_t)i686_Syscall_GetPPID;
+	i686_Ring3_SyscallTable[53] = (uint32_t)i686_Syscall_Fstat;
 	i686_Ring3_SyscallTable[59] = (uint32_t)i686_Syscall_Execve;
 	i686_Ring3_SyscallTable[73] = (uint32_t)i686_Syscall_MemoryUnmap;
 	i686_Ring3_SyscallTable[99] = (uint32_t)i686_Syscall_GetDirectoryEntries;

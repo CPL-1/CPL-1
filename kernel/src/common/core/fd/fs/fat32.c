@@ -495,6 +495,10 @@ static ino_t FAT32_AddDirectoryInode(struct FAT32_Superblock *fat32Superblock, s
 		FREE_OBJ(inode);
 		return 0;
 	}
+	inode->stat.stBlkcnt = (entry->fileSize + fat32Superblock->clusterSize - 1) / fat32Superblock->clusterSize;
+	inode->stat.stBlksize = fat32Superblock->clusterSize;
+	inode->stat.stSize = entry->fileSize;
+	inode->stat.stType = VFS_DT_DIR;
 	return index;
 }
 
@@ -515,7 +519,7 @@ static ino_t FAT32_AddFileInode(struct FAT32_Superblock *fat32Superblock, struct
 	inodeContext->firstCluster = entry->firstCluster;
 	inodeContext->sb = fat32Superblock;
 	inode->ops = &m_fileInodeOperations;
-	inode->stat.stBlkcnt = entry->fileSize / fat32Superblock->clusterSize;
+	inode->stat.stBlkcnt = (entry->fileSize + fat32Superblock->clusterSize - 1) / fat32Superblock->clusterSize;
 	inode->stat.stBlksize = fat32Superblock->clusterSize;
 	inode->stat.stSize = entry->fileSize;
 	inode->stat.stType = VFS_DT_REG;

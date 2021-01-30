@@ -19,6 +19,7 @@ make_syscall chdir, 12
 make_syscall fchdir, 13
 make_syscall getpid, 20
 make_syscall getppid, 39
+make_syscall fstat, 53
 make_syscall execve, 59
 make_syscall munmap, 73
 make_syscall getdents, 99

@@ -17,12 +17,12 @@ void Pwd_PrintHelp() {
 }
 
 void Pwd_PrintLicense() {
-	char buf[16536];
+	char buf[40000];
 	int licenseFd = open("/etc/src/COPYING", O_RDONLY);
 	if (licenseFd < 0) {
 		Log_ErrorMsg("\"pwd\" Utility", "Failed to read license from \"/etc/src/COPYING\"");
 	}
-	int bytes = read(licenseFd, buf, 16535);
+	int bytes = read(licenseFd, buf, 40000);
 	if (bytes < 0) {
 		Log_ErrorMsg("\"pwd\" Utility", "Failed to read license from \"/etc/src/COPYING\"");
 	}

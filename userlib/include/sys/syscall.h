@@ -2,6 +2,7 @@
 #define __SYSCALLS_H_INCLUDED__
 
 #include <stddef.h>
+#include <stdint.h>
 
 #define STDIN 0
 #define STDOUT 1
@@ -53,5 +54,32 @@ int chdir(const char *path);
 int fchdir(int fd);
 int getpid();
 int getppid();
+
+typedef uint32_t ino_t;
+typedef int64_t off_t;
+typedef int64_t blksize_t;
+typedef int64_t blkcnt_t;
+typedef int mode_t;
+
+struct stat {
+	mode_t stType;
+	off_t stSize;
+	blksize_t stBlksize;
+	blkcnt_t stBlkcnt;
+};
+
+#define DT_UNKNOWN 0
+#define DT_FIFO 1
+#define DT_CHR 2
+#define DT_DIR 4
+#define DT_BLK 6
+#define DT_REG 8
+#define DT_LNK 9
+#define DT_SOCK 12
+#define DT_WHT 14
+
+enum { VFS_O_RDONLY = 0, VFS_O_WRONLY = 1, VFS_O_RDWR = 2, VFS_O_ACCMODE = 3 };
+
+int fstat(int fd, struct stat *buf);
 
 #endif

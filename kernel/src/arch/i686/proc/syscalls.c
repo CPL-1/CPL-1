@@ -733,3 +733,25 @@ void i686_Syscall_GetPPID(struct i686_CPUState *state) {
 	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
 	state->eax = thisProcess->ppid.id;
 }
+
+void i686_Syscall_Fstat(struct i686_CPUState *state) {
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 12;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	int fd = *(int *)(paramsStart);
+	uintptr_t statAddr = *(uintptr_t *)(paramsStart + 4);
+	if (!MemorySecurity_VerifyMemoryRangePermissions(statAddr, statAddr + sizeof(struct VFS_Stat), MSECURITY_UW)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	struct VFS_Stat *stat = (struct VFS_Stat *)statAddr;
+	state->eax = FileTable_FileStat(NULL, fd, stat);
+	Mutex_Unlock(&(space->mutex));
+}

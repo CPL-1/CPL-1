@@ -19,5 +19,6 @@ void i686_Syscall_Fchdir(struct i686_CPUState *state);
 void i686_Syscall_GetCWD(struct i686_CPUState *state);
 void i686_Syscall_GetPID(struct i686_CPUState *state);
 void i686_Syscall_GetPPID(struct i686_CPUState *state);
+void i686_Syscall_Fstat(struct i686_CPUState *state);
 
 #endif

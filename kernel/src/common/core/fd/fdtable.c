@@ -1,4 +1,5 @@
 #include <common/core/fd/fdtable.h>
+#include <common/core/fd/vfs.h>
 #include <common/core/proc/proc.h>
 #include <common/core/proc/proclayout.h>
 #include <common/lib/dynarray.h>
@@ -244,4 +245,18 @@ struct File *FileTable_Grab(struct FileTable *table, int fd) {
 	struct File *file = table->descriptors[fd];
 	Mutex_Unlock(&(table->mutex));
 	return file;
+}
+
+int FileTable_FileStat(struct FileTable *table, int fd, struct VFS_Stat *stat) {
+	if (table == NULL) {
+		table = FileTable_GetProcessFileTable();
+	}
+	Mutex_Lock(&(table->mutex));
+	if (!FileTable_CheckFd(table, fd)) {
+		Mutex_Unlock(&(table->mutex));
+		return -1;
+	}
+	memcpy(stat, &(table->descriptors[fd]->dentry->inode->stat), sizeof(struct VFS_Stat));
+	Mutex_Unlock(&(table->mutex));
+	return 0;
 }
