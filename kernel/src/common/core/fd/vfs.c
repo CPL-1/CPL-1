@@ -178,9 +178,14 @@ bool VFS_DropDentry(struct VFS_Dentry *dentry) {
 }
 
 struct VFS_Dentry *VFS_WalkToDentryParent(struct VFS_Dentry *dentry) {
+	// if node is a root or was mounted on root, just return this node back
+	if (dentry->traceableFromRoot) {
+		return dentry;
+	}
 	struct VFS_Dentry *backtraced = VFS_BacktraceMounts(dentry);
 	if (backtraced->parent == NULL) {
-		return dentry;
+		KernelLog_ErrorMsg("Virtual File System",
+						   "Parent should not be NULL if node is not traceable by mounts from root");
 	}
 	struct VFS_Dentry *parent = backtraced->parent;
 	ATOMIC_INCREMENT(&(parent->refCount));
@@ -226,6 +231,7 @@ struct VFS_Dentry *VFS_DentryLoadChild(struct VFS_Dentry *dentry, const char *na
 		return NULL;
 	}
 	struct VFS_Dentry *newDentry = ALLOC_OBJ(struct VFS_Dentry);
+	newDentry->traceableFromRoot = false;
 	if (dentry == NULL) {
 		VFS_DropInode(newInode->sb, newInode);
 		return NULL;
@@ -399,6 +405,7 @@ bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) 
 	}
 	struct VFS_Dentry *dentry = ALLOC_OBJ(struct VFS_Dentry);
 	dentry->hash = 0;
+	dentry->traceableFromRoot = dir->traceableFromRoot;
 	if (dentry == NULL) {
 		VFS_Dentry_DropRecursively(dir);
 		VFS_DropInode(inode->sb, inode);
@@ -408,7 +415,7 @@ bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) 
 	if (dentry->inode->stat.stType != VFS_DT_DIR) {
 		KernelLog_ErrorMsg("Virtual File System", "Root of the filesystem should be a directory");
 	}
-	if ((dentry->cwd = CWD_MakeRootCwdInfo()) == NULL) {
+	if ((dentry->cwd = CWD_ForkCwdInfo(dir->cwd)) == NULL) {
 		VFS_Dentry_DropRecursively(dir);
 		VFS_DropInode(inode->sb, inode);
 		FREE_OBJ(dentry);
@@ -513,6 +520,7 @@ void VFS_Initialize(struct VFS_Superblock *sb) {
 	dentry->hash = 0;
 	dentry->inode = inode;
 	dentry->refCount = 1;
+	dentry->traceableFromRoot = true;
 	dentry->cwd = CWD_MakeRootCwdInfo();
 	if (dentry->cwd == NULL) {
 		KernelLog_ErrorMsg("Virtual File System",

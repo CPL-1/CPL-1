@@ -27,6 +27,7 @@ struct VFS_Dentry {
 	struct Mutex mutex;
 	struct VFS_Dentry *parent, *head, *prev, *next;
 	struct CWD_Info *cwd;
+	bool traceableFromRoot;
 };
 
 struct VFS_InodeOperations {
