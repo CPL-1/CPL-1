@@ -51,5 +51,7 @@ int getdents(int fd, struct dirent *entries, int count);
 int getcwd(char *buf, int length);
 int chdir(const char *path);
 int fchdir(int fd);
+int getpid();
+int getppid();
 
 #endif

@@ -723,3 +723,13 @@ void i686_Syscall_GetCWD(struct i686_CPUState *state) {
 	Mutex_Unlock(&(space->mutex));
 	state->eax = result;
 }
+
+void i686_Syscall_GetPID(struct i686_CPUState *state) {
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
+	state->eax = thisProcess->pid.id;
+}
+
+void i686_Syscall_GetPPID(struct i686_CPUState *state) {
+	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
+	state->eax = thisProcess->ppid.id;
+}
