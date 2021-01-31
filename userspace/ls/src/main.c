@@ -30,8 +30,9 @@ void Ls_PrintLicense() {
 }
 
 void Ls_ListDirectory(const char *dir) {
+	int oldfd = open(".", O_RDONLY);
 	int fd = open(dir, O_RDONLY);
-	if (fd < 0) {
+	if (oldfd < 0 || fd < 0 || fchdir(fd) < 0) {
 		Log_ErrorMsg("\"ls\" Utility", "Failed to open directory \"%s\"", dir);
 	}
 	struct dirent buf;
@@ -50,10 +51,32 @@ void Ls_ListDirectory(const char *dir) {
 		if (strcmp(buf.d_name, "..") == 0 || strcmp(buf.d_name, ".") == 0) {
 			continue;
 		}
-		printf("%s ", buf.d_name);
+		int fileFd = open(buf.d_name, O_RDONLY);
+		if (fileFd < 0) {
+			printf("%s ", buf.d_name);
+			continue;
+		}
+		struct stat stat;
+		if (fstat(fileFd, &stat) < 0) {
+			close(fileFd);
+			printf("%s ", buf.d_name);
+			continue;
+		}
+		close(fileFd);
+		if (stat.stType == DT_DIR) {
+			printf("\033[93m%s\033[39m ", buf.d_name);
+		} else if (stat.stType == DT_CHR) {
+			printf("\033[93m%s\033[39m", buf.d_name);
+		} else {
+			printf("%s ", buf.d_name);
+		}
 		first = false;
 	}
 	close(fd);
+	if (fchdir(oldfd) < 0) {
+		Log_ErrorMsg("\"ls\" Utility", "Error occured while enumerating the directory \"%s\"", dir);
+	}
+	close(oldfd);
 }
 
 int main(int argc, char const *argv[]) {
