@@ -83,6 +83,15 @@ To do ```make``` and ```make debug``` in a single command, run
 make testdebug
 ```
 
+### Contributing
+
+While the code is a bit messy in places, PRs are more than welcome!
+A few things to note:
+* Format your code with clang-format using `.clang-format` config in the repo. If you are using vscode, you can just install vscode extensions
+* When comitting, use the following format for commit names: `subsystem: Description`.
+* Join discord if you have any questions with regards to how to contribute etc
+ 
+
 ### Licensing
 
 CPL-1 was relicensed to GPLv3.
