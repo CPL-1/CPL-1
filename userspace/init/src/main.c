@@ -41,6 +41,12 @@ int main() {
 		}
 	}
 	logo();
+	printf("Welcome to CPL-1 operating system!\n\n");
+	printf("Type \"sh --help\" to see what builtins are available.\n");
+	printf("Type \"ls /bin\" to see what applications are installed.\n");
+	printf("All code for kernel, C library and userspace is included in \"/etc/src\" folder. Feel free to check it "
+		   "out!\n");
+	printf("CPL-1 uses GPLv3 license. Its full text is in \"/etc/src/COPYING\" file.\n\n");
 	Log_InfoMsg("Init Process", "Up and running. Starting shell");
 	while (true) {
 		int pid = fork();
