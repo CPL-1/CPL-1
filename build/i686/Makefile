@@ -54,6 +54,8 @@ build: ../x86/limine/limine-install
 	rm -rf mount
 	rm -rf loopback_dev
 	../x86/limine/limine-install ../x86/limine/limine.bin CPL-1_i686.hdd
+
+compress:
 	7z a CPL-1_i686.7z CPL-1_i686.hdd
 
 obj-clean:
