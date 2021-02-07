@@ -3,11 +3,9 @@
 #include <string.h>
 
 size_t strlen(const char *s) {
-	size_t result = 0;
-	while (s[result] != '\0') {
-		result++;
-	}
-	return result;
+	const char* start = s;
+	while (*s++);
+	return s - start;
 }
 
 void *memcpy(void *dest, const void *src, size_t n) {
@@ -99,7 +97,7 @@ char *stpcpy(char *dest, const char *src) {
 }
 
 char *strdup(const char *s) {
-	int len = strlen(s);
+	size_t len = strlen(s);
 	char *copy = malloc(len + 1);
 	if (copy == NULL) {
 		return NULL;
@@ -109,7 +107,7 @@ char *strdup(const char *s) {
 }
 
 char *strchr(const char *s, int c) {
-	int len = strlen(s);
+	size_t len = strlen(s);
 	for (int i = 0; i < len; ++i) {
 		if (s[i] == c) {
 			return (char *)(s + i);
@@ -119,9 +117,9 @@ char *strchr(const char *s, int c) {
 }
 
 char *strrchr(const char *s, int c) {
-	int len = strlen(s);
-	for (int i = len; i > 0; --i) {
-		int j = i - 1;
+	size_t len = strlen(s);
+	for (size_t i = len; i > 0; --i) {
+		size_t j = i - 1;
 		if (s[j] == c) {
 			return (char *)(s + j);
 		}
