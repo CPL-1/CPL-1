@@ -1,26 +1,27 @@
-c_src := $(shell find ../../src -type f -name '*.c')
-c_obj := $(c_src:.c=.o)
+C_SOURCES := $(shell find ../../src/ -type f -name '*.c')
+C_RELEASE_OBJS := $(C_SOURCES:.c=.c.release.o)
+C_DEBUG_OBJS := $(C_SOURCES:.c=.c.debug.o)
 CC := i686-elf-gcc
-AS := nasm
 LD := i686-elf-gcc
 CFLAGS := -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx  -I../../../../userlib/include -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -ffreestanding -fstrict-volatile-bitfields -g
-ASFLAGS := -f elf
 LDFLAGS := -ffreestanding -static -nostdlib -no-pie
 
-all: build clean
+%.c.debug.o: %.c
+	$(CC) $(CFLAGS) $(CFLAGS_DEBUG) $< -o $@
 
-%.o: %.c
-	$(CC) $(CFLAGS) $< -o $@
+%.c.release.o: %.c
+	$(CC) $(CFLAGS) $(CFLAGS_RELEASE) $< -o $@
 
-%.o: %.s
-	$(AS) $(ASFLAGS) $< -o $@
+debug: $(C_DEBUG_OBJS)
+	$(LD) $(LDFLAGS) $^ $(USERLIB) -o forth-debug -lgcc
 
-build: $(c_obj) $(asm_obj)
-	$(LD) $(LDFLAGS) $^ ../../../../userlib/build/i686/libcpl1.a -o forth -lgcc
+release: $(C_RELEASE_OBJS)
+	$(LD) $(LDFLAGS) $^ $(USERLIB) -o forth-release -lgcc
 
-.PHONY: clean run debug
 clean:
-	rm -f $(c_obj)
-	rm -f $(asm_obj)
-	rm -f forth
+	rm -f $(C_DEBUG_OBJS)
+	rm -f $(C_RELEASE_OBJS)
+	rm -f forth-debug
+	rm -f forth-release
 
+.PHONY: clean debug release

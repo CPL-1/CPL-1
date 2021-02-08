@@ -3,8 +3,10 @@
 #include <string.h>
 
 size_t strlen(const char *s) {
-	const char* start = s;
-	while (*s++);
+	const char *start = s;
+	while (*s) {
+		s++;
+	}
 	return s - start;
 }
 
@@ -108,7 +110,7 @@ char *strdup(const char *s) {
 
 char *strchr(const char *s, int c) {
 	size_t len = strlen(s);
-	for (int i = 0; i < len; ++i) {
+	for (size_t i = 0; i < len; ++i) {
 		if (s[i] == c) {
 			return (char *)(s + i);
 		}

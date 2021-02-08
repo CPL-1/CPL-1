@@ -103,6 +103,7 @@ struct FAT32_Superblock {
 	size_t fatLength;
 	uint64_t fatOffset;
 	uint64_t clustersOffset;
+	uint64_t lastAllocatedCluster;
 };
 
 struct FAT32_Inode {
@@ -222,9 +223,9 @@ static int64_t FAT32_SkipInStream(struct FAT32_Superblock *fat32Superblock, stru
 	return result;
 }
 
-static char FAT32_ConvertToUppercase(char c) {
-	if (c >= 'a' && c <= 'z') {
-		c = c - 'a' + 'A';
+static char FAT32_ConvertToLowercase(char c) {
+	if (c >= 'A' && c <= 'Z') {
+		c = c - 'A' + 'a';
 	}
 	return c;
 }
@@ -239,7 +240,7 @@ static void FAT32_ConvertShortFilename(struct FAT32_ShortDirectoryEntry *entry, 
 			buf[size] = '\0';
 			goto ext;
 		}
-		buf[size] = FAT32_ConvertToUppercase(entry->name[i]);
+		buf[size] = FAT32_ConvertToLowercase(entry->name[i]);
 		size++;
 	}
 ext:
@@ -254,7 +255,7 @@ ext:
 			buf[size] = '\0';
 			return;
 		}
-		buf[size] = FAT32_ConvertToUppercase(entry->ext[i]);
+		buf[size] = FAT32_ConvertToLowercase(entry->ext[i]);
 		size++;
 	}
 	buf[size] = '\0';

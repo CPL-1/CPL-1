@@ -29,11 +29,11 @@ void Malloc_Test() {
 			if (pointers[index] == NULL) {
 				Log_ErrorMsg("Malloc Test Suite", "Out of Memory");
 			}
-			for (int i = 0; i < size; ++i) {
+			for (size_t i = 0; i < size; ++i) {
 				pointers[index][i] = index;
 			}
 		} else {
-			for (int i = 0; i < sizes[index]; ++i) {
+			for (size_t i = 0; i < sizes[index]; ++i) {
 				if (pointers[index][i] != index) {
 					Log_ErrorMsg("Malloc Test Suite", "Memory corruption");
 				}
@@ -53,4 +53,5 @@ void Malloc_Test() {
 
 int main() {
 	Malloc_Test();
+	return 0;
 }

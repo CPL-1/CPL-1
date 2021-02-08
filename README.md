@@ -35,52 +35,25 @@ Currently there is only support for i686 CPUS with PIC 8259 interrupt controller
 
 ### What I need to build CPL-1?
 
-To build CPL-1 kernel for i686 target, you need to build GCC cross-compiler for ```i686-elf``` target (don't forget to add to PATH) and install NASM. Additionally, GNU Make, parted, mkdosfs, partprobe should be present and loopback devices should be enabled in the kernel.
+To build CPL-1 kernel for i686 target, you need to build GCC cross-compiler for ```i686-elf``` target (don't forget to add to PATH) and install NASM. Additionally, util-linux and mtools are needed to create FAT32 partition.
 
 ### How I build CPL-1?
 
-#### Cloning limine
-
-CPL-1 uses limine bootloader ("https://github.com/limine-bootloader/limine"). It should be cloned together with this repo if you use --recursive option
-
-#### Building system for i686
-
-Go to ```./build/i686/```
-
-To build system, run
+Step 1. Configure the system. To generate the default config, run
 ```bash
-make
+python3 build-manager.py configure
 ```
-
-To build system without cleaning up, run
-```
-make build
-```
-
-To run system, run
+Step 2. Build system
 ```bash
-make run
+python3 build-manager.py build
 ```
-
-To debug system, run
+Step 3. Run system
 ```bash
-make debug
+python3 build-manager.py run
 ```
-(Do not forget to run ```make build``` beforehand, as debugging requires binaries that are by default deleted with ```make```)
-
-To cleanup object files (if you are not using source watcher for some reason), run
+Step 4. Clean up
 ```bash
-make clean
-```
-
-To do ```make``` and ```make run``` in a single command, run
-```bash
-make testrun
-```
-
-To do ```make``` and ```make debug``` in a single command, run
-```bash
-make testdebug
+python3 build-manager.py clean
 ```
 
 ### Contributing

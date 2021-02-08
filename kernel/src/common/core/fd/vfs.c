@@ -374,7 +374,6 @@ struct VFS_Dentry *VFS_Dentry_WalkFromDentry(struct VFS_Dentry *dentry, const ch
 bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) {
 	struct VFS_Dentry *dir = VFS_Dentry_WalkFromDentry(m_root->root, path);
 	if (dir == NULL) {
-		VFS_Dentry_DropRecursively(dir);
 		return false;
 	}
 	if (dir->inode->stat.stType != VFS_DT_DIR) {
@@ -467,7 +466,7 @@ bool VFS_UserMount(const char *path, const char *devpath, const char *fsTypeName
 		return false;
 	}
 	if (!VFS_Dentry_MountInitializedFS(path, sb)) {
-		if (!(fsType->umount != NULL)) {
+		if (fsType->umount != NULL) {
 			fsType->umount(sb);
 		}
 		FREE_OBJ(sb);

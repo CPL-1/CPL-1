@@ -1,3 +1,6 @@
-[submodule "build/x86/limine"]
-	path = build/x86/limine
+[submodule "thirdparty/limine"]
+	path = thirdparty/limine
 	url = https://github.com/limine-bootloader/limine
+[submodule "thirdparty/dir2fat32"]
+	path = thirdparty/dir2fat32
+	url = https://github.com/CPL-1/dir2fat32
