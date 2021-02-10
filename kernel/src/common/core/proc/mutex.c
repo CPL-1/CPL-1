@@ -24,7 +24,7 @@ void Mutex_Lock(struct Mutex *mutex) {
 		return;
 	}
 	if (mutex->queueHead == NULL) {
-	Proc_SuspendSelf(true);
+		Proc_SuspendSelf(true);
 		mutex->queueHead = mutex->queueTail = process;
 	} else {
 		mutex->queueTail->nextInQueue = process;

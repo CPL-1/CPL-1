@@ -3,8 +3,7 @@
 
 #include <common/misc/utils.h>
 
-enum
-{
+enum {
 	HAL_VIRT_FLAGS_WRITABLE = 1,
 	HAL_VIRT_FLAGS_READABLE = 2,
 	HAL_VIRT_FLAGS_EXECUTABLE = 4,

@@ -3,8 +3,7 @@
 
 #include <common/misc/utils.h>
 
-enum
-{
+enum {
 	I686_PCI_COMMAND = 0x04,
 	I686_PCI_HEADER_TYPE = 0x0e,
 	I686_PCI_VENDOR_ID = 0x00,

@@ -1,8 +1,8 @@
-#include <common/core/fd/fs/devfs.h>
-#include <common/core/memory/heap.h>
 #include <common/core/devices/storage/mbr.h>
 #include <common/core/devices/storage/partdev.h>
 #include <common/core/devices/storage/storage.h>
+#include <common/core/fd/fs/devfs.h>
+#include <common/core/memory/heap.h>
 #include <common/lib/kmsg.h>
 
 // should be enough for everybody
@@ -27,7 +27,7 @@ struct GPT_Header {
 	uint64_t alternativeHeaderLBA;
 	uint64_t firstUsableBlock;
 	uint64_t lastUsableBlock;
-    char GUID[16];
+	char GUID[16];
 	uint64_t partitionTableLBA;
 	uint32_t partitionEntriesCount;
 	uint32_t partitionTableEntrySize;
@@ -45,7 +45,7 @@ struct GPT_PartitionEntry {
 
 bool GPT_IsEntryInUse(struct GPT_PartitionEntry *entry) {
 	for (size_t i = 0; i < 16; ++i) {
-        if (entry->typeGUID[i] != '\0') {
+		if (entry->typeGUID[i] != '\0') {
 			return true;
 		}
 	}
@@ -54,13 +54,14 @@ bool GPT_IsEntryInUse(struct GPT_PartitionEntry *entry) {
 
 bool GPT_EnumeratePartitions(struct Storage_Device *dev) {
 	struct GPT_Header header;
-    if (!Storage_ReadWrite(dev, 512, sizeof(struct GPT_Header), (char *)&header, false)) {
+	if (!Storage_ReadWrite(dev, 512, sizeof(struct GPT_Header), (char *)&header, false)) {
 		return false;
 	}
-    if (header.partitionTableEntrySize != sizeof(struct GPT_PartitionEntry)) {
+	if (header.partitionTableEntrySize != sizeof(struct GPT_PartitionEntry)) {
 		return false;
 	}
-	KernelLog_InfoMsg("GPT Partition Table Parser", "Number of detected partitions: %u", (uint32_t)(header.partitionEntriesCount));
+	KernelLog_InfoMsg("GPT Partition Table Parser", "Number of detected partitions: %u",
+					  (uint32_t)(header.partitionEntriesCount));
 	if (header.partitionEntriesCount > GPT_MAX_PARTITIONS_COUNT) {
 		KernelLog_WarnMsg("GPT Partition Table Parser",
 						  "Parser detected that GPT has more than 256 partitions entries. Unfortunately, GPT parser "
@@ -69,7 +70,8 @@ bool GPT_EnumeratePartitions(struct Storage_Device *dev) {
 	}
 	struct VFS_Inode *partdevs[GPT_MAX_PARTITIONS_COUNT];
 	struct GPT_PartitionEntry entries[GPT_MAX_PARTITIONS_COUNT];
-    if (!Storage_ReadWrite(dev, header.partitionTableLBA * dev->sectorSize, sizeof(struct GPT_PartitionEntry) * header.partitionEntriesCount, (char *)entries, false)) {
+	if (!Storage_ReadWrite(dev, header.partitionTableLBA * dev->sectorSize,
+						   sizeof(struct GPT_PartitionEntry) * header.partitionEntriesCount, (char *)entries, false)) {
 		return false;
 	}
 	for (size_t i = 0; i < header.partitionEntriesCount; ++i) {
@@ -77,7 +79,7 @@ bool GPT_EnumeratePartitions(struct Storage_Device *dev) {
 		if (!GPT_IsEntryInUse(entries + i)) {
 			continue;
 		}
-        if (entries[i].endingLBA < entries[i].startingLBA) {
+		if (entries[i].endingLBA < entries[i].startingLBA) {
 			KernelLog_WarnMsg("GPT Partition Table Parser", "Ending LBA is somehow greater than starting LBA");
 			continue;
 		}
@@ -96,13 +98,13 @@ bool GPT_EnumeratePartitions(struct Storage_Device *dev) {
 		}
 	}
 	for (size_t i = 0; i < 4; ++i) {
-        if (partdevs[i] == NULL) {
+		if (partdevs[i] == NULL) {
 			continue;
 		}
-        char buf[256];
+		char buf[256];
 		memset(buf, 0, 256);
 		Storage_MakePartitionName(dev, buf, i);
-        if (!DevFS_RegisterInode(buf, partdevs[i])) {
+		if (!DevFS_RegisterInode(buf, partdevs[i])) {
 			FREE_OBJ(partdevs[i]);
 		}
 	}

@@ -1,8 +1,8 @@
+#include <common/core/devices/storage/storage.h>
 #include <common/core/fd/fs/devfs.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
 #include <common/core/proc/mutex.h>
-#include <common/core/devices/storage/storage.h>
 #include <common/drivers/storage/nvme.h>
 #include <common/lib/kmsg.h>
 #include <common/lib/math.h>
@@ -77,8 +77,7 @@ struct NVME_ACQRegister {
 	uint64_t page : 52;
 } PACKED_ALIGN(8) LITTLE_ENDIAN;
 
-enum NVME_AdminOpcode
-{
+enum NVME_AdminOpcode {
 	NVME_CREATE_SUBMISSION_QUEUE = 0x01,
 	NVME_CREATE_COMPLETITION_QUEUE = 0x05,
 	NVME_IDENTIFY = 0x06,
@@ -86,11 +85,7 @@ enum NVME_AdminOpcode
 	NVME_GET_FEATURES = 0x0a
 };
 
-enum NVME_IOOpcode
-{
-	NVME_CMD_WRITE = 0x01,
-	NVME_CMD_READ = 0x02
-};
+enum NVME_IOOpcode { NVME_CMD_WRITE = 0x01, NVME_CMD_READ = 0x02 };
 
 union NVME_SQEntry {
 	struct {

@@ -3,8 +3,7 @@
 
 #include <common/misc/utils.h>
 
-enum i686_stivale_mmap_entry_type
-{
+enum i686_stivale_mmap_entry_type {
 	AVAILABLE = 1,
 	RESERVED = 2,
 	ACPI_RECLAIMABLE = 3,

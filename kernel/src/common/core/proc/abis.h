@@ -45,5 +45,4 @@
 #define SIGUSR2 31
 #define SIGTHR 32
 
-
 #endif

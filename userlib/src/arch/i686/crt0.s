@@ -13,4 +13,3 @@ _start:
 	mov eax, 1
 	sub esp, 12
 	int 0x80
-	

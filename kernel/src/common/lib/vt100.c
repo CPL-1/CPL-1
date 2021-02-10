@@ -2,8 +2,7 @@
 #include <common/misc/utils.h>
 #include <hal/drivers/tty.h>
 
-static enum
-{
+static enum {
 	VT100_Raw,
 	VT100_EscapeEncountered,
 	VT100_LeftParenEncountered,

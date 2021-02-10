@@ -291,8 +291,7 @@ struct VirtualMM_MemoryRegionNode *VirtualMM_ReserveRegion(struct VirtualMM_Regi
 	return region;
 }
 
-enum
-{
+enum {
 	VIRTUALMM_FREE_REGION_SUCCESS,
 	VIRTUALMM_FREE_REGION_ERROR,
 	VIRTUALMM_FREE_ALLOCATION_FAILURE

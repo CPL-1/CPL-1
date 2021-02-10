@@ -13,14 +13,12 @@ struct Storage_Device {
 	bool (*rw_lba)(void *ctx, char *buf, uint64_t lba, size_t count, bool write);
 	struct Mutex mutex;
 	char name[256];
-	enum
-	{
+	enum {
 		STORAGE_NUMERIC_PART_NAMING,
 		STORAGE_P_NUMERIC_PART_NAMING,
 		STORAGE_NO_PART_ENUMERATION,
 	} partitioningScheme;
-	enum
-	{
+	enum {
 		STORAGE_NOT_OPENED,
 		STORAGE_OPENED_PARTITION,
 		STORAGE_OPENED,
