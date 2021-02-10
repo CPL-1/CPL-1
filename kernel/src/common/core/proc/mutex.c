@@ -24,12 +24,12 @@ void Mutex_Lock(struct Mutex *mutex) {
 		return;
 	}
 	if (mutex->queueHead == NULL) {
+	Proc_SuspendSelf(true);
 		mutex->queueHead = mutex->queueTail = process;
 	} else {
 		mutex->queueTail->nextInQueue = process;
 	}
 	process->nextInQueue = NULL;
-	Proc_SuspendSelf(true);
 }
 
 void Mutex_Unlock(struct Mutex *mutex) {

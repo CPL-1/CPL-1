@@ -171,6 +171,8 @@ void Proc_Suspend(struct Proc_ProcessID id, bool overrideState) {
 	Proc_CutFromActiveList(process);
 	if (process == m_CurrentProcess) {
 		Proc_Yield();
+		// back on track
+		HAL_InterruptLevel_Recover(level);
 	} else {
 		HAL_InterruptLevel_Recover(level);
 	}
@@ -290,7 +292,6 @@ void Proc_PreemptCallback(MAYBE_UNUSED void *ctx, char *state) {
 	memcpy(state, m_CurrentProcess->processState, HAL_ProcessStateSize);
 	VirtualMM_PreemptToAddressSpace(m_CurrentProcess->addressSpace);
 	HAL_ISRStacks_SetSyscallsStack(m_CurrentProcess->kernelStack + PROC_KERNEL_STACK_SIZE);
-	HAL_State_EnableInterrupts(state);
 }
 
 void Proc_Initialize() {

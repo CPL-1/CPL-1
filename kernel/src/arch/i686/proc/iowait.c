@@ -75,8 +75,9 @@ struct i686_IOWait_ListEntry *i686_IOWait_AddHandler(uint8_t irq, i686_IOWait_Ha
 }
 
 void i686_IOWait_WaitForIRQ(struct i686_IOWait_ListEntry *entry) {
-	HAL_InterruptLevel_Elevate();
+	int state = HAL_InterruptLevel_Elevate();
 	struct Proc_ProcessID id = Proc_GetProcessID();
 	entry->id = id;
 	Proc_Suspend(id, true);
+	HAL_InterruptLevel_Recover(state);
 }

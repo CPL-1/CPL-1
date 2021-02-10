@@ -5,8 +5,4 @@
 
 extern size_t HAL_ProcessStateSize;
 
-void HAL_State_EnableInterrupts(void *state);
-void HAL_State_DisableInterrupts(void *state);
-void HAL_State_UpdateIP(void *state, uintptr_t ip);
-
 #endif
