@@ -40,7 +40,6 @@
 #include <hal/proc/isrhandler.h>
 
 #define INIT_PROCESS_STACK_SIZE 0x100000
-
 void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_PCI_ID id, MAYBE_UNUSED void *context) {
 	KernelLog_Print("PCI device found at bus: %d, slot: %d, function: %d, "
 					"vendor_id: %d, device_id: %d",
@@ -48,6 +47,7 @@ void i686_KernelInit_DisplayPCIDevice(struct i686_PCI_Address addr, struct i686_
 }
 
 void i686_KernelInit_URMThreadFunction() {
+	ASM VOLATILE("sti");
 	while (true) {
 		while (Proc_PollDisposeQueue()) {
 		}
@@ -122,6 +122,7 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 }
 
 void i686_KernelInit_ExecuteInitProcess() {
+	int level = HAL_InterruptLevel_Elevate();
 	struct Proc_ProcessID selfID = Proc_GetProcessID();
 	struct Proc_Process *selfData = Proc_GetProcessData(selfID);
 	KernelLog_InfoMsg("i686 Kernel Init", "Executing in a separate init process");
@@ -136,7 +137,7 @@ void i686_KernelInit_ExecuteInitProcess() {
 		KernelLog_ErrorMsg("i686 Kernel Init", "Failed to mount Device Filesystem on /dev/");
 	}
 	KernelLog_InfoMsg("i686 Kernel Init", "Mounted Device Filesystem on /dev/");
-	ASM VOLATILE("sti");
+	HAL_InterruptLevel_Recover(level);
 	KernelLog_InfoMsg("i686 IO wait subsystem", "Interrupts enabled. IRQ will now fire");
 	i686_DetectHardware();
 	KernelLog_InitDoneMsg("i686 Hardware Autodetection Routine");

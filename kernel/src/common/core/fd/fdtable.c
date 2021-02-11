@@ -194,6 +194,7 @@ void FileTable_Drop(struct FileTable *table) {
 	table->refCount--;
 	if (table->refCount > 0) {
 		Mutex_Unlock(&(table->mutex));
+		return;
 	}
 	size_t tableLength = DYNARRAY_LENGTH(table->descriptors);
 	for (size_t i = 0; i < tableLength; ++i) {

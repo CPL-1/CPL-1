@@ -429,7 +429,7 @@ static uint16_t NVMEExecuteIOCommand(struct NVMEDrive *drive, union NVME_SQEntry
 	struct NVME_CSTSRegister csts;
 
 	if (!drive->fallbackToPolling) {
-		HAL_InterruptLevel_Elevate();
+		int level = HAL_InterruptLevel_Elevate();
 		completitionEntry->phaseBit = drive->phaseBit;
 		*(drive->submissionDoorbell) = drive->submissionQueueHead;
 		drive->controller->waitForEvent(drive->controller->ctx);
@@ -437,6 +437,7 @@ static uint16_t NVMEExecuteIOCommand(struct NVMEDrive *drive, union NVME_SQEntry
 		if (csts.cfs == 1) {
 			KernelLog_ErrorMsg("NVME Driver", "Fatal error occured while executing IO command");
 		}
+		HAL_InterruptLevel_Recover(level);
 	} else {
 		completitionEntry->phaseBit = drive->phaseBit;
 		*(drive->submissionDoorbell) = drive->submissionQueueHead;

@@ -12,6 +12,7 @@
 #include <common/core/proc/mutex.h>
 #include <common/core/proc/proc.h>
 #include <common/core/proc/proclayout.h>
+#include <common/core/proc/syscall.h>
 #include <common/lib/kmsg.h>
 #include <hal/proc/extended.h>
 
@@ -39,7 +40,6 @@ void i686_Syscall_Exit(struct i686_CPUState *state) {
 }
 
 void i686_Syscall_Open(struct i686_CPUState *state) {
-	struct Proc_Process *thisProcess = Proc_GetProcessData(Proc_GetProcessID());
 	uint32_t paramsStart = state->esp + 4;
 	uint32_t paramsEnd = state->esp + 12;
 	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
@@ -51,35 +51,8 @@ void i686_Syscall_Open(struct i686_CPUState *state) {
 	}
 	uint32_t pathAddr = (*(uint32_t *)paramsStart);
 	int perms = *(int *)(paramsStart + 4);
-	int pathLen = MemorySecurity_VerifyCString(pathAddr, MAX_PATH_LEN, MSECURITY_UR);
-	if (pathLen == -1) {
-		Mutex_Unlock(&(space->mutex));
-		state->eax = -1;
-		return;
-	}
-	char *pathCopy = Heap_AllocateMemory(pathLen + 1);
-	if (pathCopy == NULL) {
-		Mutex_Unlock(&(space->mutex));
-		state->eax = -1;
-		return;
-	}
-	memcpy(pathCopy, (void *)pathAddr, pathLen);
-	pathCopy[pathLen] = '\0';
 	Mutex_Unlock(&(space->mutex));
-	struct File *file = VFS_OpenAt(thisProcess->cwd, pathCopy, perms);
-	if (file == NULL) {
-		Heap_FreeMemory(pathCopy, pathLen + 1);
-		state->eax = -1;
-		return;
-	}
-	Heap_FreeMemory(pathCopy, pathLen + 1);
-	int result = FileTable_AllocateFileSlot(NULL, file);
-	if (result == -1) {
-		File_Drop(file);
-		state->eax = -1;
-		return;
-	}
-	state->eax = result;
+	state->eax = Syscall_Open(pathAddr, perms);
 }
 
 void i686_Syscall_Read(struct i686_CPUState *state) {

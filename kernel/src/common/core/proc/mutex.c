@@ -30,6 +30,7 @@ void Mutex_Lock(struct Mutex *mutex) {
 		mutex->queueTail->nextInQueue = process;
 	}
 	process->nextInQueue = NULL;
+	HAL_InterruptLevel_Recover(level);
 }
 
 void Mutex_Unlock(struct Mutex *mutex) {
