@@ -13,7 +13,7 @@ LDFLAGS := -ffreestanding -static -nostdlib -no-pie
 	$(CC) $(CFLAGS) $(CFLAGS_RELEASE) $< -o $@
 
 debug: $(C_DEBUG_OBJS)
-	$(LD) $(LDFLAGS) $^ $(USERLIB) -o stat-debug,elf -lgcc
+	$(LD) $(LDFLAGS) $^ $(USERLIB) -o stat-debug.elf -lgcc
 
 release: $(C_RELEASE_OBJS)
 	$(LD) $(LDFLAGS) $^ $(USERLIB) -o stat-release.elf -lgcc

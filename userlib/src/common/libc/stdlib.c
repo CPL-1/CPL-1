@@ -11,7 +11,7 @@
 #define BLOCK_SIZE 65536
 #define HEAP_SIZE_CLASSES_COUNT 13
 #define OBJECTS_MAX (BLOCK_SIZE / 16)
-#define MALLOC_CHECKS 1
+#define MALLOC_CHECKS 0
 
 #if MALLOC_CHECKS
 #define RANGES_MAX 65536
@@ -195,11 +195,11 @@ static struct Heap_ObjHeader *__Heap_AllocateFromSlubs(size_t sizeclass) {
 	struct Heap_Slub *owner;
 	struct Heap_ObjHeader *result = __Heap_GrabFromSlubList(sizeclass, &owner);
 	if (result != NULL) {
-#ifdef MALLOC_CHECKS
+#if MALLOC_CHECKS
 		result->range =
 			__Heap_RegisterRange(((uintptr_t)result) + sizeof(struct Heap_ObjHeader), __Heap_SizeClasses[sizeclass]);
 #else
-		(void)size;
+		(void)sizeclass;
 #endif
 		__Heap_SetSlub(result, owner);
 		return result;
@@ -208,11 +208,11 @@ static struct Heap_ObjHeader *__Heap_AllocateFromSlubs(size_t sizeclass) {
 		return NULL;
 	}
 	result = __Heap_GrabFromSlubList(sizeclass, &owner);
-#ifdef MALLOC_CHECKS
+#if MALLOC_CHECKS
 	result->range =
 		__Heap_RegisterRange(((uintptr_t)result) + sizeof(struct Heap_ObjHeader), __Heap_SizeClasses[sizeclass]);
 #else
-	(void)size;
+	(void)sizeclass;
 #endif
 	__Heap_SetSlub(result, owner);
 	return result;
@@ -227,7 +227,7 @@ static struct Heap_ObjHeader *__Heap_Allocate(size_t size) {
 			return NULL;
 		}
 		header->effectiveSize = effectiveSize;
-#ifdef MALLOC_CHECKS
+#if MALLOC_CHECKS
 		header->range = __Heap_RegisterRange(((uintptr_t)header) + sizeof(struct Heap_ObjHeader), size);
 #endif
 		__Heap_SetSlub(header, NULL);

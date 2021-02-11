@@ -9,56 +9,9 @@
 
 #define VIRT_MOD_NAME "Virtual Memory Manager"
 
-static bool VirtualMM_UpdateMaxAndMinHoleSizes(struct VirtualMM_MemoryHoleNode *node) {
-	struct VirtualMM_MemoryHoleNode *leftNode = (struct VirtualMM_MemoryHoleNode *)(node->base.base.desc[0]);
-	struct VirtualMM_MemoryHoleNode *rightNode = (struct VirtualMM_MemoryHoleNode *)(node->base.base.desc[1]);
-	size_t maxSize = node->base.size;
-	size_t minSize = node->base.size;
-	bool updatesNeeded = false;
-	if (leftNode != NULL) {
-		if (leftNode->base.size < minSize) {
-			minSize = leftNode->base.size;
-			updatesNeeded = true;
-		} else if (leftNode->base.size > maxSize) {
-			maxSize = leftNode->base.size;
-			updatesNeeded = true;
-		}
-	}
-	if (rightNode != NULL) {
-		if (rightNode->base.size < minSize) {
-			minSize = rightNode->base.size;
-			updatesNeeded = true;
-		} else if (rightNode->base.size > maxSize) {
-			maxSize = rightNode->base.size;
-			updatesNeeded = true;
-		}
-	}
-	node->maxSize = maxSize;
-	node->minSize = minSize;
-	return updatesNeeded;
-}
-
-static void VirtualMM_HolesAugmentCallback(struct RedBlackTree_Node *node, MAYBE_UNUSED void *opaque) {
-	while (node != NULL) {
-		struct VirtualMM_MemoryHoleNode *data = (struct VirtualMM_MemoryHoleNode *)node;
-		if (!VirtualMM_UpdateMaxAndMinHoleSizes(data)) {
-			break;
-		}
-		node = node->parent;
-	}
-}
-
-static int VirtualMM_FindBestFitComparator(struct RedBlackTree_Node *desired, struct RedBlackTree_Node *compared,
-										   MAYBE_UNUSED void *ctx) {
-	size_t size = ((struct VirtualMM_MemoryHoleNode *)desired)->base.size;
-	struct VirtualMM_MemoryHoleNode *currentData = (struct VirtualMM_MemoryHoleNode *)(compared);
-	struct VirtualMM_MemoryHoleNode *leftData = (struct VirtualMM_MemoryHoleNode *)(compared->desc[0]);
-	if (leftData != NULL && leftData->maxSize >= size) {
-		return -1;
-	} else if (currentData->maxSize < size) {
-		return 0;
-	}
-	return 1;
+static bool VirtualMM_EnoughMemFilter(struct RedBlackTree_Node *node, void *ctx) {
+	size_t size = *(size_t *)ctx;
+	return ((struct VirtualMM_MemoryRegionBase *)node)->size >= size;
 }
 
 static int VirtualMM_HolesTreeInsertionComparator(struct RedBlackTree_Node *left, struct RedBlackTree_Node *right,
@@ -84,9 +37,7 @@ static int VirtualMM_GetMemoryAreaComparator(struct RedBlackTree_Node *desired, 
 }
 
 void VirtualMM_InitializeRegionTrees(struct VirtualMM_RegionTrees *regions) {
-	regions->holesTreeRoot.augmentCallback = VirtualMM_HolesAugmentCallback;
 	regions->holesTreeRoot.root = NULL;
-	regions->regionsTreeRoot.augmentCallback = NULL;
 	regions->regionsTreeRoot.root = NULL;
 }
 
@@ -132,7 +83,7 @@ bool VirtualMM_AddInitRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 	region->correspondingHole = hole;
 	hole->base.start = start;
 	hole->base.end = end;
-	hole->base.size = hole->maxSize = hole->minSize = end - start;
+	hole->base.size = end - start;
 	region->base.start = start;
 	region->base.end = end;
 	region->base.size = end - start;
@@ -146,10 +97,9 @@ bool VirtualMM_AddInitRegion(struct VirtualMM_RegionTrees *trees, uintptr_t star
 
 struct VirtualMM_MemoryRegionNode *VirtualMM_AllocateRegion(struct VirtualMM_RegionTrees *trees, size_t size,
 															int flags) {
-	struct VirtualMM_MemoryHoleNode queryNode;
-	queryNode.base.size = size;
-	struct VirtualMM_MemoryHoleNode *hole = (struct VirtualMM_MemoryHoleNode *)RedBlackTree_Query(
-		&(trees->holesTreeRoot), (struct RedBlackTree_Node *)&queryNode, VirtualMM_FindBestFitComparator, NULL, false);
+	size_t sizeBuf = size;
+	struct VirtualMM_MemoryHoleNode *hole = (struct VirtualMM_MemoryHoleNode *)RedBlackTree_LowerBound(
+		&(trees->holesTreeRoot), VirtualMM_EnoughMemFilter, &sizeBuf);
 	if (hole == NULL || hole->base.size < size) {
 		return NULL;
 	}
@@ -181,7 +131,6 @@ struct VirtualMM_MemoryRegionNode *VirtualMM_AllocateRegion(struct VirtualMM_Reg
 	hole->base.start = newRegion->base.start;
 	hole->base.end = newRegion->base.end;
 	hole->base.size = newRegion->base.size;
-	hole->maxSize = hole->minSize = hole->base.size;
 	RedBlackTree_Insert(&(trees->holesTreeRoot), (struct RedBlackTree_Node *)hole,
 						VirtualMM_HolesTreeInsertionComparator, NULL);
 	RedBlackTree_Insert(&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)region,
@@ -252,7 +201,6 @@ struct VirtualMM_MemoryRegionNode *VirtualMM_ReserveRegion(struct VirtualMM_Regi
 		leftHole->base.start = region->base.start;
 		leftHole->base.end = start;
 		leftHole->base.size = leftHole->base.end - leftHole->base.start;
-		leftHole->maxSize = leftHole->minSize = leftHole->base.size;
 		left->base.end = leftHole->base.end;
 		left->base.size = leftHole->base.size;
 		left->base.start = leftHole->base.start;
@@ -268,7 +216,6 @@ struct VirtualMM_MemoryRegionNode *VirtualMM_ReserveRegion(struct VirtualMM_Regi
 		rightHole->base.end = region->base.end;
 		rightHole->base.start = end;
 		rightHole->base.size = rightHole->base.end - rightHole->base.start;
-		rightHole->maxSize = rightHole->minSize = rightHole->base.size;
 		right->base.end = rightHole->base.end;
 		right->base.size = rightHole->base.size;
 		right->base.start = rightHole->base.start;
@@ -383,7 +330,6 @@ enum {
 	hole->base.end = region->base.end;
 	hole->base.size = region->base.size;
 	hole->base.start = region->base.start;
-	hole->maxSize = hole->minSize = hole->base.size;
 	RedBlackTree_Insert(&(trees->regionsTreeRoot), (struct RedBlackTree_Node *)region,
 						VirtualMM_GetMemoryAreaComparator, NULL);
 	RedBlackTree_Insert(&(trees->holesTreeRoot), (struct RedBlackTree_Node *)hole,
@@ -412,20 +358,22 @@ struct VirtualMM_MemoryRegionNode *VirtualMM_MemoryMap(struct VirtualMM_AddressS
 	struct VirtualMM_MemoryRegionNode *node;
 	if (addr == 0) {
 		node = VirtualMM_AllocateRegion(&(space->trees), size, flags);
-
 	} else {
 		node = VirtualMM_ReserveRegion(&(space->trees), addr, addr + size, flags);
 	}
 	if (node == NULL) {
+		KernelLog_ErrorMsg("Virt", "Alloc node failure");
 		return NULL;
 	}
 	addr = node->base.start;
 	for (uintptr_t current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
 		uintptr_t new_page = HAL_PhysicalMM_UserAllocFrame();
 		if (new_page == 0) {
+			KernelLog_ErrorMsg("Virt", "Phys Alloc failure");
 			goto failure;
 		}
 		if (!HAL_VirtualMM_MapPageAt(space->root, current, new_page, flags)) {
+			KernelLog_ErrorMsg("Virt", "Mapping failure");
 			HAL_PhysicalMM_UserFreeFrame(new_page);
 			goto failure;
 		}

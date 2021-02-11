@@ -14,8 +14,6 @@ struct VirtualMM_MemoryRegionBase {
 
 struct VirtualMM_MemoryHoleNode {
 	struct VirtualMM_MemoryRegionBase base;
-	size_t maxSize;
-	size_t minSize;
 	struct VirtualMM_MemoryRegionNode *correspondingRegion;
 };
 
