@@ -13,15 +13,15 @@ LDFLAGS := -ffreestanding -static -nostdlib -no-pie
 	$(CC) $(CFLAGS) $(CFLAGS_RELEASE) $< -o $@
 
 debug: $(C_DEBUG_OBJS)
-	$(LD) $(LDFLAGS) $^ $(USERLIB) -o forth-debug -lgcc
+	$(LD) $(LDFLAGS) $^ $(USERLIB) -o forth-debug.elf -lgcc
 
 release: $(C_RELEASE_OBJS)
-	$(LD) $(LDFLAGS) $^ $(USERLIB) -o forth-release -lgcc
+	$(LD) $(LDFLAGS) $^ $(USERLIB) -o forth-release.elf -lgcc
 
 clean:
 	rm -f $(C_DEBUG_OBJS)
 	rm -f $(C_RELEASE_OBJS)
-	rm -f forth-debug
-	rm -f forth-release
+	rm -f forth-debug.elf
+	rm -f forth-release.elf
 
 .PHONY: clean debug release

@@ -13,15 +13,15 @@ LDFLAGS := -ffreestanding -static -nostdlib -no-pie
 	$(CC) $(CFLAGS) $(CFLAGS_RELEASE) $< -o $@
 
 debug: $(C_DEBUG_OBJS)
-	$(LD) $(LDFLAGS) $^ $(USERLIB) -o ls-debug -lgcc
+	$(LD) $(LDFLAGS) $^ $(USERLIB) -o ls-debug.elf -lgcc
 
 release: $(C_RELEASE_OBJS)
-	$(LD) $(LDFLAGS) $^ $(USERLIB) -o ls-release -lgcc
+	$(LD) $(LDFLAGS) $^ $(USERLIB) -o ls-release.elf -lgcc
 
 clean:
 	rm -f $(C_DEBUG_OBJS)
 	rm -f $(C_RELEASE_OBJS)
-	rm -f ls-debug
-	rm -f ls-release
+	rm -f ls-debug.elf
+	rm -f ls-release.elf
 
 .PHONY: clean debug release

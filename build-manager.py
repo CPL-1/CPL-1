@@ -133,7 +133,7 @@ def build_arch(arch, mode, programs):
     for program in programs:
         print(f"Building {program}...")
         program_path = Path('userspace')/program/'build'/arch
-        if not build_submodule(program_path, f'{program}-{mode}', out_dir_path/'bin', program, mode, f'USERLIB={userlib_out_path} USERLIB_INCLUDE={userlib_out_include_path}'):
+        if not build_submodule(program_path, f'{program}-{mode}.elf', out_dir_path/'bin', program, mode, f'USERLIB={userlib_out_path} USERLIB_INCLUDE={userlib_out_include_path}'):
             print(f'Building {program} for architecture {arch} with mode {mode} failed')
             return False
     # Build image

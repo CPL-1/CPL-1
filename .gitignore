@@ -1,12 +1,13 @@
 # Object files
 **/*.o
-# Elf binaries
+# Elf binaries and static libs
 **/*.elf
+**/*.a
 # Disk images
 **/*.hdd
 **/*.img
 **/*.7z
-# out folder
+# out Folder
 out
 out/**/*
 # vscode
