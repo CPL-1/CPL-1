@@ -24,24 +24,14 @@ static size_t Heap_GetSizeClass(size_t size) {
 	return HEAP_SIZE_CLASSES_COUNT;
 }
 
-bool Heap_ValidateSlubLists() {
-	for (size_t i = 0; i < HEAP_SIZE_CLASSES_COUNT; ++i) {
-		struct Heap_SlubElemHeader *hdr = m_slubs[i];
-		while (hdr != NULL) {
-			hdr = hdr->next;
-		}
-	}
-	return true;
-}
-
 static bool Heap_AddObjectToSlubs(size_t index) {
 	size_t size = m_sizeClasses[index];
-	size_t objects_count = BLOCK_SIZE / size;
+	size_t objectsCount = BLOCK_SIZE / size;
 	size_t block = HAL_PhysicalMM_KernelAllocArea(BLOCK_SIZE);
 	if (block == 0) {
 		return false;
 	}
-	for (size_t i = 0; i < objects_count; ++i) {
+	for (size_t i = 0; i < objectsCount; ++i) {
 		size_t offset = i * size;
 		size_t address = HAL_VirtualMM_KernelMappingBase + block + offset;
 		struct Heap_SlubElemHeader *block = (struct Heap_SlubElemHeader *)address;
@@ -63,25 +53,23 @@ void *Heap_AllocateMemory(size_t size) {
 		return NULL;
 	}
 	Mutex_Lock(&m_mutex);
-	size_t size_class = Heap_GetSizeClass(size);
-	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
+	size_t sizeClass = Heap_GetSizeClass(size);
+	if (sizeClass == HEAP_SIZE_CLASSES_COUNT) {
 		uintptr_t result = HAL_PhysicalMM_KernelAllocArea(ALIGN_UP(size, HAL_VirtualMM_PageSize));
+		Mutex_Unlock(&m_mutex);
 		if (result == 0) {
-			Mutex_Unlock(&m_mutex);
 			return NULL;
-		} else {
-			Mutex_Unlock(&m_mutex);
-			return (void *)(result + HAL_VirtualMM_KernelMappingBase);
 		}
+		return (void *)(result + HAL_VirtualMM_KernelMappingBase);
 	}
-	if (m_slubs[size_class] == NULL) {
-		if (!Heap_AddObjectToSlubs(size_class)) {
+	if (m_slubs[sizeClass] == NULL) {
+		if (!Heap_AddObjectToSlubs(sizeClass)) {
 			Mutex_Unlock(&m_mutex);
 			return NULL;
 		}
 	}
-	struct Heap_SlubElemHeader *result = m_slubs[size_class];
-	m_slubs[size_class] = result->next;
+	struct Heap_SlubElemHeader *result = m_slubs[sizeClass];
+	m_slubs[sizeClass] = result->next;
 	Mutex_Unlock(&m_mutex);
 	return result;
 }
@@ -91,16 +79,16 @@ void Heap_FreeMemory(void *area, size_t size) {
 		return;
 	}
 	Mutex_Lock(&m_mutex);
-	size_t size_class = Heap_GetSizeClass(size);
-	if (size_class == HEAP_SIZE_CLASSES_COUNT) {
+	size_t sizeClass = Heap_GetSizeClass(size);
+	if (sizeClass == HEAP_SIZE_CLASSES_COUNT) {
 		Mutex_Unlock(&m_mutex);
 		HAL_PhysicalMM_KernelFreeArea(((uintptr_t)area) - HAL_VirtualMM_KernelMappingBase,
 									  ALIGN_UP(size, HAL_VirtualMM_PageSize));
 		return;
 	}
 	struct Heap_SlubElemHeader *hdr = (struct Heap_SlubElemHeader *)area;
-	hdr->next = m_slubs[size_class];
-	m_slubs[size_class] = hdr;
+	hdr->next = m_slubs[sizeClass];
+	m_slubs[sizeClass] = hdr;
 	Mutex_Unlock(&m_mutex);
 	return;
 }

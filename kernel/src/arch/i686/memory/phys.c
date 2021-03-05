@@ -10,18 +10,18 @@
 extern uint32_t i686_PhysicalMM_KernelEnd;
 static uint32_t m_bitmap[0x5000];
 static uint32_t m_lowArenaMinIndex = I686_KERNEL_IGNORED_AREA_SIZE / I686_PAGE_SIZE;
-static const uint32_t m_lowArenaMaxIndex = I686_PHYS_LOW_LIMIT / I686_PAGE_SIZE;
-static uint32_t m_highArenaMinIndex = m_lowArenaMaxIndex;
-static const uint32_t m_highArenaMaxIndex = 0xa0000;
+static uint32_t m_lowArenaMaxIndex = I686_PHYS_LOW_LIMIT / I686_PAGE_SIZE;
+static uint32_t m_highArenaMinIndex = I686_PHYS_LOW_LIMIT / I686_PAGE_SIZE;
+static uint32_t m_highArenaMaxIndex = 0xa0000;
 static struct Mutex m_mutex;
 uint32_t m_memoryLimit;
 
 static void i686_PhysicalMM_SetBit(uint32_t index) {
-	m_bitmap[index / 32] |= (1 << (index % 32));
+	m_bitmap[index / 32] |= (1U << (index % 32));
 }
 
 static void i686_PhysicalMM_ClearBit(uint32_t index) {
-	m_bitmap[index / 32] &= ~(1 << (index % 32));
+	m_bitmap[index / 32] &= ~(1U << (index % 32));
 }
 
 static void i686_PhysicalMM_ClearRange(uint32_t start, uint32_t size) {
@@ -39,7 +39,7 @@ static void i686_PhysicalMM_SetRange(uint32_t start, uint32_t size) {
 }
 
 static bool i686_PhysicalMM_GetBit(uint32_t index) {
-	return (m_bitmap[index / 32] & (1 << (index % 32))) != 0;
+	return (m_bitmap[index / 32] & (1U << (index % 32))) != 0;
 }
 
 uint32_t i686_PhysicalMM_KernelAllocFrame() {
@@ -70,7 +70,7 @@ uintptr_t HAL_PhysicalMM_UserAllocFrame() {
 
 uintptr_t HAL_PhysicalMM_KernelAllocArea(size_t size) {
 	Mutex_Lock(&m_mutex);
-	const uint32_t frames_needed = size / I686_PAGE_SIZE;
+	const uint32_t framesNeeded = size / I686_PAGE_SIZE;
 	uint32_t freeFrames = 0;
 	uint32_t resultIndex = m_lowArenaMinIndex;
 	uint32_t currentIndex = m_lowArenaMinIndex;
@@ -81,10 +81,10 @@ uintptr_t HAL_PhysicalMM_KernelAllocArea(size_t size) {
 		} else {
 			++freeFrames;
 		}
-		if (freeFrames >= frames_needed) {
+		if (freeFrames >= framesNeeded) {
 			i686_PhysicalMM_SetRange(resultIndex * I686_PAGE_SIZE, size);
 			if (resultIndex == m_lowArenaMinIndex) {
-				m_lowArenaMinIndex += frames_needed;
+				m_lowArenaMinIndex += framesNeeded;
 			}
 			Mutex_Unlock(&m_mutex);
 			return resultIndex * I686_PAGE_SIZE;
@@ -105,6 +105,9 @@ static void i686_PhysicalMM_FreeFrame(uint32_t frame) {
 		if (index < m_highArenaMinIndex) {
 			m_highArenaMinIndex = index;
 		}
+	}
+	if (!i686_PhysicalMM_GetBit(frame / I686_PAGE_SIZE)) {
+		KernelLog_ErrorMsg(PHYS_MOD_NAME, "Physical memory corruption detected");
 	}
 	i686_PhysicalMM_ClearBit(frame / I686_PAGE_SIZE);
 }
@@ -148,14 +151,23 @@ void i686_PhysicalMM_Initialize() {
 			}
 			uint32_t len = (uint32_t)(mmap_buf.entries[i].length);
 			uint32_t addr = (uint32_t)(mmap_buf.entries[i].base);
-			if (len + addr > max) {
-				max = len + addr;
+			uint32_t alignedAddr = ALIGN_UP(addr, I686_PAGE_SIZE);
+			uint32_t alignedLen = ALIGN_DOWN(len + addr, I686_PAGE_SIZE) - alignedAddr;
+			if (alignedAddr + alignedLen > max) {
+				max = alignedAddr + alignedLen;
 			}
-			i686_PhysicalMM_ClearRange(addr, len);
+			i686_PhysicalMM_ClearRange(alignedAddr, alignedLen);
 		}
 	}
 	i686_PhysicalMM_SetRange(0, ALIGN_UP((uint32_t)&i686_PhysicalMM_KernelEnd, I686_PAGE_SIZE));
 	m_memoryLimit = max;
+	uint32_t pagesCount = m_memoryLimit / I686_PAGE_SIZE;
+	if (m_lowArenaMaxIndex > pagesCount) {
+		m_lowArenaMaxIndex = pagesCount;
+	}
+	if (m_highArenaMaxIndex > pagesCount) {
+		m_highArenaMaxIndex = pagesCount;
+	}
 }
 
 uint32_t i686_PhysicalMM_GetMemorySize() {

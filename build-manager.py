@@ -125,7 +125,7 @@ def build_arch(arch, mode, programs):
     # Build init
     print("Building init...")
     userlib_path = Path('init')/'build'/arch
-    if not build_submodule(userlib_path, f'init-{mode}', out_dir_path/'sbin', 'init', mode, f'USERLIB={userlib_out_init_path} USERLIB_INCLUDE={userlib_out_init_include_path}'):
+    if not build_submodule(userlib_path, f'init-{mode}.elf', out_dir_path/'sbin', 'init', mode, f'USERLIB={userlib_out_init_path} USERLIB_INCLUDE={userlib_out_init_include_path}'):
         print(f'Building init for architecture {arch} with mode {mode} failed')
         return False
     print("Building user library done!")

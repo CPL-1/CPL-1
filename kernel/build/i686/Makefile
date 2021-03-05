@@ -8,7 +8,7 @@ AS := nasm
 LD := i686-elf-gcc
 CFLAGS := -nostdlib -fno-builtin -fno-stack-protector -mno-red-zone -Wall -Wextra -Werror -c -mno-sse -mno-sse2 -mno-sse3 -mno-mmx -mno-80387 -I../../src -mno-sse4 -mno-sse4.1 -mno-sse4.2 -fno-pic -ffreestanding -fstrict-volatile-bitfields
 CFLAGS_RELEASE := -O2
-CFLAGS_DEBUG := -g
+CFLAGS_DEBUG := -g -fsanitize=undefined
 ASFLAGS := -f elf -g
 LDFLAGS := -ffreestanding -static -nostdlib -no-pie
 
