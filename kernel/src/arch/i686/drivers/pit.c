@@ -8,6 +8,8 @@
 #include <hal/proc/isrhandler.h>
 
 void i686_PIT8253_Initialize(uint32_t freq) {
+	(void)freq;
+	/*
 	uint32_t divisor = 1193180 / freq;
 	i686_Ports_WriteByte(0x43, 0x36);
 
@@ -16,12 +18,19 @@ void i686_PIT8253_Initialize(uint32_t freq) {
 
 	i686_Ports_WriteByte(0x40, lo);
 	i686_Ports_WriteByte(0x40, hi);
+	*/
 }
 
 bool HAL_Timer_SetCallback(HAL_ISR_Handler entry) {
+	(void)entry;
+	/*
 	if (i686_IOWait_AddHandler(0, (i686_IOWait_Handler)entry, NULL, NULL) == NULL) {
 		KernelLog_ErrorMsg("PIT driver", "Failed to load timer interrupt handler");
 	}
+
+	// i686_IDT_InstallISR(0xfe, (uint32_t)handler);
+	return true;
+	*/
 	HAL_ISR_Handler handler = i686_ISR_MakeNewISRHandler(entry, NULL, false);
 	if (handler == NULL) {
 		return false;

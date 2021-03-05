@@ -741,7 +741,8 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 	}
 
 	nvmeDriveInfo->fallbackToPolling =
-		!controller->initEvent(controller->ctx, (void (*)(void *))NVME_NotifyOnRecieve, (void *)nvmeDriveInfo);
+		/*!controller->initEvent(controller->ctx, (void (*)(void *))NVME_NotifyOnRecieve, (void *)nvmeDriveInfo)*/
+		true;
 	if (!(nvmeDriveInfo->fallbackToPolling)) {
 		NVME_EnableInterrupts(bar0);
 	}

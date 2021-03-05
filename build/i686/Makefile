@@ -2,7 +2,7 @@
 all: build obj-clean
 
 ../../thirdparty/limine/limine-install:
-	cd ../../thirdparty/limine && make limine-install
+	cd ../../thirdparty/limine && make
 
 build: ../../thirdparty/limine/limine-install
 	rm -f CPL-1_i686.hdd
