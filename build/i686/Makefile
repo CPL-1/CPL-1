@@ -28,5 +28,5 @@ run-with-ints: CPL-1_i686.hdd
 debug: CPL-1_i686.hdd
 	qemu-system-i386 -d int -no-reboot -no-shutdown -boot c \
 	-s -S -daemonize -drive file=CPL-1_i686.hdd,if=none,format=raw,id=NVME1 \
-	-device nvme,drive=NVME1,serial=nvme-1 -m 128M
+	-device nvme,drive=NVME1,serial=nvme-1 -m 32M
 	gdb ../../out/i686/boot/kernel.elf -ex "target remote :1234"

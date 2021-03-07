@@ -156,7 +156,7 @@ bool i686_PCI_ReadBAR(struct i686_PCI_Address address, int index, struct i686_pc
 	barAddress &= ~(bar->isMMIO ? (0b1111U) : (0b11U));
 	i686_PCI_WriteDoubleWord(address, reg, 0xffffffff);
 	uint32_t barSizeLow = i686_PCI_ReadDoubleWord(address, reg);
-	uint32_t barSizeHigh = 0;
+	uint32_t barSizeHigh = 0xffffffff;
 	i686_PCI_WriteDoubleWord(address, reg, barOrigAddress);
 	if (is64Bit) {
 		i686_PCI_WriteDoubleWord(address, reg + 4, 0xffffffff);

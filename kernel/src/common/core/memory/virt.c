@@ -362,18 +362,15 @@ struct VirtualMM_MemoryRegionNode *VirtualMM_MemoryMap(struct VirtualMM_AddressS
 		node = VirtualMM_ReserveRegion(&(space->trees), addr, addr + size, flags);
 	}
 	if (node == NULL) {
-		KernelLog_ErrorMsg("Virt", "Alloc node failure");
 		return NULL;
 	}
 	addr = node->base.start;
 	for (uintptr_t current = addr; current < (addr + size); current += HAL_VirtualMM_PageSize) {
 		uintptr_t new_page = HAL_PhysicalMM_UserAllocFrame();
 		if (new_page == 0) {
-			KernelLog_ErrorMsg("Virt", "Phys Alloc failure");
 			goto failure;
 		}
 		if (!HAL_VirtualMM_MapPageAt(space->root, current, new_page, flags)) {
-			KernelLog_ErrorMsg("Virt", "Mapping failure");
 			HAL_PhysicalMM_UserFreeFrame(new_page);
 			goto failure;
 		}
