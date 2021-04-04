@@ -1,17 +1,8 @@
 # CPL-1 Operating System
 
-
-[![Code Grade](https://www.code-inspector.com/project/16615/status/svg)](https://frontend.code-inspector.com/project/16615/dashboard)
-
 ![Process Test image](screenshots/kernel_init.png)
 
 *CPL-1 kernel init log on i686 CPUs*
-
-### Discord server
-
-CPL-1 has its own discord server.
-
-Server invite: https://discord.gg/SXnE5aSfhN
 
 ### What is CPL-1
 
