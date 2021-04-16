@@ -524,7 +524,7 @@ void VirtualMM_PreemptToAddressSpace(struct VirtualMM_AddressSpace *space) {
 	if (space == NULL) {
 		space = VirtualMM_GetCurrentAddressSpace();
 	}
-	HAL_VirtualMM_PreemptToAddressSpace(space->root);
+	HAL_VirtualMM_SwitchToAddressSpace(space->root);
 }
 
 static void VirtualMM_CopyPageAcrossAddessSpaces(struct VirtualMM_AddressSpace *src, struct VirtualMM_AddressSpace *dst,

@@ -207,10 +207,6 @@ void HAL_VirtualMM_FreeAddressSpace(uintptr_t root) {
 	HAL_PhysicalMM_KernelFreeFrame(root);
 }
 
-void HAL_VirtualMM_PreemptToAddressSpace(uintptr_t root) {
-	i686_CR3_Set(root);
-}
-
 void i686_VirtualMM_SwitchToAddressSpaceRing0(void *ctx) {
 	uintptr_t root = (uintptr_t)ctx;
 	i686_CR3_Set(root);
