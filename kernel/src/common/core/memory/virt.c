@@ -37,8 +37,8 @@ static int VirtualMM_GetMemoryAreaComparator(struct RedBlackTree_Node *desired, 
 }
 
 void VirtualMM_InitializeRegionTrees(struct VirtualMM_RegionTrees *regions) {
-	regions->holesTreeRoot.root = NULL;
-	regions->regionsTreeRoot.root = NULL;
+	RedBlackTree_Initialize(&(regions->holesTreeRoot));
+	RedBlackTree_Initialize(&(regions->regionsTreeRoot));
 }
 
 void VirtualMM_FreeMemoryRegionNode(struct RedBlackTree_Node *node, void *opaque) {
@@ -437,7 +437,7 @@ void VirtualMM_MemoryRetype(struct VirtualMM_AddressSpace *space, struct Virtual
 	}
 	region->flags = flags;
 	for (uintptr_t current = region->base.start; current < region->base.end; current += HAL_VirtualMM_PageSize) {
-		HAL_VirtualMM_ChangePagePermissions(space->root, current, flags);
+		HAL_VirtualMM_SetPageAttributes(space->root, current, flags);
 	}
 	if (space == currentSpace) {
 		HAL_VirtualMM_Flush();

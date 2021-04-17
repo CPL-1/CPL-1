@@ -572,4 +572,8 @@ static struct RedBlackTree_Node *RedBlackTree_LowerBound(struct RedBlackTree_Tre
 	return RedBlackTree_Bound(root, filter, opaque, 0);
 }
 
+MAYBE_UNUSED static void RedBlackTree_Initialize(struct RedBlackTree_Tree *tree) {
+	tree->ends[0] = tree->ends[1] = tree->root = NULL;
+}
+
 #endif

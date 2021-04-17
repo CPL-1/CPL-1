@@ -25,6 +25,7 @@
 #include <common/core/fd/fs/rootfs.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
+#include <common/core/memory/iomap.h>
 #include <common/core/memory/msecurity.h>
 #include <common/core/memory/virt.h>
 #include <common/core/proc/elf32.h>
@@ -76,6 +77,8 @@ void i686_KernelInit_Main(uint32_t mb_offset) {
 	KernelLog_InitDoneMsg("i686 Virtual Memory Mapper");
 	Heap_Initialize();
 	KernelLog_InitDoneMsg("Kernel Heap Heap");
+	IOMap_Initialize();
+	KernelLog_InitDoneMsg("IO Mapping Manager");
 	i686_IOWait_Initialize();
 	KernelLog_InitDoneMsg("i686 IO Wait Subsystem");
 	i686_IDT_Initialize();

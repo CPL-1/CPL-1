@@ -2,6 +2,7 @@
 #include <common/core/fd/fs/devfs.h>
 #include <common/core/fd/vfs.h>
 #include <common/core/memory/heap.h>
+#include <common/core/memory/iomap.h>
 #include <common/core/proc/mutex.h>
 #include <common/drivers/storage/nvme.h>
 #include <common/lib/kmsg.h>
@@ -517,7 +518,7 @@ bool NVME_Initialize(struct HAL_NVMEController *controller) {
 
 	uintptr_t mappingPaddr = ALIGN_DOWN(controller->offset, HAL_VirtualMM_PageSize);
 	size_t mappingSize = ALIGN_UP(controller->size + (controller->offset - mappingPaddr), HAL_VirtualMM_PageSize);
-	uintptr_t mapping = HAL_VirtualMM_GetIOMapping(mappingPaddr, mappingSize, controller->disableCache);
+	uintptr_t mapping = IOMap_AllocateIOMapping(mappingPaddr, mappingSize, controller->disableCache);
 	if (mapping == 0) {
 		KernelLog_WarnMsg("NVME Driver", "Failed to map BAR0");
 		return false;

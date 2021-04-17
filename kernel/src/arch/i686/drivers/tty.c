@@ -2,6 +2,7 @@
 #include <arch/i686/drivers/tty.h>
 #include <arch/i686/init/stivale.h>
 #include <common/core/memory/heap.h>
+#include <common/core/memory/iomap.h>
 #include <common/lib/kmsg.h>
 #include <common/misc/font.h>
 #include <hal/drivers/tty.h>
@@ -165,7 +166,7 @@ void i686_TTY_Initialize() {
 	uint32_t framebufferPagesEnd =
 		ALIGN_UP((uint32_t)m_fbInfo.framebufferAddr + framebufferSize, HAL_VirtualMM_PageSize);
 	uintptr_t framebufferMapping =
-		HAL_VirtualMM_GetIOMapping(framebufferPagesStart, framebufferPagesEnd - framebufferPagesStart, false);
+		IOMap_AllocateIOMapping(framebufferPagesStart, framebufferPagesEnd - framebufferPagesStart, false);
 	if (framebufferMapping == 0) {
 		// This will only be printed in e9 log
 		KernelLog_ErrorMsg("i686 Terminal", "Failed to map framebuffer");

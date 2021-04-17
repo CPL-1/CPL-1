@@ -11,7 +11,7 @@ bool MemorySecurity_VerifyMemoryRangePermissions(uintptr_t start, uintptr_t end,
 	int result = HAL_VIRT_FLAGS_EXECUTABLE | HAL_VIRT_FLAGS_READABLE | HAL_VIRT_FLAGS_DISABLE_CACHE |
 				 HAL_VIRT_FLAGS_USER_ACCESSIBLE | HAL_VIRT_FLAGS_WRITABLE;
 	for (uintptr_t addr = alignedStart; addr < alignedEnd; addr += HAL_VirtualMM_PageSize) {
-		result &= HAL_VirtualMM_GetPagePermissions(root, addr);
+		result &= HAL_VirtualMM_GetPageAttributes(root, addr);
 		if ((result | flags) != result) {
 			return false;
 		}
@@ -28,12 +28,12 @@ int MemorySecurity_VerifyCString(uintptr_t start, int maxLength, int flags) {
 			return false;
 		}
 		if (addr == start) {
-			stringFlags = HAL_VirtualMM_GetPagePermissions(root, ALIGN_DOWN(addr, HAL_VirtualMM_PageSize));
+			stringFlags = HAL_VirtualMM_GetPageAttributes(root, ALIGN_DOWN(addr, HAL_VirtualMM_PageSize));
 			if ((stringFlags | flags) != stringFlags) {
 				return -1;
 			}
 		} else if (addr % HAL_VirtualMM_PageSize == 0) {
-			stringFlags &= HAL_VirtualMM_GetPagePermissions(root, addr);
+			stringFlags &= HAL_VirtualMM_GetPageAttributes(root, addr);
 			if ((stringFlags | flags) != stringFlags) {
 				return -1;
 			}
@@ -59,12 +59,12 @@ int MemorySecurity_VerifyNullTerminatedPointerList(uintptr_t start, int maxPoint
 			return false;
 		}
 		if (addr == start) {
-			pointerFlags = HAL_VirtualMM_GetPagePermissions(root, ALIGN_DOWN(addr, HAL_VirtualMM_PageSize));
+			pointerFlags = HAL_VirtualMM_GetPageAttributes(root, ALIGN_DOWN(addr, HAL_VirtualMM_PageSize));
 			if ((pointerFlags | flags) != pointerFlags) {
 				return -1;
 			}
 		} else if (addr % HAL_VirtualMM_PageSize == 0) {
-			pointerFlags &= HAL_VirtualMM_GetPagePermissions(root, addr);
+			pointerFlags &= HAL_VirtualMM_GetPageAttributes(root, addr);
 			if ((pointerFlags | flags) != pointerFlags) {
 				return -1;
 			}

@@ -30,10 +30,12 @@ struct i686_VirtualMM_PageTable {
 	union i686_VirtualMM_PageTableEntry entries[1024];
 } PACKED;
 
-uintptr_t HAL_VirtualMM_KernelMappingBase = I686_KERNEL_MAPPING_BASE;
-size_t HAL_VirtualMM_PageSize = I686_PAGE_SIZE;
-uintptr_t HAL_VirtualMM_UserAreaStart = I686_USER_AREA_START;
-uintptr_t HAL_VirtualMM_UserAreaEnd = I686_USER_AREA_END;
+const uintptr_t HAL_VirtualMM_KernelMappingBase = I686_KERNEL_MAPPING_BASE;
+const size_t HAL_VirtualMM_PageSize = I686_PAGE_SIZE;
+const uintptr_t HAL_VirtualMM_UserAreaStart = I686_USER_AREA_START;
+const uintptr_t HAL_VirtualMM_UserAreaEnd = I686_USER_AREA_END;
+const uintptr_t HAL_VirtualMM_IOMappingsStart = I686_IOMAP_AREA_START;
+const uintptr_t HAL_VirtualMM_IOMappingsEnd = I686_IOMAP_AREA_END;
 uint16_t *m_pageRefcounts = NULL;
 
 static INLINE uint16_t i686_VirtualMM_GetPageDirectoryIndex(uint32_t vaddr) {
@@ -88,6 +90,22 @@ static uint16_t i686_VirtualMM_GetPageTableReferenceCount(uint32_t paddr) {
 	return result;
 }
 
+static void i686_VirtualMM_FillMissingKernelPageTables() {
+	uint32_t cr3 = i686_CR3_Get();
+	struct i686_VirtualMM_PageTable *pageDir = (struct i686_VirtualMM_PageTable *)(cr3 + I686_KERNEL_MAPPING_BASE);
+	for (uint16_t i = 768; i < 1024; ++i) {
+		if (!pageDir->entries[i].present) {
+			pageDir->entries[i].addr = i686_PhysicalMM_KernelAllocFrame();
+			if (pageDir->entries[i].addr == 0) {
+				KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Failed to allocate page table in kernel half");
+			}
+			memset((void *)(pageDir->entries[i].addr + I686_KERNEL_MAPPING_BASE), 0, 4096);
+			pageDir->entries[i].present = true;
+			pageDir->entries[i].writable = true;
+		}
+	}
+}
+
 void i686_VirtualMM_InitializeKernelMap() {
 	uint32_t cr3 = i686_CR3_Get();
 	for (uint32_t paddr = I686_KERNEL_INIT_MAPPING_SIZE; paddr < I686_PHYS_LOW_LIMIT; paddr += I686_PAGE_SIZE) {
@@ -95,7 +113,6 @@ void i686_VirtualMM_InitializeKernelMap() {
 	}
 	struct i686_VirtualMM_PageTable *pageDir = (struct i686_VirtualMM_PageTable *)(cr3 + I686_KERNEL_MAPPING_BASE);
 	pageDir->entries[0].addr = 0;
-	i686_CPU_SetCR3(i686_CPU_GetCR3());
 	uint32_t refcountsSize = i686_PhysicalMM_GetMemorySize() * 2 / HAL_VirtualMM_PageSize;
 	uint32_t refcounts = HAL_PhysicalMM_KernelAllocArea(refcountsSize);
 	if (refcounts == 0) {
@@ -103,13 +120,15 @@ void i686_VirtualMM_InitializeKernelMap() {
 	}
 	m_pageRefcounts = (uint16_t *)(refcounts + HAL_VirtualMM_KernelMappingBase);
 	memset(m_pageRefcounts, 0, refcountsSize);
-	for (uint16_t i = 0; i < 1024; ++i) {
+	i686_VirtualMM_FillMissingKernelPageTables();
+	for (uint16_t i = 0; i < 768; ++i) {
 		if (pageDir->entries[i].present) {
 			uint32_t next = i686_VirtualMM_WalkToNextPageTable(cr3, i);
 			uint16_t refcount = i686_VirtualMM_GetPageTableReferenceCount(next);
 			m_pageRefcounts[next / HAL_VirtualMM_PageSize] = refcount;
 		}
 	}
+	i686_CPU_SetCR3(i686_CPU_GetCR3());
 }
 
 bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, int flags) {
@@ -139,7 +158,9 @@ bool HAL_VirtualMM_MapPageAt(uintptr_t root, uintptr_t vaddr, uintptr_t paddr, i
 	pageTable->entries[ptIndex].writable = (flags & HAL_VIRT_FLAGS_WRITABLE) != 0;
 	pageTable->entries[ptIndex].cacheDisabled = (flags & HAL_VIRT_FLAGS_DISABLE_CACHE) != 0;
 	pageTable->entries[ptIndex].user = (flags & HAL_VIRT_FLAGS_USER_ACCESSIBLE) != 0;
-	m_pageRefcounts[next / HAL_VirtualMM_PageSize]++;
+	if (pdIndex < 768) {
+		m_pageRefcounts[next / HAL_VirtualMM_PageSize]++;
+	}
 	return true;
 }
 
@@ -158,18 +179,20 @@ uintptr_t HAL_VirtualMM_UnmapPageAt(uintptr_t root, uintptr_t vaddr) {
 	}
 	uintptr_t result = i686_VirtualMM_WalkToNextPageTable(pageTablePhys, ptIndex);
 	pageTable->entries[ptIndex].addr = 0;
-	if (m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
-		KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Attempt to decrement reference count which is already zero");
-	}
-	--m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize];
-	if (m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
-		pageDir->entries[pdIndex].addr = 0;
-		HAL_PhysicalMM_KernelFreeFrame(pageTablePhys);
+	if (pdIndex < 768) {
+		if (m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
+			KernelLog_ErrorMsg(I686_VIRT_MOD_NAME, "Attempt to decrement reference count which is already zero");
+		}
+		--m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize];
+		if (m_pageRefcounts[pageTablePhys / HAL_VirtualMM_PageSize] == 0) {
+			pageDir->entries[pdIndex].addr = 0;
+			HAL_PhysicalMM_KernelFreeFrame(pageTablePhys);
+		}
 	}
 	return result;
 }
 
-void HAL_VirtualMM_ChangePagePermissions(uintptr_t root, uintptr_t vaddr, int flags) {
+void HAL_VirtualMM_SetPageAttributes(uintptr_t root, uintptr_t vaddr, int flags) {
 	uint16_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
 	uint32_t pageTablePhys = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);
@@ -220,20 +243,6 @@ uintptr_t HAL_VirtualMM_GetCurrentAddressSpace(uintptr_t root) {
 	return i686_CR3_Get(root);
 }
 
-static void i686_VirtualMM_MapPageInKernelSpace(uint32_t vaddr, uint32_t paddr, bool cacheDisabled) {
-	uint32_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
-	uint32_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
-	uint32_t cr3 = i686_CR3_Get();
-	uint32_t pageTableAddr = i686_VirtualMM_WalkToNextPageTable(cr3, pdIndex);
-	struct i686_VirtualMM_PageTable *table =
-		(struct i686_VirtualMM_PageTable *)(pageTableAddr + I686_KERNEL_MAPPING_BASE);
-	table->entries[ptIndex].addr = paddr;
-	table->entries[ptIndex].present = true;
-	table->entries[ptIndex].writable = true;
-	table->entries[ptIndex].writeThrough = true;
-	table->entries[ptIndex].cacheDisabled = cacheDisabled;
-}
-
 static void i686_VirtualMM_FlushCR3FromRing0() {
 	i686_CR3_Set(i686_CR3_Get());
 }
@@ -242,23 +251,11 @@ static void i686_VirtualMM_FlushCR3() {
 	i686_Ring0Executor_Invoke((uint32_t)i686_VirtualMM_FlushCR3FromRing0, 0);
 }
 
-uintptr_t HAL_VirtualMM_GetIOMapping(uintptr_t paddr, size_t size, bool cacheDisabled) {
-	uint32_t area = HAL_PhysicalMM_KernelAllocArea(size);
-	if (area == 0) {
-		return 0;
-	}
-	for (uint32_t offset = 0; offset < size; offset += I686_PAGE_SIZE) {
-		i686_VirtualMM_MapPageInKernelSpace(I686_KERNEL_MAPPING_BASE + area + offset, paddr + offset, cacheDisabled);
-	}
-	i686_VirtualMM_FlushCR3();
-	return area + I686_KERNEL_MAPPING_BASE;
-}
-
 void HAL_VirtualMM_Flush() {
 	i686_VirtualMM_FlushCR3();
 }
 
-int HAL_VirtualMM_GetPagePermissions(uintptr_t root, uintptr_t vaddr) {
+int HAL_VirtualMM_GetPageAttributes(uintptr_t root, uintptr_t vaddr) {
 	uint16_t pdIndex = i686_VirtualMM_GetPageDirectoryIndex(vaddr);
 	uint16_t ptIndex = i686_VirtualMM_GetPageTableIndex(vaddr);
 	uint32_t pageTablePhys = i686_VirtualMM_WalkToNextPageTable(root, pdIndex);

@@ -2,16 +2,16 @@
 #define __MATH_H_INCLUDED__
 #include <common/misc/utils.h>
 
-#define MATH_LOG2_ROUNDUP(val)                                                                                         \
+#define MATH_LOG2_ROUNDUP(_val)                                                                                        \
 	({                                                                                                                 \
-		AUTO copy = (val);                                                                                             \
-		typeof(copy) current = 1;                                                                                      \
-		size_t count = 0;                                                                                              \
-		while (current < copy) {                                                                                       \
-			current *= 2;                                                                                              \
-			count += 1;                                                                                                \
+		AUTO _copy = (_val);                                                                                           \
+		size_t _current = 1;                                                                                           \
+		size_t _count = 0;                                                                                             \
+		while (_current < _copy) {                                                                                     \
+			_current *= 2;                                                                                             \
+			_count += 1;                                                                                               \
 		}                                                                                                              \
-		count;                                                                                                         \
+		_count;                                                                                                        \
 	})
 
 #endif
