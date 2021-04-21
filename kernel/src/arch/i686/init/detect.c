@@ -1,6 +1,7 @@
 #include <arch/i686/drivers/pci.h>
 #include <arch/i686/drivers/ps2.h>
 #include <arch/i686/drivers/ps2kybrd.h>
+#include <arch/i686/drivers/rtc.h>
 #include <arch/i686/drivers/storage/nvme.h>
 #include <arch/i686/init/detect.h>
 #include <common/core/memory/heap.h>
@@ -45,6 +46,7 @@ void i686_DetectHardware_PS2EnumerateCallback(bool channel, enum i686_PS2_Device
 }
 
 void i686_DetectHardware() {
+	RTC_Init();
 	i686_PCI_Enumerate(i686_DetectHardware_PCIEnumerateCallback, NULL);
 	i686_PS2_Enumerate(i686_DetectHardware_PS2EnumerateCallback, NULL);
 }

@@ -14,6 +14,7 @@
 #include <common/core/proc/proclayout.h>
 #include <common/core/proc/syscall.h>
 #include <common/lib/kmsg.h>
+#include <hal/drivers/time.h>
 #include <hal/proc/extended.h>
 
 #define MAX_PATH_LEN 65536
@@ -727,4 +728,27 @@ void i686_Syscall_Fstat(struct i686_CPUState *state) {
 	struct VFS_Stat *stat = (struct VFS_Stat *)statAddr;
 	state->eax = FileTable_FileStat(NULL, fd, stat);
 	Mutex_Unlock(&(space->mutex));
+}
+
+void i686_Syscall_GetTimeOfDay(struct i686_CPUState *state) {
+	uint32_t paramsStart = state->esp + 4;
+	uint32_t paramsEnd = state->esp + 12;
+	struct VirtualMM_AddressSpace *space = VirtualMM_GetCurrentAddressSpace();
+	Mutex_Lock(&(space->mutex));
+	if (!MemorySecurity_VerifyMemoryRangePermissions(paramsStart, paramsEnd, MSECURITY_UR)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	uintptr_t valAddr = *(uintptr_t *)paramsStart;
+	if (!MemorySecurity_VerifyMemoryRangePermissions(valAddr, valAddr + sizeof(struct timeval), MSECURITY_UW)) {
+		Mutex_Unlock(&(space->mutex));
+		state->eax = -1;
+		return;
+	}
+	struct timeval *val = (struct timeval *)valAddr;
+	val->tv_sec = HAL_Time_GetUnixTime();
+	val->tv_usec = 0;
+	Mutex_Unlock(&(space->mutex));
+	state->eax = 0;
 }
