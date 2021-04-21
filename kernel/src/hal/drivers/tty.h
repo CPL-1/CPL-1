@@ -17,6 +17,7 @@ struct HAL_TTY_KeyEvent {
 	bool typeable;
 };
 
-void HAL_TTY_WaitForNextEvent(struct HAL_TTY_KeyEvent *event);
+void HAL_TTY_FlushKeyEventQueue();
+void HAL_TTY_WaitForNextKeyEvent(struct HAL_TTY_KeyEvent *event);
 
 #endif

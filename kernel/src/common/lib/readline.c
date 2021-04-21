@@ -12,10 +12,11 @@ size_t ReadLine(char *buf, size_t size) {
 		return 0;
 	}
 	Mutex_Lock(&m_mutex);
+	HAL_TTY_FlushKeyEventQueue();
 	size_t pos = 0;
 	while (true) {
 		struct HAL_TTY_KeyEvent event;
-		HAL_TTY_WaitForNextEvent(&event);
+		HAL_TTY_WaitForNextKeyEvent(&event);
 		if ((!event.typeable) || (!event.pressed)) {
 			continue;
 		}

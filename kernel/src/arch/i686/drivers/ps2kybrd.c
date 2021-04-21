@@ -4,6 +4,10 @@
 #include <common/lib/kmsg.h>
 #include <common/misc/utils.h>
 #include <hal/drivers/tty.h>
+#include <hal/proc/intlevel.h>
+
+// Keyboard circular buffer size
+#define PS2_KYBRD_BUFFER_EVENT_COUNT 4096
 
 ////////////////////////////////// THIRD PARTY CODE //////////////////////////////////
 // Copyright (c) 2018-2020, the qword authors (AUTHORS.md)
@@ -66,19 +70,21 @@ static bool m_capslockPressed;
 static bool m_leftShiftPressed;
 static bool m_rightShiftPressed;
 static bool m_shiftPressed;
-static struct HAL_TTY_KeyEvent m_event;
+
+static struct HAL_TTY_KeyEvent m_events[PS2_KYBRD_BUFFER_EVENT_COUNT];
+static size_t m_head = 0, m_tail = 0;
 static struct i686_IOWait_ListEntry *m_iowaitObject;
 
-void i686_PS2Keyboard_GetEvent() {
+void i686_PS2Keyboard_DecodeKeyEvent(struct HAL_TTY_KeyEvent *buf) {
 	uint8_t code = i686_PS2_ReadData();
-	m_event.raw = code;
-	m_event.typeable = false;
-	m_event.pressed = (code & (1 << 7)) == 0;
+	buf->raw = code;
+	buf->typeable = false;
+	buf->pressed = (code & (1 << 7)) == 0;
 	uint8_t key = code & ~(1 << 7);
 	// handle special keys
 	switch (key) {
 	case PS2_KYBRD_CAPSLOCK:
-		if (!(m_event.pressed)) {
+		if (!(buf->pressed)) {
 			m_capslockPressed = !m_capslockPressed;
 		}
 		return;
@@ -117,12 +123,23 @@ void i686_PS2Keyboard_GetEvent() {
 	if (keymap[key] == '\0') {
 		return;
 	}
-	m_event.typeable = true;
-	m_event.character = keymap[key];
+	buf->typeable = true;
+	buf->character = keymap[key];
+}
+
+void i686_PS2Keyboard_InsertKeyEvent() {
+	if (((m_tail + 1) % PS2_KYBRD_BUFFER_EVENT_COUNT) == m_head) {
+		// Buffer full. Get rid of the last key event
+		m_head += 1;
+	}
+	// Insert new decoded key event in the end (tail) of the queue
+	i686_PS2Keyboard_DecodeKeyEvent(m_events + m_tail);
+	// Move tail to the next element
+	m_tail++;
 }
 
 void i686_PS2Keyboard_IRQCallback(MAYBE_UNUSED void *ctx, MAYBE_UNUSED char *state) {
-	i686_PS2Keyboard_GetEvent();
+	i686_PS2Keyboard_InsertKeyEvent();
 }
 
 bool i686_PS2Keyboard_Detect(bool channel) {
@@ -161,12 +178,24 @@ bool i686_PS2Keyboard_Detect(bool channel) {
 	return true;
 }
 
-void HAL_TTY_WaitForNextEvent(struct HAL_TTY_KeyEvent *event) {
-	if (i686_PS2_ReadyToRead()) {
-		i686_PS2Keyboard_GetEvent();
-		*event = m_event;
-		return;
+void HAL_TTY_WaitForNextKeyEvent(struct HAL_TTY_KeyEvent *event) {
+	int level = HAL_InterruptLevel_Elevate();
+	// Check if there are any elements in the queue
+	if (m_head != m_tail) {
+		// If there is at least one element, get it and return
+		*event = *(m_events + m_head);
+		m_head++;
+	} else {
+		// Wait for keyboard interrupts using IOWait
+		i686_IOWait_WaitForIRQ(m_iowaitObject);
+		*event = *(m_events + m_head);
+		m_head++;
 	}
-	i686_IOWait_WaitForIRQ(m_iowaitObject);
-	*event = m_event;
+	HAL_InterruptLevel_Recover(level);
+}
+
+void HAL_TTY_FlushKeyEventQueue() {
+	int level = HAL_InterruptLevel_Elevate();
+	m_head = m_tail = 0;
+	HAL_InterruptLevel_Recover(level);
 }
