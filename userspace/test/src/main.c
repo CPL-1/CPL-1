@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define MAX_OBJ 64
 #define ITERATIONS 65536

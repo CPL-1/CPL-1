@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/syscall.h>
+#include <unistd.h>
 
 static char __Printf_GetCharFromDigit(uint8_t digit) {
 	if (digit >= 10) {

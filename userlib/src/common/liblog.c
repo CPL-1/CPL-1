@@ -1,7 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
 
 void Log_InitDoneMsg(const char *mod) {
 	printf("[ \033[92mOKAY\033[39m ] Target \033[97m%s\033[39m reached\n", mod);

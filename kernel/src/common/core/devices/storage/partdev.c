@@ -113,10 +113,10 @@ struct VFS_Inode *PartDev_MakePartitionDevice(struct Storage_Device *storage, ui
 	partData->count = count;
 	partData->storage = storage;
 
-	partInode->stat.stBlksize = storage->sectorSize;
-	partInode->stat.stBlkcnt = ALIGN_UP(count, storage->sectorSize) / storage->sectorSize;
-	partInode->stat.stType = VFS_DT_BLK;
-	partInode->stat.stSize = count;
+	partInode->stat.st_blksize = storage->sectorSize;
+	partInode->stat.st_blkcnt = ALIGN_UP(count, storage->sectorSize) / storage->sectorSize;
+	partInode->stat.st_type = VFS_DT_BLK;
+	partInode->stat.st_size = count;
 	partInode->ctx = (void *)partData;
 	partInode->ops = &m_inodeOperations;
 	return partInode;

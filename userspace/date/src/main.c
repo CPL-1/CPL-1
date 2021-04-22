@@ -1,9 +1,10 @@
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 void Date_PrintVersion() {
 	printf("echo. Copyright (C) 2021 Zamiatin Iurii and CPL-1 contributors\n");

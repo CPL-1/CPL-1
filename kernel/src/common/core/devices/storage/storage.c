@@ -247,10 +247,10 @@ struct VFS_Inode *Storage_MakeInode(struct Storage_Device *storage) {
 	}
 	inode->ctx = (void *)storage;
 	inode->ops = &storage_inode_ops;
-	inode->stat.stBlksize = storage->sectorSize;
-	inode->stat.stBlkcnt = storage->sectorsCount;
-	inode->stat.stType = VFS_DT_BLK;
-	inode->stat.stSize = storage->sectorSize * storage->sectorsCount;
+	inode->stat.st_blksize = storage->sectorSize;
+	inode->stat.st_blkcnt = storage->sectorsCount;
+	inode->stat.st_type = VFS_DT_BLK;
+	inode->stat.st_size = storage->sectorSize * storage->sectorsCount;
 	return inode;
 }
 

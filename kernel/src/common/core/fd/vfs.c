@@ -236,7 +236,7 @@ struct VFS_Dentry *VFS_DentryLoadChild(struct VFS_Dentry *dentry, const char *na
 		VFS_DropInode(newInode->sb, newInode);
 		return NULL;
 	}
-	if (newInode->stat.stType == VFS_DT_DIR) {
+	if (newInode->stat.st_type == VFS_DT_DIR) {
 		struct CWD_Info *info = CWD_ForkCwdInfo(dentry->cwd);
 		if (info == NULL) {
 			VFS_DropInode(newInode->sb, newInode);
@@ -376,7 +376,7 @@ bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) 
 	if (dir == NULL) {
 		return false;
 	}
-	if (dir->inode->stat.stType != VFS_DT_DIR) {
+	if (dir->inode->stat.st_type != VFS_DT_DIR) {
 		VFS_Dentry_DropRecursively(dir);
 		return false;
 	}
@@ -411,7 +411,7 @@ bool VFS_Dentry_MountInitializedFS(const char *path, struct VFS_Superblock *sb) 
 		return false;
 	}
 	dentry->inode = inode;
-	if (dentry->inode->stat.stType != VFS_DT_DIR) {
+	if (dentry->inode->stat.st_type != VFS_DT_DIR) {
 		KernelLog_ErrorMsg("Virtual File System", "Root of the filesystem should be a directory");
 	}
 	if ((dentry->cwd = CWD_ForkCwdInfo(dir->cwd)) == NULL) {

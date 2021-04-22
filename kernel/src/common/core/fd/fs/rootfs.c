@@ -18,10 +18,10 @@ static ino_t RootFS_GetChild(struct VFS_Inode *inode, const char *name) {
 }
 
 static bool RootFS_GetInode(MAYBE_UNUSED struct VFS_Superblock *sb, struct VFS_Inode *inode, ino_t id) {
-	inode->stat.stType = VFS_DT_DIR;
-	inode->stat.stSize = 0;
-	inode->stat.stBlksize = 0;
-	inode->stat.stBlkcnt = 0;
+	inode->stat.st_type = VFS_DT_DIR;
+	inode->stat.st_size = 0;
+	inode->stat.st_blksize = 0;
+	inode->stat.st_blkcnt = 0;
 	inode->ops = &m_inodeOperations;
 	if (id == 1) {
 		inode->ctx = ROOTFS_ROOT_INODE_CTX;

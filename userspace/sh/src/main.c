@@ -1,8 +1,11 @@
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 void Shell_PrintVersion() {
 	printf("sh. Copyright (C) 2021 Zamiatin Iurii and CPL-1 contributors\n");

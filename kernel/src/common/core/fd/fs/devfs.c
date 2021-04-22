@@ -68,7 +68,7 @@ bool DevFS_RegisterInode(const char *name, struct VFS_Inode *inode) {
 		return false;
 	}
 	m_rootEntries = newDynarray;
-	m_rootInode.stat.stSize = DYNARRAY_LENGTH(m_rootEntries);
+	m_rootInode.stat.st_size = DYNARRAY_LENGTH(m_rootEntries);
 	Mutex_Unlock(&m_mutex);
 	return true;
 }
@@ -137,10 +137,10 @@ void DevFS_Initialize() {
 	m_superblockType.getRootInode = NULL;
 
 	m_rootInode.ctx = NULL;
-	m_rootInode.stat.stSize = 0;
-	m_rootInode.stat.stType = VFS_DT_DIR;
-	m_rootInode.stat.stBlksize = 0;
-	m_rootInode.stat.stBlkcnt = 0;
+	m_rootInode.stat.st_size = 0;
+	m_rootInode.stat.st_type = VFS_DT_DIR;
+	m_rootInode.stat.st_blksize = 0;
+	m_rootInode.stat.st_blkcnt = 0;
 	m_rootInode.ops = &m_rootInodeOperations;
 
 	m_rootInodeOperations.getChild = DevFS_GetRootChild;

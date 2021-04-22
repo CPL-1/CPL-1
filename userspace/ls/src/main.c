@@ -1,8 +1,11 @@
+#include <dirent.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 void Ls_PrintVersion() {
 	printf("ls. Copyright (C) 2021 Zamiatin Iurii and CPL-1 contributors\n");
@@ -63,9 +66,9 @@ void Ls_ListDirectory(const char *dir) {
 			continue;
 		}
 		close(fileFd);
-		if (stat.stType == DT_DIR) {
+		if (stat.st_type == DT_DIR) {
 			printf("\033[93m%s\033[39m ", buf.d_name);
-		} else if (stat.stType == DT_CHR) {
+		} else if (stat.st_type == DT_CHR) {
 			printf("\033[93m%s\033[39m", buf.d_name);
 		} else {
 			printf("%s ", buf.d_name);

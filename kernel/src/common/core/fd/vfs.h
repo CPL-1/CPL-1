@@ -39,10 +39,10 @@ struct VFS_InodeOperations {
 };
 
 struct VFS_Stat {
-	mode_t stType;
-	off_t stSize;
-	blksize_t stBlksize;
-	blkcnt_t stBlkcnt;
+	mode_t st_type;
+	off_t st_size;
+	blksize_t st_blksize;
+	blkcnt_t st_blkcnt;
 };
 
 struct VFS_Inode {

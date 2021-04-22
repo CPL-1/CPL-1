@@ -25,8 +25,8 @@ void *memset(void *dest, int byte, size_t n) {
 }
 
 char *strcat(char *dest, const char *src) {
-	size_t destSize = strlen(dest);
-	char *newDest = dest + destSize;
+	size_t dest_size = strlen(dest);
+	char *newDest = dest + dest_size;
 	size_t srcLen = strlen(src);
 	memcpy(newDest, src, srcLen + 1);
 	return dest;

@@ -453,10 +453,10 @@ static bool FAT32_MakeDirectoryInode(struct FAT32_Superblock *fat32Superblock, s
 	inodeContext->entries = entries;
 	inode->ctx = (void *)inodeContext;
 	inode->ops = &m_dirInodeOperations;
-	inode->stat.stBlkcnt = entry->fileSize / fat32Superblock->clusterSize;
-	inode->stat.stBlksize = fat32Superblock->clusterSize;
-	inode->stat.stSize = entry->fileSize;
-	inode->stat.stType = VFS_DT_DIR;
+	inode->stat.st_blkcnt = entry->fileSize / fat32Superblock->clusterSize;
+	inode->stat.st_blksize = fat32Superblock->clusterSize;
+	inode->stat.st_size = entry->fileSize;
+	inode->stat.st_type = VFS_DT_DIR;
 	return true;
 }
 
@@ -496,10 +496,10 @@ static ino_t FAT32_AddDirectoryInode(struct FAT32_Superblock *fat32Superblock, s
 		FREE_OBJ(inode);
 		return 0;
 	}
-	inode->stat.stBlkcnt = (entry->fileSize + fat32Superblock->clusterSize - 1) / fat32Superblock->clusterSize;
-	inode->stat.stBlksize = fat32Superblock->clusterSize;
-	inode->stat.stSize = entry->fileSize;
-	inode->stat.stType = VFS_DT_DIR;
+	inode->stat.st_blkcnt = (entry->fileSize + fat32Superblock->clusterSize - 1) / fat32Superblock->clusterSize;
+	inode->stat.st_blksize = fat32Superblock->clusterSize;
+	inode->stat.st_size = entry->fileSize;
+	inode->stat.st_type = VFS_DT_DIR;
 	return index;
 }
 
@@ -520,10 +520,10 @@ static ino_t FAT32_AddFileInode(struct FAT32_Superblock *fat32Superblock, struct
 	inodeContext->firstCluster = entry->firstCluster;
 	inodeContext->sb = fat32Superblock;
 	inode->ops = &m_fileInodeOperations;
-	inode->stat.stBlkcnt = (entry->fileSize + fat32Superblock->clusterSize - 1) / fat32Superblock->clusterSize;
-	inode->stat.stBlksize = fat32Superblock->clusterSize;
-	inode->stat.stSize = entry->fileSize;
-	inode->stat.stType = VFS_DT_REG;
+	inode->stat.st_blkcnt = (entry->fileSize + fat32Superblock->clusterSize - 1) / fat32Superblock->clusterSize;
+	inode->stat.st_blksize = fat32Superblock->clusterSize;
+	inode->stat.st_size = entry->fileSize;
+	inode->stat.st_type = VFS_DT_REG;
 	ino_t index = FAT32_TryInsertingInode(fat32Superblock, inode);
 	if (index == 0) {
 		FAT32_CleanInode(inode);

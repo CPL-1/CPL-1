@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
+#include <sys/mman.h>
 
 #define BLOCK_SIZE 65536
 #define HEAP_SIZE_CLASSES_COUNT 13

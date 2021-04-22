@@ -1,5 +1,5 @@
-#ifndef __SYS_TIME_H_INCLUDED__
-#define __SYS_TIME_H_INCLUDED__
+#ifndef __CPL1_LIBC_SYS_TIME_H_INCLUDED__
+#define __CPL1_LIBC_SYS_TIME_H_INCLUDED__
 
 #include <sys/types.h>
 

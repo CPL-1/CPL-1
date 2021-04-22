@@ -1,8 +1,10 @@
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 void Stat_PrintVersion() {
 	printf("stat. Copyright (C) 2021 Zamiatin Iurii and CPL-1 contributors\n");
@@ -30,7 +32,7 @@ void Stat_PrintLicense() {
 	printf("%s\n", buf);
 }
 
-const char *Stat_FileTypes[] = {
+static const char *Stat_FileTypes[] = {
 	"unknown",		"fifo",			 "character device", "unknown", "directory", "unknown", "block device", "unknown",
 	"regular file", "symbolic link", "unknown",			 "unknown", "socket",	 "unknown", "unknown",
 };
@@ -63,10 +65,10 @@ int main(int argc, char const *argv[]) {
 	}
 	printf("\tFile: %s\n", path);
 	const char *type = "unknown";
-	if (stat.stType < 15) {
-		type = Stat_FileTypes[stat.stType];
+	if (stat.st_type < 15) {
+		type = Stat_FileTypes[stat.st_type];
 	}
-	printf("\tSize: %u    Blocks: %u    IO Block: %u    %s\n", (uint32_t)stat.stSize, (uint32_t)stat.stBlkcnt,
-		   (uint32_t)stat.stBlksize, type);
+	printf("\tSize: %u    Blocks: %u    IO Block: %u    %s\n", (uint32_t)stat.st_size, (uint32_t)stat.st_blkcnt,
+		   (uint32_t)stat.st_blksize, type);
 	return 0;
 }

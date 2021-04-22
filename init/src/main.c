@@ -1,3 +1,4 @@
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -5,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/log.h>
-#include <sys/syscall.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 bool InitProcess_SetupTTYStreams() {
 	if (open("/dev/halterm", O_RDONLY) != 0) {
