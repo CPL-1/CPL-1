@@ -1,6 +1,7 @@
 #include <arch/i686/drivers/storage/nvme.h>
 #include <arch/i686/proc/iowait.h>
 #include <common/core/memory/heap.h>
+#include <common/lib/kmsg.h>
 
 struct i686_NVME_PCIController {
 	struct i686_PCI_Address addr;
@@ -11,14 +12,22 @@ struct i686_NVME_PCIController {
 };
 
 static bool i686_NVME_CheckInterrupt(void *ctx) {
+	KernelLog_InfoMsg("i686 NVME interrupt handler", "In CheckInterrupt");
 	struct i686_NVME_PCIController *controller = (struct i686_NVME_PCIController *)ctx;
 	struct i686_PCI_Address addr = controller->addr;
 	uint16_t status = i686_PCI_ReadWord(addr, I686_PCI_STATUS);
-	return ((status & (1 << 3)) != 0);
+	bool result = ((status & (1 << 3)) != 0);
+	if (result) {
+		KernelLog_InfoMsg("i686 NVME interrupt handler", "PCI bit 3 is set");
+	} else {
+		KernelLog_WarnMsg("i686 NVME interrupt handler", "PCI bit 3 is not set");
+	}
+	return result;
 }
 
 static void i686_NVME_EventCallback(void *ctx, MAYBE_UNUSED char *state) {
 	struct i686_NVME_PCIController *controller = (struct i686_NVME_PCIController *)ctx;
+	KernelLog_InfoMsg("i686 NVME interrupt handler", "In event callback");
 	if (controller->eventCallback != NULL) {
 		controller->eventCallback(controller->privateCtx);
 	}

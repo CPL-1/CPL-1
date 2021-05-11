@@ -104,7 +104,7 @@ static void i686_TTY_PutCharacterRaw(char c) {
 	}
 }
 
-static void i686_TTY_PutCharacter(char c) {
+MAYBE_UNUSED static void i686_TTY_PutCharacter(char c) {
 	if (m_ttyY == m_ttyYSize) {
 		i686_TTY_Scroll(true);
 	}
@@ -184,17 +184,17 @@ void i686_TTY_Initialize() {
 	m_ttyBackgroundColor = /*0x002c001e*/ 0;
 	m_ttyDefaultForegroundColor = m_ttyForegroundColor;
 	m_ttyDefaultBackgroundColor = m_ttyBackgroundColor;
-	m_isFramebufferInitialized = true;
-	HAL_TTY_Clear();
+	m_isFramebufferInitialized = false;
+	// HAL_TTY_Clear();
 }
 
 void HAL_TTY_Flush() {
 }
 
 void HAL_TTY_PrintCharacter(char c) {
-	if (m_isFramebufferInitialized) {
+	/*if (m_isFramebufferInitialized) {
 		i686_TTY_PutCharacter(c);
-	}
+	}*/
 	i686_Ports_WriteByte(0xe9, c);
 }
 

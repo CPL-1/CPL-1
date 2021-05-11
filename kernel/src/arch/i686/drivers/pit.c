@@ -19,9 +19,9 @@ void i686_PIT8253_Initialize(uint32_t freq) {
 }
 
 bool HAL_Timer_SetCallback(HAL_ISR_Handler entry) {
-	if (i686_IOWait_AddHandler(0, (i686_IOWait_Handler)entry, NULL, NULL) == NULL) {
+	/*if (i686_IOWait_AddHandler(0, (i686_IOWait_Handler)entry, NULL, NULL) == NULL) {
 		KernelLog_ErrorMsg("PIT driver", "Failed to load timer interrupt handler");
-	}
+	}*/
 	HAL_ISR_Handler handler = i686_ISR_MakeNewISRHandler(entry, NULL, false);
 	if (handler == NULL) {
 		return false;
